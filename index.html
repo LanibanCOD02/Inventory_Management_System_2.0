@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Inventory management system for M.S. Chellamuthu Trust & Research Foundation — Mental Health for All. Track clinical supplies, program materials, and resources across all trust programs.">
+  <title>MSC Trust — Inventory Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">MS</div>
+        <div>
+          <strong>M.S. Chellamuthu Trust</strong>
+          <span>Mental Health for All</span>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-page="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+        <button class="nav-item" data-page="inventory"><i data-lucide="package-search"></i><span>Inventory</span></button>
+        <button class="nav-item" data-page="inward"><i data-lucide="arrow-down-to-line"></i><span>Stock Inward</span></button>
+        <button class="nav-item" data-page="outward"><i data-lucide="arrow-up-from-line"></i><span>Stock Outward</span></button>
+        <button class="nav-item" data-page="categories"><i data-lucide="shapes"></i><span>Categories</span></button>
+        <button class="nav-item" data-page="programs"><i data-lucide="heart-handshake"></i><span>Programs</span></button>
+        <button class="nav-item" data-page="suppliers"><i data-lucide="truck"></i><span>Suppliers</span></button>
+        <button class="nav-item" data-page="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="location-icon"><i data-lucide="map-pin"></i></div>
+        <p>643, KK Nagar<br>Tamil Nadu 625020</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="hamburger mobile-only" id="menuBtn" aria-label="Open navigation">
+          <div class="hamburger-lines"><span></span><span></span><span></span></div>
+        </button>
+        <div class="page-title">
+          <p id="dateDisplay"></p>
+          <h1 id="pageHeading">Inventory Dashboard</h1>
+        </div>
+        <div class="top-actions">
+          <label class="search-box">
+            <i data-lucide="search"></i>
+            <span class="sr-only">Search inventory</span>
+            <input id="globalSearch" type="search" placeholder="Search items...">
+          </label>
+          <button class="icon-btn notification-btn" aria-label="Notifications"><i data-lucide="bell"></i><span></span></button>
+          <div class="profile">
+            <div class="avatar">AK</div>
+            <div><strong>Admin</strong><span>Store Manager</span></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="dashboard" id="dashboard">
+        <div class="welcome-row">
+          <div>
+            <p class="eyebrow">Overview</p>
+            <h2 id="greetingText">Good morning, Admin</h2>
+            <p>Keep every mental health, rehabilitation, and community program supplied.</p>
+          </div>
+          <button class="primary-btn" id="addItemBtn"><i data-lucide="plus"></i>Add new item</button>
+        </div>
+
+        <section class="stat-grid" aria-label="Inventory overview">
+          <article class="stat-card blue">
+            <div class="stat-icon"><i data-lucide="boxes"></i></div>
+            <div><p>Total items</p><h3 id="totalItems">1,248</h3><span><b>+8.2%</b> from last month</span></div>
+          </article>
+          <article class="stat-card green">
+            <div class="stat-icon"><i data-lucide="circle-check-big"></i></div>
+            <div><p>Available stock</p><h3 id="availableStock">1,102</h3><span><b>88.3%</b> of total items</span></div>
+          </article>
+          <article class="stat-card orange">
+            <div class="stat-icon"><i data-lucide="triangle-alert"></i></div>
+            <div><p>Low stock items</p><h3 id="lowStockCount">18</h3><span><b>Needs attention</b></span></div>
+          </article>
+          <article class="stat-card purple">
+            <div class="stat-icon"><i data-lucide="indian-rupee"></i></div>
+            <div><p>Inventory value</p><h3>₹4,82,650</h3><span><b>+4.6%</b> from last month</span></div>
+          </article>
+        </section>
+
+        <section class="analytics-grid">
+          <article class="panel movement-panel">
+            <div class="panel-heading">
+              <div><h3>Stock Movement</h3><p>Inward and outward items across this month</p></div>
+              <select aria-label="Stock movement period"><option>This month</option><option>Last month</option></select>
+            </div>
+            <div class="chart-legend"><span><i class="legend-dot inward"></i>Stock inward</span><span><i class="legend-dot outward"></i>Stock outward</span></div>
+            <div class="line-chart" aria-label="Line chart showing stock movement">
+              <div class="y-axis"><span>300</span><span>200</span><span>100</span><span>0</span></div>
+              <div class="chart-tooltip" id="chartTooltip"></div>
+              <svg viewBox="0 0 700 220" preserveAspectRatio="none" role="img">
+                <defs>
+                  <linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#14b8a6" stop-opacity=".15"/>
+                    <stop offset="100%" stop-color="#14b8a6" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path class="area" d="M0,152 L116,127 L233,141 L350,79 L466,95 L583,45 L700,67 L700,220 L0,220 Z"/>
+                <path class="line inward-line" d="M0,152 L116,127 L233,141 L350,79 L466,95 L583,45 L700,67"/>
+                <path class="line outward-line" d="M0,174 L116,158 L233,167 L350,130 L466,145 L583,110 L700,121"/>
+                <g class="chart-points inward-points">
+                  <circle cx="0" cy="152" r="4"/><circle cx="116" cy="127" r="4"/><circle cx="233" cy="141" r="4"/><circle cx="350" cy="79" r="4"/><circle cx="466" cy="95" r="4"/><circle cx="583" cy="45" r="4"/><circle cx="700" cy="67" r="4"/>
+                </g>
+              </svg>
+              <div class="x-axis"><span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span></div>
+            </div>
+          </article>
+
+          <article class="panel category-panel">
+            <div class="panel-heading"><div><h3>Stock by Category</h3><p>Available inventory distribution</p></div><button class="more-btn" aria-label="More options"><i data-lucide="ellipsis"></i></button></div>
+            <div class="category-content">
+              <div class="donut-wrapper" role="img" aria-label="Category distribution donut chart">
+                <svg class="donut-svg" viewBox="0 0 160 160" width="145" height="145">
+                  <circle class="donut-track" cx="80" cy="80" r="60"/>
+                  <circle class="donut-seg" cx="80" cy="80" r="60" style="--arc:135.72;--offset:0;--delay:.15s;--color:var(--teal)"/>
+                  <circle class="donut-seg" cx="80" cy="80" r="60" style="--arc:94.25;--offset:-135.72;--delay:.3s;--color:var(--sage)"/>
+                  <circle class="donut-seg" cx="80" cy="80" r="60" style="--arc:82.94;--offset:-229.97;--delay:.42s;--color:var(--amber)"/>
+                  <circle class="donut-seg" cx="80" cy="80" r="60" style="--arc:64.09;--offset:-312.91;--delay:.54s;--color:var(--purple)"/>
+                </svg>
+                <div class="donut-center"><strong>1,248</strong><span>Total items</span></div>
+              </div>
+              <div class="category-list">
+                <span><i class="category-dot medical"></i>Clinical & Pharma <b>36%</b></span>
+                <span><i class="category-dot stationery"></i>Program materials <b>25%</b></span>
+                <span><i class="category-dot food"></i>Food & nutrition <b>22%</b></span>
+                <span><i class="category-dot household"></i>Vocational & Care <b>17%</b></span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel inventory-panel">
+            <div class="panel-heading inventory-heading">
+              <div><h3>Inventory Overview</h3><p>Monitor frequently used supplies</p></div>
+              <div class="table-actions">
+                <select id="categoryFilter" aria-label="Filter inventory category">
+                  <option value="all">All categories</option>
+                  <option value="Clinical & Pharma">Clinical & Pharma</option>
+                  <option value="Program materials">Program materials</option>
+                  <option value="Food & nutrition">Food & nutrition</option>
+                  <option value="Vocational & Care">Vocational & Care</option>
+                </select>
+                <button class="secondary-btn" id="exportBtn"><i data-lucide="download"></i>Export</button>
+              </div>
+            </div>
+            <div class="inv-grid" id="inventoryBody"></div>
+            <div class="table-footer"><span id="itemCount">Showing 8 items</span><button data-page="inventory">View all inventory <i data-lucide="arrow-right"></i></button></div>
+          </article>
+
+          <aside class="panel alerts-panel">
+            <div class="panel-heading"><div><h3>Low Stock Alerts</h3><p>Reorder soon to avoid delays</p></div><span class="alert-badge">5 items</span></div>
+            <div class="alert-list" id="alertList"></div>
+            <button class="full-btn">View all alerts <i data-lucide="arrow-right"></i></button>
+          </aside>
+        </section>
+
+        <section class="bottom-grid">
+          <article class="panel activity-panel">
+            <div class="panel-heading"><div><h3>Recent Activity</h3><p>Latest stock updates and actions</p></div><button class="more-btn" aria-label="More options"><i data-lucide="ellipsis"></i></button></div>
+            <div class="activity-list">
+              <div class="activity-item"><div class="activity-icon add"><i data-lucide="arrow-down-to-line"></i></div><p><b>Psychiatric medication</b> stock received<span>+80 packs by Admin</span></p><time>12 min ago</time></div>
+              <div class="activity-item"><div class="activity-icon send"><i data-lucide="arrow-up-from-line"></i></div><p><b>Rice bags (25kg)</b> issued for community kitchen<span>-15 bags by Kavitha</span></p><time>42 min ago</time></div>
+              <div class="activity-item"><div class="activity-icon edit"><i data-lucide="pencil"></i></div><p><b>Yoga mats</b> quantity corrected<span>Updated by Admin</span></p><time>2 hrs ago</time></div>
+            </div>
+          </article>
+
+          <article class="panel quick-panel">
+            <div class="panel-heading"><div><h3>Quick Actions</h3><p>Common inventory tasks</p></div></div>
+            <div class="quick-grid">
+              <button id="quickAdd"><i data-lucide="circle-plus"></i><span>Add item</span></button>
+              <button data-page="inward"><i data-lucide="arrow-down-to-line"></i><span>Stock inward</span></button>
+              <button data-page="outward"><i data-lucide="arrow-up-from-line"></i><span>Stock outward</span></button>
+              <button data-page="reports"><i data-lucide="file-chart-column"></i><span>Generate report</span></button>
+            </div>
+          </article>
+        </section>
+      </section>
+      <section class="section-view" id="sectionView" hidden></section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Inventory</p><h2 id="modalTitle">Add new item</h2></div>
+        <button class="icon-btn" id="closeModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="addItemForm">
+        <label>Item name<input required name="name" placeholder="e.g. First aid kit"></label>
+        <label>Category<select name="category">
+          <option>Clinical & Pharma</option>
+          <option>Program materials</option>
+          <option>Food & nutrition</option>
+          <option>Vocational & Care</option>
+          <option>School & Education</option>
+          <option>Farming & Dairy</option>
+        </select></label>
+        <div class="form-row">
+          <label>Quantity<input required name="stock" type="number" min="0" placeholder="0"></label>
+          <label>Unit<select name="unit"><option>Units</option><option>Boxes</option><option>Bags</option><option>Packs</option><option>Bottles</option><option>Rolls</option></select></label>
+        </div>
+        <label>Minimum stock level<input required name="threshold" type="number" min="0" value="10"></label>
+        <div class="modal-actions"><button type="button" class="secondary-btn" id="cancelModal">Cancel</button><button class="primary-btn" type="submit">Add item</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <button class="fab" id="fabAdd" aria-label="Add new item"><i data-lucide="plus"></i></button>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="app.js"></script>
+</body>
+</html>
