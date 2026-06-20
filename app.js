@@ -12,7 +12,7 @@ spinnerStyle.textContent = `
 document.head.appendChild(spinnerStyle);
 
 // ─── API Helper ──────────────────────────────────
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 
 const cache = {};
 const CACHE_TTL = 30000;
