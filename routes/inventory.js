@@ -58,8 +58,8 @@ router.get('/alerts', authenticateToken, async (req, res) => {
   }
 });
 
-// Add new inventory item (Admin Only)
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+// Add new item
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const { name, category, stock, unit, threshold, unit_price, product_photo_url, bill_image_url, invoice_pdf_url, branch_id, default_supplier } = req.body;
 

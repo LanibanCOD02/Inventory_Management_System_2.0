@@ -173,7 +173,7 @@ function enforceRoles() {
     user = JSON.parse(atob(payload));
   } catch(e) { return; }
   
-  const addButtons = document.querySelectorAll('#addItemBtn, #quickAdd, #fabAdd, .section-add-item, button[data-page="categories"], button[data-page="programs"], button[data-page="suppliers"]');
+  const addButtons = document.querySelectorAll('.section-add-entity, button[data-page="categories"], button[data-page="programs"], button[data-page="suppliers"]');
   const adminOnly = document.querySelectorAll('.admin-only');
   const staffOnly = document.querySelectorAll('.staff-only');
   
@@ -1927,4 +1927,99 @@ if (editUserRole && editUserBranch) {
     editUserBranch.required = e.target.value === "Staff";
   });
   editUserBranch.required = editUserRole.value === "Staff";
+}
+
+// ─── Deletion Requests ─────────────────────────────
+async function loadRequests() {
+  const tbody = document.getElementById("requestsTableBody");
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading...</td></tr>';
+  try {
+    const url = new URL(`${API_BASE}/inventory/deletion-requests/all`, window.location.origin);
+    const filterBranch = document.getElementById("branchFilter")?.value;
+    const token = localStorage.getItem('msc_token');
+    
+    // Parse user role
+    let userRole = '';
+    if(token) {
+      try { userRole = JSON.parse(atob(token.split('.')[1])).role; } catch(e) {}
+    }
+    
+    if (filterBranch && userRole === 'Admin') url.searchParams.append('branch_id', filterBranch);
+    
+    const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load requests");
+    
+    if(userRole === 'Admin') {
+      const pendingCount = data.filter(r => r.status === 'pending').length;
+      const badge = document.getElementById("adminPendingRequestsBadge");
+      if(badge) {
+        badge.textContent = pendingCount;
+        badge.style.display = pendingCount > 0 ? "inline-block" : "none";
+      }
+    }
+    
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-secondary)">No requests found.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = data.map(req => {
+      const date = new Date(req.requested_at).toLocaleDateString();
+      let statusColor = "var(--text-secondary)";
+      if(req.status === 'pending') statusColor = "var(--amber)";
+      else if(req.status === 'approved') statusColor = "var(--teal)";
+      else if(req.status === 'rejected') statusColor = "var(--danger)";
+      
+      let actions = '';
+      if(req.status === 'pending' && userRole === 'Admin') {
+        actions = `
+          <button class="icon-btn" onclick="approveDeletion('${req.id}')" title="Approve" style="color:var(--teal)"><i data-lucide="check"></i></button>
+          <button class="icon-btn" onclick="rejectDeletion('${req.id}')" title="Reject" style="color:var(--danger)"><i data-lucide="x"></i></button>
+        `;
+      }
+      
+      return `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="${req.product_photo_url || 'https://images.unsplash.com/photo-1584308666744-24d5e47854f9?w=100&q=80'}" alt="${req.item_name}" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;"><span style="font-weight:500;color:var(--text)">${req.item_name}</span></div></td><td>${req.requested_by_name}</td><td>${req.branch_name}</td><td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor};text-transform:capitalize;">${req.status}</span></td><td>${date}</td><td class="text-right">${actions}</td></tr>`;
+    }).join('');
+    lucide.createIcons();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--danger)">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function requestDeletion(itemId) {
+  if (!confirm("Submit a request to delete this item?")) return;
+  try {
+    const token = localStorage.getItem('msc_token');
+    const res = await fetch(`${API_BASE}/inventory/${itemId}/request-deletion`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "Failed to submit request");
+    showToast("Deletion request submitted.", "success");
+    closeModal(); closeItemDetail();
+    if(document.querySelector(".nav-item.active")?.dataset.page === 'dashboard') loadInventory();
+    else if(document.querySelector(".nav-item.active")?.dataset.page === 'requests') loadRequests();
+  } catch(e) { showToast(e.message, "error"); }
+}
+
+async function approveDeletion(reqId) {
+  if (!confirm("Approve deletion?")) return;
+  try {
+    const token = localStorage.getItem('msc_token');
+    const res = await fetch(`${API_BASE}/inventory/deletion-requests/${reqId}/approve`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
+    if(!res.ok) throw new Error("Failed to approve");
+    showToast("Request approved.", "success");
+    loadRequests();
+  } catch(e) { showToast(e.message, "error"); }
+}
+
+async function rejectDeletion(reqId) {
+  if (!confirm("Reject this deletion request?")) return;
+  try {
+    const token = localStorage.getItem('msc_token');
+    const res = await fetch(`${API_BASE}/inventory/deletion-requests/${reqId}/reject`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
+    if(!res.ok) throw new Error("Failed to reject");
+    showToast("Request rejected.", "success");
+    loadRequests();
+  } catch(e) { showToast(e.message, "error"); }
 }
