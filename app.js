@@ -175,15 +175,17 @@ function enforceRoles() {
   
   const addButtons = document.querySelectorAll('#addItemBtn, #quickAdd, #fabAdd, .section-add-item, button[data-page="categories"], button[data-page="programs"], button[data-page="suppliers"]');
   const adminOnly = document.querySelectorAll('.admin-only');
+  const staffOnly = document.querySelectorAll('.staff-only');
   
   if (user.role === 'Staff') {
     // Hide buttons for creating entities
     addButtons.forEach(btn => btn.style.display = 'none');
     adminOnly.forEach(btn => btn.style.display = 'none');
+    staffOnly.forEach(btn => btn.style.display = '');
     // Hide Categories/Programs/Suppliers completely from sidebar
-    document.querySelector('.nav-item[data-page="categories"]').style.display = 'none';
-    document.querySelector('.nav-item[data-page="programs"]').style.display = 'none';
-    document.querySelector('.nav-item[data-page="suppliers"]').style.display = 'none';
+    if(document.querySelector('.nav-item[data-page="categories"]')) document.querySelector('.nav-item[data-page="categories"]').style.display = 'none';
+    if(document.querySelector('.nav-item[data-page="programs"]')) document.querySelector('.nav-item[data-page="programs"]').style.display = 'none';
+    if(document.querySelector('.nav-item[data-page="suppliers"]')) document.querySelector('.nav-item[data-page="suppliers"]').style.display = 'none';
   } else {
     addButtons.forEach(btn => btn.style.display = '');
     adminOnly.forEach(btn => {
@@ -193,9 +195,10 @@ function enforceRoles() {
         btn.style.display = '';
       }
     });
-    document.querySelector('.nav-item[data-page="categories"]').style.display = '';
-    document.querySelector('.nav-item[data-page="programs"]').style.display = '';
-    document.querySelector('.nav-item[data-page="suppliers"]').style.display = '';
+    staffOnly.forEach(btn => btn.style.display = 'none');
+    if(document.querySelector('.nav-item[data-page="categories"]')) document.querySelector('.nav-item[data-page="categories"]').style.display = '';
+    if(document.querySelector('.nav-item[data-page="programs"]')) document.querySelector('.nav-item[data-page="programs"]').style.display = '';
+    if(document.querySelector('.nav-item[data-page="suppliers"]')) document.querySelector('.nav-item[data-page="suppliers"]').style.display = '';
   }
 }
 
@@ -327,6 +330,9 @@ async function loadInventory() {
     }
     
     if (typeof initCharts === 'function') initCharts();
+    
+    // Load deletion requests in background to populate badge/table
+    loadRequests();
     
   } catch (err) {
     console.error("Failed to load inventory:", err);
@@ -805,17 +811,27 @@ async function switchPage(page) {
     dashboard.hidden = false;
     sectionView.hidden = true;
     if(sectionUsers) sectionUsers.hidden = true;
+    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     pageHeading.textContent = "Inventory Dashboard";
     loadInventory();
   } else if (page === "users") {
     dashboard.hidden = true;
     sectionView.hidden = true;
     if(sectionUsers) sectionUsers.hidden = false;
+    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     pageHeading.textContent = "User Management";
     loadUsers();
+  } else if (page === "requests") {
+    dashboard.hidden = true;
+    sectionView.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true;
+    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = false;
+    pageHeading.textContent = "Deletion Requests";
+    loadRequests();
   } else {
     dashboard.hidden = true;
     if(sectionUsers) sectionUsers.hidden = true;
+    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     sectionView.hidden = false;
     const s = sectionData[page];
     pageHeading.textContent = s.title;
@@ -1005,7 +1021,6 @@ if(editModal) editModal.addEventListener("click", e => { if (e.target === editMo
 if (document.getElementById("deleteItemBtn")) {
   document.getElementById("deleteItemBtn").addEventListener("click", async () => {
     const id = document.getElementById("itemDetailModalBackdrop").dataset.itemId;
-    // FIX 3: Replace all confirm() dialogs with a custom modal
     showConfirm("Are you sure you want to delete this item? This action cannot be undone.", async () => {
       try {
         await apiFetch(`/inventory/${id}`, { method: 'DELETE' });
@@ -1018,6 +1033,13 @@ if (document.getElementById("deleteItemBtn")) {
         alert("Error deleting item: " + err.message);
       }
     });
+  });
+}
+
+if (document.getElementById("requestDeletionBtn")) {
+  document.getElementById("requestDeletionBtn").addEventListener("click", () => {
+    const id = document.getElementById("itemDetailModalBackdrop").dataset.itemId;
+    requestDeletion(id);
   });
 }
 

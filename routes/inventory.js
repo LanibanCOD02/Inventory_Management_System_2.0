@@ -290,4 +290,99 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Deletion Requests (Staff/Admin) ────────────────
+
+// 1. Get all deletion requests
+router.get('/deletion-requests/all', authenticateToken, async (req, res) => {
+  try {
+    const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
+    
+    // Admin sees all based on branch filter, Staff sees only their branch
+    const requests = db.prepare(`
+      SELECT dr.*, i.name as item_name, i.product_photo_url, u.name as requested_by_name, b.name as branch_name
+      FROM deletion_requests dr
+      JOIN inventory_items i ON dr.item_id = i.id
+      JOIN users u ON dr.requested_by = u.id
+      JOIN branches b ON dr.branch_id = b.id
+      WHERE ${condition.replace(/branch_id/g, 'dr.branch_id')}
+      ORDER BY dr.requested_at DESC
+    `).all(...params);
+    
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 2. Request deletion (Staff)
+router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const item = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(id);
+    
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    
+    // Check if staff belongs to the same branch
+    if (req.user.role !== 'Admin' && req.user.branch_id !== item.branch_id) {
+      return res.status(403).json({ error: 'Forbidden: Item belongs to another branch' });
+    }
+    
+    // Check if pending request already exists
+    const existing = db.prepare('SELECT * FROM deletion_requests WHERE item_id = ? AND status = ?').get(id, 'pending');
+    if (existing) return res.status(400).json({ error: 'A deletion request is already pending for this item.' });
+    
+    const reqId = generateUUID();
+    db.prepare(`
+      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at)
+      VALUES (?, ?, ?, ?, 'pending', ?)
+    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString());
+    
+    res.status(201).json({ message: 'Deletion request submitted.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3. Approve deletion request (Admin Only)
+router.post('/deletion-requests/:reqId/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { reqId } = req.params;
+    const request = db.prepare('SELECT * FROM deletion_requests WHERE id = ?').get(reqId);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') return res.status(400).json({ error: 'Request is no longer pending' });
+    
+    // Start transaction to approve and soft-delete
+    const approveTx = db.transaction(() => {
+      // 1. Update request
+      db.prepare(`UPDATE deletion_requests SET status = 'approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?`)
+        .run(req.user.id, new Date().toISOString(), reqId);
+      // 2. Soft-delete item
+      db.prepare('UPDATE inventory_items SET deleted_at = ? WHERE id = ?')
+        .run(new Date().toISOString(), request.item_id);
+    });
+    approveTx();
+    
+    res.json({ message: 'Request approved and item deleted.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 4. Reject deletion request (Admin Only)
+router.post('/deletion-requests/:reqId/reject', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { reqId } = req.params;
+    const request = db.prepare('SELECT * FROM deletion_requests WHERE id = ?').get(reqId);
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'pending') return res.status(400).json({ error: 'Request is no longer pending' });
+    
+    db.prepare(`UPDATE deletion_requests SET status = 'rejected', reviewed_by = ?, reviewed_at = ? WHERE id = ?`)
+      .run(req.user.id, new Date().toISOString(), reqId);
+      
+    res.json({ message: 'Request rejected.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
