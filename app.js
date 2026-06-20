@@ -1,33 +1,106 @@
-// ─── Dynamic Date & Greeting ──────────────────────
+// ═══════════════════════════════════════════════════
+// MSC Trust — Resource & Inventory Management Portal
+// ═══════════════════════════════════════════════════
+
+// ─── Inject CSS for Loading Spinner ──────────────
+const spinnerStyle = document.createElement('style');
+spinnerStyle.textContent = `
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .spinner { display: inline-block; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; width: 16px; height: 16px; vertical-align: middle; margin-right: 8px; }
+  .spinner-large { border: 3px solid var(--teal-100); border-top-color: var(--teal-600); width: 32px; height: 32px; margin: 0; }
+`;
+document.head.appendChild(spinnerStyle);
+
+// ─── API Helper ──────────────────────────────────
+const API_BASE = 'http://localhost:3000/api';
+
+const cache = {};
+const CACHE_TTL = 30000;
+
+function cachedFetch(endpoint, options = {}) {
+  const key = endpoint;
+  const now = Date.now();
+  if (cache[key] && (now - cache[key].ts) < CACHE_TTL && !options.method) {
+    return Promise.resolve(cache[key].data);
+  }
+  return apiFetch(endpoint, options).then(data => {
+    if (!options.method || options.method === 'GET') {
+      cache[key] = { data, ts: now };
+    }
+    return data;
+  });
+}
+
+function invalidateCache(pattern) {
+  Object.keys(cache).forEach(k => { if (k.includes(pattern)) delete cache[k]; });
+}
+
+let globalSelectedBranch = '';
+
+async function apiFetch(endpoint, options = {}) {
+  const token = localStorage.getItem('msc_token');
+  
+  if (globalSelectedBranch && (!options.method || options.method === 'GET')) {
+    if (!endpoint.includes('branch_id=')) {
+      const sep = endpoint.includes('?') ? '&' : '?';
+      endpoint = `${endpoint}${sep}branch_id=${globalSelectedBranch}`;
+    }
+  }
+
+  const headers = {
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers
+  };
+  
+  const response = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+  if (!response.ok) {
+    // FIX 2: Session expiry handling in apiFetch
+    if (response.status === 401) {
+      localStorage.removeItem('msc_token');
+      localStorage.removeItem('msc_user');
+      document.getElementById('appShell').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+      const msg = document.getElementById('sessionExpiredMsg');
+      if (msg) msg.style.display = 'block';
+      throw new Error('Session expired');
+    }
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+}
+
+function renderIcons(container) {
+  const el = container || document.body;
+  lucide.createIcons({ nameAttr: 'data-lucide', nodes: el.querySelectorAll('[data-lucide]') });
+}
+
+function skeletonRows(count, cols) {
+  return Array(count).fill('').map(() =>
+    `<tr>${Array(cols).fill('').map(() =>
+      `<td><div class="skeleton" style="height:14px;border-radius:4px;width:${60 + Math.random()*30}%"></div></td>`
+    ).join('')}</tr>`
+  ).join('');
+}
+
+function skeletonCards(count) {
+  return `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">${
+    Array(count).fill('').map(() =>
+      `<div class="skeleton" style="height:100px;border-radius:var(--radius)"></div>`
+    ).join('')
+  }</div>`;
+}
+
+// ─── Date & Greeting ─────────────────────────────
 const now = new Date();
-const dateStr = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(now);
-document.getElementById("dateDisplay").textContent = dateStr;
+document.getElementById("dateDisplay").textContent = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(now);
 
-const hour = now.getHours();
-const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-document.getElementById("greetingText").textContent = `${greeting}, Admin`;
-
-// ─── Realistic MSC Trust Inventory Data ───────────
-const inventory = [
-  { name: "Psychiatric medication packs", category: "Clinical & Pharma", stock: 145, unit: "Packs", threshold: 30, updated: "Today, 10:20 AM", img: "img/medication.png" },
-  { name: "Rice bags — 25 kg", category: "Food & nutrition", stock: 42, unit: "Bags", threshold: 20, updated: "Today, 09:48 AM", img: "img/rice.png" },
-  { name: "Yoga mats", category: "Program materials", stock: 36, unit: "Units", threshold: 15, updated: "Yesterday", img: "img/yoga.png" },
-  { name: "Tailoring fabric rolls", category: "Vocational & Care", stock: 28, unit: "Rolls", threshold: 10, updated: "Yesterday", img: "img/fabric.png" },
-  { name: "First aid kits", category: "Clinical & Pharma", stock: 8, unit: "Units", threshold: 15, updated: "Yesterday", img: "img/firstaid.png" },
-  { name: "Counselling assessment forms", category: "Program materials", stock: 220, unit: "Packs", threshold: 50, updated: "01 Jun 2026", img: "img/forms.png" },
-  { name: "Floor cleaner — 5 L", category: "Vocational & Care", stock: 12, unit: "Bottles", threshold: 15, updated: "01 Jun 2026", img: "img/cleaner.png" },
-  { name: "Baking flour — 10 kg", category: "Food & nutrition", stock: 6, unit: "Bags", threshold: 12, updated: "31 May 2026", img: "img/flour.png" },
-  { name: "Children's drawing books", category: "Program materials", stock: 0, unit: "Packs", threshold: 20, updated: "31 May 2026", img: "img/books.png" },
-  { name: "Blood pressure monitors", category: "Clinical & Pharma", stock: 4, unit: "Units", threshold: 5, updated: "30 May 2026", img: "img/bp.png" }
-];
-
-const alerts = [
-  { name: "First aid kits", text: "Minimum level: 15 units", stock: "8 left", icon: "briefcase-medical" },
-  { name: "Baking flour — 10 kg", text: "Minimum level: 12 bags", stock: "6 left", icon: "wheat" },
-  { name: "Children's drawing books", text: "Minimum level: 20 packs", stock: "Out", icon: "notebook-pen" },
-  { name: "Blood pressure monitors", text: "Minimum level: 5 units", stock: "4 left", icon: "heart-pulse" },
-  { name: "Floor cleaner — 5 L", text: "Minimum level: 15 bottles", stock: "12 left", icon: "spray-can" }
-];
+// ─── Global State ────────────────────────────────
+let inventory = [];
+let alerts = [];
+let currentPage = 1;
+const PAGE_SIZE = 10;
 
 // ─── DOM References ──────────────────────────────
 const inventoryBody = document.getElementById("inventoryBody");
@@ -38,345 +111,1798 @@ const modal = document.getElementById("modalBackdrop");
 const toast = document.getElementById("toast");
 const dashboard = document.getElementById("dashboard");
 const sectionView = document.getElementById("sectionView");
+const sectionUsers = document.getElementById("sectionUsers");
 const pageHeading = document.getElementById("pageHeading");
+
+const searchSuggestions = document.createElement('div');
+searchSuggestions.className = 'search-suggestions';
+document.querySelector('.search-box')?.appendChild(searchSuggestions);
+
+// ─── Toast ───────────────────────────────────────
+window.showToast = function(msg, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  
+  let iconName = 'check-circle-2';
+  if (type === 'error') iconName = 'alert-circle';
+  else if (type === 'info') iconName = 'info';
+  
+  toast.innerHTML = `
+    <i data-lucide="${iconName}" class="toast-icon"></i>
+    <span>${msg}</span>
+  `;
+  
+  container.appendChild(toast);
+  lucide.createIcons({ root: toast });
+  
+  // Trigger reflow for animation
+  void toast.offsetWidth;
+  toast.classList.add('show');
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 500); // Wait for transition to finish
+  }, 3500);
+}
+
+// FIX 3: Replace all confirm() dialogs with a custom modal
+function showConfirm(message, onConfirm) {
+  const backdrop = document.getElementById('confirmModalBackdrop');
+  document.getElementById('confirmModalMessage').textContent = message;
+  backdrop.classList.add('active');
+  const okBtn = document.getElementById('confirmModalOk');
+  const cancelBtn = document.getElementById('confirmModalCancel');
+  const close = () => backdrop.classList.remove('active');
+  const handleOk = () => { close(); onConfirm(); okBtn.removeEventListener('click', handleOk); cancelBtn.removeEventListener('click', close); };
+  okBtn.addEventListener('click', handleOk);
+  cancelBtn.addEventListener('click', close);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); }, { once: true });
+}
+
+// ─── Role Enforcement ────────────────────────────
+function enforceRoles() {
+  // FIX 4: Read role from JWT, not from localStorage msc_user
+  const token = localStorage.getItem('msc_token');
+  if (!token) return;
+  let user;
+  try {
+    const payload = token.split('.')[1];
+    user = JSON.parse(atob(payload));
+  } catch(e) { return; }
+  
+  const addButtons = document.querySelectorAll('#addItemBtn, #quickAdd, #fabAdd, .section-add-item, button[data-page="categories"], button[data-page="programs"], button[data-page="suppliers"]');
+  const adminOnly = document.querySelectorAll('.admin-only');
+  
+  if (user.role === 'Staff') {
+    // Hide buttons for creating entities
+    addButtons.forEach(btn => btn.style.display = 'none');
+    adminOnly.forEach(btn => btn.style.display = 'none');
+    // Hide Categories/Programs/Suppliers completely from sidebar
+    document.querySelector('.nav-item[data-page="categories"]').style.display = 'none';
+    document.querySelector('.nav-item[data-page="programs"]').style.display = 'none';
+    document.querySelector('.nav-item[data-page="suppliers"]').style.display = 'none';
+  } else {
+    addButtons.forEach(btn => btn.style.display = '');
+    adminOnly.forEach(btn => {
+      if (btn.style.flexDirection || btn.style.alignItems) {
+        btn.style.display = 'flex';
+      } else {
+        btn.style.display = '';
+      }
+    });
+    document.querySelector('.nav-item[data-page="categories"]').style.display = '';
+    document.querySelector('.nav-item[data-page="programs"]').style.display = '';
+    document.querySelector('.nav-item[data-page="suppliers"]').style.display = '';
+  }
+}
+
+function populateCategoryFilter() {
+  const filter = document.getElementById('categoryFilter');
+  if (!filter) return;
+  const categories = ['all', ...new Set(inventory.map(i => i.category).filter(Boolean))];
+  filter.innerHTML = categories.map(c =>
+    `<option value="${c}">${c === 'all' ? 'All categories' : c}</option>`
+  ).join('');
+}
 
 // ─── Status Logic ────────────────────────────────
 function getStatus(item) {
-  if (item.stock === 0) return ["Out of stock", "out-stock"];
-  if (item.stock <= item.threshold) return ["Low stock", "low-stock"];
+  if (Number(item.stock) === 0) return ["Out of stock", "out-stock"];
+  if (Number(item.stock) <= Number(item.threshold)) return ["Low stock", "low-stock"];
   return ["In stock", "in-stock"];
 }
 
-// ─── Render Card Helper ──────────────────────────
+function getBarClass(item) {
+  if (Number(item.stock) === 0) return "critical";
+  if (Number(item.stock) <= Number(item.threshold)) return "warning";
+  return "healthy";
+}
+
+// ─── Fetch & Render Inventory ────────────────────
+const branchNameMap = [
+  { match: 'kk nagar', short: 'KK Nagar Head Office' },
+  { match: 'lake area', short: 'Lake Area Training Institute' },
+  { match: 'alagarkoil', short: 'Alagarkoil Administrative Office' },
+  { match: 'aruldoss', short: 'Aruldoss Puram Rehabilitation Center' },
+  { match: 'alagar kovil', short: 'Alagar Kovil Registered Office' }
+];
+
+function getShortBranchName(dbName) {
+  if (!dbName) return '';
+  const lower = dbName.toLowerCase();
+  const found = branchNameMap.find(b => lower.includes(b.match));
+  return found ? found.short : dbName.split(',')[0].split('-')[0].trim();
+}
+
+async function loadBranches() {
+  try {
+    const branches = await cachedFetch('/branches');
+    if (!branches) return;
+    
+    const globalSelect = document.getElementById('globalBranchSelector');
+    const addItemBranch = document.getElementById('addItemBranch');
+    const editItemBranch = document.getElementById('editItemBranch');
+    const addUserBranch = document.getElementById('addUserBranch');
+    const editUserBranch = document.getElementById('editUserBranch');
+    const addMovementBranch = document.getElementById('addMovementBranch');
+    
+    const optionsHTML = branches.map(b => `<option value="${b.id}">${getShortBranchName(b.name)}</option>`).join('');
+    
+    if(globalSelect) globalSelect.innerHTML = '<option value="">All Branches</option>' + optionsHTML;
+    if(addItemBranch) addItemBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    if(editItemBranch) editItemBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    if(addUserBranch) addUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    if(editUserBranch) editUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    if(addMovementBranch) addMovementBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    
+    if(globalSelect) {
+      globalSelect.onchange = async (e) => {
+        globalSelectedBranch = e.target.value;
+        invalidateCache(''); // invalidate all caches
+        await Promise.all([loadSuppliers(), loadPrograms(), loadCategories()]);
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav) {
+          switchPage(activeNav.dataset.page);
+        } else {
+          switchPage('dashboard');
+        }
+      };
+    }
+  } catch (err) {
+    console.error("Could not load branches", err);
+  }
+}
+
+async function loadInventory() {
+  inventoryBody.innerHTML = skeletonRows(6, 4);
+  // FIX 5: Reset alerts array before loadInventory fetch
+  alerts = [];
+  try {
+    inventory = await cachedFetch('/inventory');
+    
+    try {
+      const alertData = await cachedFetch('/inventory/alerts');
+      alerts = alertData.map(i => ({
+        id: i.id,
+        name: i.name,
+        text: `Minimum: ${i.threshold} ${i.unit}`,
+        stock: i.stock === 0 ? 'Out of stock' : `${i.stock} left`,
+        critical: i.stock === 0
+      }));
+      renderAlerts();
+      countUp(document.getElementById('lowStockCount'), alerts.length, 600);
+      const notifBadge = document.querySelector('.notification-btn span');
+      if (notifBadge) {
+        notifBadge.textContent = alerts.length;
+        notifBadge.style.display = alerts.length > 0 ? 'flex' : 'none';
+      }
+      const cardBadge = document.querySelector('.alert-badge');
+      if (cardBadge) cardBadge.textContent = alerts.length;
+    } catch(err) {
+      console.error('Failed to load alerts:', err);
+    }
+      
+    populateCategoryFilter();
+    renderTable();
+    await loadRecentActivity();
+    
+    // Update dashboard numbers
+    countUp(document.getElementById("totalItems"), inventory.length, 1000);
+    countUp(document.getElementById("availableStock"), inventory.reduce((sum, i) => sum + i.stock, 0), 1000);
+    
+    // Load real inventory value from backend
+    try {
+      const metrics = await apiFetch('/dashboard/metrics');
+      const valEl = document.getElementById('invValue');
+      if (valEl && metrics.inventoryValue !== undefined) {
+        valEl.textContent = new Intl.NumberFormat('en-IN', {
+          style: 'currency', currency: 'INR', maximumFractionDigits: 0
+        }).format(metrics.inventoryValue);
+      }
+    } catch(err) {
+      console.error('Failed to load inventory value:', err);
+    }
+    
+    if (typeof initCharts === 'function') initCharts();
+    
+  } catch (err) {
+    console.error("Failed to load inventory:", err);
+  }
+}
+
+function populateDatalist(listId, items) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = items.map(i => `<option value="${i.name}">`).join('');
+}
+
+function setupAddNewHint(inputId, hintId, nameSpanId, type) {
+  const input = document.getElementById(inputId);
+  const hint = document.getElementById(hintId);
+  const nameSpan = document.getElementById(nameSpanId);
+  if (!input || !hint) return;
+
+  input.addEventListener('input', () => {
+    const val = input.value.trim();
+    const listId = type === 'supplier' ? 'supplierDatalist' : 'programDatalist';
+    const list = document.getElementById(listId);
+    const existing = Array.from(list?.options || []).map(o => o.value.toLowerCase());
+    if (val && !existing.includes(val.toLowerCase())) {
+      nameSpan.textContent = val;
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  });
+
+  hint.addEventListener('click', async () => {
+    const val = input.value.trim();
+    if (!val) return;
+    try {
+      await apiFetch(type === 'supplier' ? '/suppliers' : '/programs', {
+        method: 'POST',
+        body: JSON.stringify({ name: val, description: '' })
+      });
+      invalidateCache(type === 'supplier' ? '/suppliers' : '/programs');
+      type === 'supplier' ? await loadSuppliers() : await loadPrograms();
+      hint.style.display = 'none';
+      showToast(`✓ "${val}" added as new ${type}`);
+    } catch(err) {
+      showToast(`Error adding ${type}: ` + err.message);
+    }
+  });
+}
+
+async function loadSuppliers() {
+  try {
+    const data = await cachedFetch('/suppliers');
+    populateDatalist('supplierDatalist', data);
+    // also populate movement select
+    const select = document.getElementById('movementSupplierSelect');
+    if (select) {
+      select.innerHTML = `<option value="">Select supplier...</option>` +
+        data.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    }
+  } catch(err) { console.error('Failed to load suppliers:', err); }
+}
+
+async function loadPrograms() {
+  try {
+    const data = await cachedFetch('/programs');
+    populateDatalist('programDatalist', data);
+    const select = document.getElementById('movementProgramSelect');
+    if (select) {
+      select.innerHTML = `<option value="">Select program...</option>` +
+        data.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+    }
+  } catch(err) { console.error('Failed to load programs:', err); }
+}
+
+setupAddNewHint('addItemSupplierInput', 'addSupplierHint', 'newSupplierName', 'supplier');
+setupAddNewHint('editItemSupplierInput', 'editSupplierHint', 'editNewSupplierName', 'supplier');
+setupAddNewHint('addItemProgramInput', 'addProgramHint', 'newProgramName', 'program');
+setupAddNewHint('editItemProgramInput', 'editProgramHint', 'editNewProgramName', 'program');
+
+function getTimeAgo(date) {
+  const diff = Math.floor((Date.now() - date) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff/60) + ' min ago';
+  if (diff < 86400) return Math.floor(diff/3600) + ' hr ago';
+  return Math.floor(diff/86400) + ' day ago';
+}
+
+async function loadRecentActivity() {
+  try {
+    const res = await apiFetch('/inventory/movements?limit=5');
+    const data = res.data || [];
+    const feed = document.querySelector('.activity-list');
+    if (!feed) return;
+    if (!data.length) {
+      feed.innerHTML = '<p style="padding:16px 22px;font-size:13px;color:var(--muted)">No recent activity.</p>';
+      return;
+    }
+    feed.innerHTML = data.map(r => {
+      const isIn = r.movement_type === 'IN' || r.type === 'INWARD';
+      const timeAgo = getTimeAgo(new Date(r.created_at));
+      return `<div class="activity-item">
+        <div class="activity-icon ${isIn ? 'add' : 'send'}"><i data-lucide="${isIn ? 'arrow-down-to-line' : 'arrow-up-from-line'}"></i></div>
+        <p><b>${r.inventory_items?.name || 'Unknown item'}</b> ${isIn ? 'stock received' : 'stock issued'}<span>${isIn ? '+' : '-'}${r.quantity} ${r.inventory_items?.unit || ''} by ${r.party_name}</span></p>
+        <time>${timeAgo}</time>
+      </div>`;
+    }).join('');
+    renderIcons(feed);
+  } catch(err) {
+    console.error('Failed to load activity:', err);
+  }
+}
+
+window.changePage = (dir) => {
+  currentPage += dir;
+  renderTable();
+};
+
+function renderTable() {
+  const term = search.value.trim().toLowerCase();
+  const cat = categoryFilter.value;
+  const filtered = inventory.filter(item =>
+    (cat === "all" || item.category === cat) &&
+    `${item.name} ${item.category}`.toLowerCase().includes(term)
+  );
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  if (currentPage > totalPages && totalPages > 0) currentPage = 1;
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const mappedRows = paginated.map(item => {
+    const [label, cls] = getStatus(item);
+    const barCls = getBarClass(item);
+    const fillPct = item.stock === 0 ? 0 : Math.min(Math.round(item.stock / (item.threshold * 2) * 100), 100);
+    const imgHtml = item.product_photo_url
+      ? `<img class="item-thumb" src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
+      : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><svg width="16" height="16" stroke="var(--teal-600)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>`;
+    
+    return `<tr onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
+      <td><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>
+      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill ${barCls}" style="width:${fillPct}%"></div></div><span>${item.stock} ${item.unit}</span></div></td>
+      <td><span class="status ${cls}">${label}</span></td>
+      <td>${new Date(item.created_at).toLocaleDateString()}</td>
+    </tr>`;
+  });
+
+  let emptyHtml = '';
+  if (inventory.length === 0) {
+    emptyHtml = `<tr><td colspan="4">
+      <div style="text-align:center;padding:64px 20px; animation: slideUpFade 0.6s ease;">
+        <div style="width:72px;height:72px;border-radius:20px;background:var(--teal-50);display:grid;place-items:center;margin:0 auto 20px;box-shadow:0 12px 24px rgba(13,148,136,0.15)">
+          <i data-lucide="box" style="width:32px;height:32px;color:var(--teal)"></i>
+        </div>
+        <h3 style="font:700 20px 'Outfit',sans-serif;color:var(--text);margin:0 0 24px">Your Inventory is Empty</h3>
+        <button class="primary-btn admin-only" onclick="openModal()" style="margin:0 auto;height:44px;padding:0 20px;">
+          <i data-lucide="plus" style="width:18px;height:18px;margin-right:6px"></i> Add First Item
+        </button>
+      </div>
+    </td></tr>`;
+  } else {
+    emptyHtml = `<tr><td colspan="4">
+      <div style="text-align:center;padding:64px 20px; animation: slideUpFade 0.6s ease;">
+        <div style="width:64px;height:64px;border-radius:16px;background:var(--bg-alt);border:1px dashed var(--border);display:grid;place-items:center;margin:0 auto 16px">
+          <i data-lucide="search-x" style="width:28px;height:28px;color:var(--muted)"></i>
+        </div>
+        <h3 style="font:600 16px 'Outfit',sans-serif;color:var(--text);margin:0 0 6px">No items match your search</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0">Try adjusting your filters or search terms.</p>
+      </div>
+    </td></tr>`;
+  }
+
+  inventoryBody.innerHTML = mappedRows.join("") || emptyHtml;
+
+  itemCount.textContent = `Showing ${paginated.length} of ${filtered.length} item${filtered.length === 1 ? '' : 's'}`;
+
+  const footer = document.querySelector('.card-footer');
+  if (footer) {
+    let pager = footer.querySelector('#pagerControls');
+    if (!pager) { pager = document.createElement('div'); pager.id = 'pagerControls'; footer.appendChild(pager); }
+    if (totalPages > 1) {
+      pager.style.cssText = 'display:flex;gap:6px;align-items:center';
+      pager.innerHTML = `
+        <button onclick="changePage(-1)" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;background:var(--white);cursor:pointer;" ${currentPage===1?'disabled':''}>←</button>
+        <span style="font-size:12px;color:var(--muted)">${currentPage} / ${totalPages}</span>
+        <button onclick="changePage(1)" style="border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;background:var(--white);cursor:pointer;" ${currentPage===totalPages?'disabled':''}>→</button>
+      `;
+    } else { pager.innerHTML = ''; }
+  }
+
+  renderIcons(inventoryBody);
+  enforceRoles();
+}
+
+function showSuggestions(term) {
+  if (!term || term.length < 1) {
+    searchSuggestions.classList.remove('show');
+    return;
+  }
+  const lower = term.toLowerCase();
+  const matches = inventory
+    .filter(i => i.name.toLowerCase().includes(lower) || i.category.toLowerCase().includes(lower))
+    .slice(0, 6);
+
+  if (!matches.length) {
+    searchSuggestions.classList.remove('show');
+    return;
+  }
+
+  searchSuggestions.innerHTML = matches.map(i => {
+    const highlighted = i.name.replace(
+      new RegExp(`(${term})`, 'gi'),
+      '<span class="suggestion-highlight">$1</span>'
+    );
+    const [, cls] = getStatus(i);
+    return `<div class="suggestion-item" onclick="selectSuggestion('${i.id}', '${i.name.replace(/'/g, "\\'")}')">
+      <i data-lucide="package"></i>
+      <div style="flex:1;min-width:0">
+        <div>${highlighted}</div>
+        <div style="font-size:11px;color:var(--muted)">${i.category}</div>
+      </div>
+      <span class="status ${cls}" style="font-size:10px">${i.stock} ${i.unit}</span>
+    </div>`;
+  }).join('');
+
+  renderIcons(searchSuggestions);
+  searchSuggestions.classList.add('show');
+}
+
+window.selectSuggestion = (id, name) => {
+  search.value = name;
+  searchSuggestions.classList.remove('show');
+  handleSearchOrFilter();
+  openItemDetail(id);
+};
+
+function renderInventorySection() {
+  const term = search.value.trim().toLowerCase();
+  const cat = categoryFilter.value;
+  const filtered = inventory.filter(item =>
+    (cat === 'all' || item.category === cat) &&
+    `${item.name} ${item.category}`.toLowerCase().includes(term)
+  );
+  const grid = document.querySelector('.inv-grid');
+  if (!grid) return;
+  grid.innerHTML = filtered.map(itemCard).join('') ||
+    `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);font-size:13px">No items match your search.</div>`;
+  renderIcons(grid);
+}
+
+function renderAlerts() {
+  const dashboardList = document.getElementById("alertList");
+  if (dashboardList) {
+    dashboardList.innerHTML = alerts.map(a => `
+      <div class="alert-item">
+        <div class="alert-dot${a.critical ? " critical" : ""}"></div>
+        <p>${a.name}<span>${a.text}</span></p>
+        <b class="${a.critical ? "critical" : ""}">${a.stock}</b>
+      </div>`).join("") || '<p style="padding:20px;text-align:center;color:var(--muted);font-size:13px">All stock levels are healthy.</p>';
+    renderIcons(dashboardList);
+  }
+  
+  const navDropdown = document.getElementById("notificationDropdownList");
+  if (navDropdown) {
+    navDropdown.innerHTML = alerts.map(a => `
+      <div class="alert-item" style="cursor:pointer; border-bottom:1px solid var(--border-light); padding:12px 16px; display:flex; align-items:center; gap:12px; margin:0; border-radius:0;" onclick="switchPage('inventory'); openItemDetail('${a.id}'); document.getElementById('notificationDropdown').style.display='none';">
+        <div class="alert-dot${a.critical ? " critical" : ""}"></div>
+        <div style="flex:1">
+          <p style="margin:0; font:600 13px 'Inter',sans-serif; color:var(--text);">${a.name}</p>
+          <span style="display:block; font-size:11px; color:var(--muted); margin-top:2px;">${a.text}</span>
+        </div>
+        <b style="font-size:12px; font-weight:600;" class="${a.critical ? "critical" : ""}">${a.stock}</b>
+      </div>`).join("") || '<p style="padding:20px;text-align:center;color:var(--muted);font-size:13px;margin:0;">All stock levels are healthy.</p>';
+  }
+}
+
+// ─── Inventory Card (for section page) ───────────
 function itemCard(item) {
-  const [label, className] = getStatus(item);
-  const imgHtml = item.img
-    ? `<img src="${item.img}" alt="${item.name}" loading="lazy">`
+  const [label, cls] = getStatus(item);
+  const imgHtml = item.product_photo_url
+    ? `<img src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
     : `<span class="inv-icon-fallback"><i data-lucide="package"></i></span>`;
-  return `<article class="inv-card">
+  return `<article class="inv-card" onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
     <div class="inv-card-img">${imgHtml}</div>
     <div class="inv-card-body">
       <h4>${item.name}</h4>
-      <div class="inv-card-meta"><span class="inv-card-cat">${item.category}</span><span class="status ${className}">${label}</span></div>
+      <div class="inv-card-meta"><span class="inv-card-cat">${item.category}</span><span class="status ${cls}">${label}</span></div>
       <div class="inv-card-row">
         <div class="inv-card-stock"><strong>${item.stock} ${item.unit}</strong><span>Current stock</span></div>
-        <div class="inv-card-updated"><b>${item.updated}</b></div>
+        <div class="inv-card-updated"><b>${new Date(item.created_at).toLocaleDateString()}</b></div>
       </div>
     </div>
   </article>`;
 }
 
-// ─── Render Dashboard Grid ──────────────────────
-function renderTable() {
-  const term = search.value.trim().toLowerCase();
-  const category = categoryFilter.value;
-  const filtered = inventory.filter(item =>
-    (category === "all" || item.category === category) &&
-    (`${item.name} ${item.category}`.toLowerCase().includes(term))
+// ─── Movement Table ──────────────────────────────
+window.movementPage = window.movementPage || { in: 1, out: 1 };
+window.changeMovementPage = (type, delta) => {
+  if (type === 'in') {
+    window.movementPage.in += delta;
+    if (window.movementPage.in < 1) window.movementPage.in = 1;
+    switchPage('inward');
+  } else {
+    window.movementPage.out += delta;
+    if (window.movementPage.out < 1) window.movementPage.out = 1;
+    switchPage('outward');
+  }
+};
+
+async function renderMovementTable(type) {
+  try {
+    const page = type === 'in' ? window.movementPage.in : window.movementPage.out;
+    const res = await cachedFetch(`/inventory/movements?type=${type.toUpperCase()}&page=${page}&limit=20`);
+    const data = res.data || [];
+    const totalPages = res.totalPages || 1;
+    const isIn = type === "in";
+    
+    const userStr = localStorage.getItem('msc_user');
+    const user = userStr ? JSON.parse(userStr) : {};
+    const canVoid = user.role === 'Admin';
+
+    const rows = data
+      .filter(r => !r.voided)
+      .map(r => {
+        const typeStr = (r.movement_type || r.type || '').toUpperCase();
+        const isInward = typeStr === 'INWARD' || typeStr === 'IN';
+        const sign = isInward ? '+' : '-';
+        const icon = isInward ? 'arrow-down-to-line' : 'arrow-up-from-line';
+        const typeClass = isInward ? 'in' : 'out';
+        const itemName = r.inventory_items?.name || 'Unknown Item';
+        const itemUnit = r.inventory_items?.unit || '';
+        const partyName = r.party_name || '-';
+        const refCode = r.reference_code || '-';
+        const quantity = r.quantity || 0;
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '-';
+
+        return `<tr>
+          <td>${refCode}</td>
+          <td>${itemName}</td>
+          <td>
+            <span class="movement-type ${typeClass}">
+              <i data-lucide="${icon}"></i>
+              ${sign}${quantity} ${itemUnit}
+            </span>
+          </td>
+          <td>${partyName}</td>
+          <td>${date}</td>
+          ${canVoid ? `<td>
+            <div style="display:flex;gap:6px;">
+              <button class="secondary-btn" style="height:28px;padding:0 10px;font-size:11px;color:var(--danger);border-color:var(--danger)"
+                onclick="voidMovement('${r.id}')">Void</button>
+            </div>
+          </td>` : '<td></td>'}
+        </tr>`;
+      }).join('');
+    
+    let paginationHtml = '';
+    if (totalPages > 1) {
+      paginationHtml = `
+        <div class="pagination" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-top:1px solid var(--border-light)">
+          <button class="secondary-btn" onclick="changeMovementPage('${type}', -1)" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+          <span style="font-size:13px; color:var(--muted)">Page ${page} of ${totalPages}</span>
+          <button class="secondary-btn" onclick="changeMovementPage('${type}', 1)" ${page >= totalPages ? 'disabled' : ''}>Next</button>
+        </div>
+      `;
+    }
+
+    return `<div class="card section-panel"><div class="card-header"><div><h3>${isIn ? "Recent Receipts" : "Recent Issues"}</h3><p>${isIn ? "Latest supplies received" : "Latest supplies issued"}</p></div></div><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Item name</th><th>Quantity</th><th>${isIn ? "Supplier" : "Issued to"}</th><th>Date</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No movements found.</td></tr>`}</tbody></table></div>${paginationHtml}</div>`;
+  } catch (err) {
+    return `<div class="alert-item"><div class="alert-dot critical"></div><p>Error loading movements<span>${err.message}</span></p></div>`;
+  }
+}
+
+window.voidMovement = async (id) => {
+  showConfirm(
+    'Are you sure you want to void this movement? The stock will be reversed and a reversal entry will be created.',
+    async () => {
+      try {
+        await apiFetch(`/movements/${id}/void`, { method: 'POST' });
+        showToast('✓ Movement voided and stock reversed');
+        await loadInventory();
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage) switchPage(activePage);
+      } catch(err) {
+        showToast('Error voiding movement: ' + err.message);
+      }
+    }
   );
+};
 
-  inventoryBody.innerHTML = filtered.map(itemCard).join("") || `<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 0">No matching items found.</p>`;
-  itemCount.textContent = `Showing ${filtered.length} item${filtered.length === 1 ? "" : "s"}`;
-  lucide.createIcons();
-}
+window.deleteSupplier = async (id) => {
+  showConfirm(
+    'Are you sure you want to delete this supplier? This action cannot be undone.',
+    async () => {
+      try {
+        await apiFetch(`/suppliers/${id}`, { method: 'DELETE' });
+        showToast('✓ Supplier deleted successfully');
+        invalidateCache('/suppliers');
+        await loadSuppliers();
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'suppliers') switchPage('suppliers');
+      } catch(err) {
+        showToast('Error deleting supplier: ' + err.message);
+      }
+    }
+  );
+};
 
-// ─── Render Alerts ───────────────────────────────
-function renderAlerts() {
-  document.getElementById("alertList").innerHTML = alerts.map(item => `
-    <div class="alert-item"><div class="alert-img"><i data-lucide="${item.icon}"></i></div>
-    <p>${item.name}<span>${item.text}</span></p><b>${item.stock}</b></div>`).join("");
-}
+window.deleteCategory = async (id) => {
+  showConfirm(
+    'Are you sure you want to delete this category? This action cannot be undone.',
+    async () => {
+      try {
+        await apiFetch(`/categories/${id}`, { method: 'DELETE' });
+        showToast('✓ Category deleted successfully');
+        invalidateCache('/categories');
+        await loadCategories();
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'categories') switchPage('categories');
+      } catch(err) {
+        showToast('Error deleting category: ' + err.message);
+      }
+    }
+  );
+};
 
-// ─── Inventory Cards for Section Page ────────────
-function inventoryCards(items = inventory) {
-  return items.map(itemCard).join("");
-}
+window.deleteProgram = async (id) => {
+  showConfirm(
+    'Are you sure you want to delete this program? This action cannot be undone.',
+    async () => {
+      try {
+        await apiFetch(`/programs/${id}`, { method: 'DELETE' });
+        showToast('✓ Program deleted successfully');
+        invalidateCache('/programs');
+        await loadPrograms();
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'programs') switchPage('programs');
+      } catch(err) {
+        showToast('Error deleting program: ' + err.message);
+      }
+    }
+  );
+};
+
 
 // ─── Section Page Data ───────────────────────────
 const sectionData = {
   inventory: {
-    title: "Inventory",
-    subtitle: "Review all items and current stock availability.",
-    action: `<button class="primary-btn section-add-item"><i data-lucide="plus"></i>Add new item</button>`,
-    content: () => `<div class="section-summary"><article class="mini-stat"><p>Total catalog items</p><h3>${inventory.length}</h3></article><article class="mini-stat"><p>Available items</p><h3>${inventory.filter(item => item.stock > 0).length}</h3></article><article class="mini-stat"><p>Needs attention</p><h3>${inventory.filter(item => item.stock <= item.threshold).length}</h3></article></div>
-      <article class="panel section-panel"><div class="panel-heading"><div><h3>All Inventory Items</h3><p>Full stock catalog with current status</p></div></div><div class="inv-grid">${inventoryCards()}</div></article>`
+    title: "Inventory", subtitle: "Review all items and current stock availability.", action: `<button class="primary-btn section-add-item" id="sectAddItemBtn"><i data-lucide="plus"></i>Add new item</button>`,
+    content: async () => `<div class="section-summary"><article class="mini-stat"><p>Total catalog items</p><h3>${inventory.length}</h3></article><article class="mini-stat"><p>Available items</p><h3>${inventory.filter(i => Number(i.stock) > 0).length}</h3></article><article class="mini-stat"><p>Needs attention</p><h3>${inventory.filter(i => Number(i.stock) <= Number(i.threshold)).length}</h3></article></div>
+      <div class="card section-panel"><div class="card-header"><div><h3>All Inventory Items</h3><p>Full stock catalog with current status</p></div></div><div class="inv-grid">${inventory.map(itemCard).join("")}</div></div>`
   },
-  inward: {
-    title: "Stock Inward",
-    subtitle: "Record and review items received by the trust.",
-    action: `<button class="primary-btn"><i data-lucide="plus"></i>Add inward entry</button>`,
-    content: () => movementTable("in")
-  },
-  outward: {
-    title: "Stock Outward",
-    subtitle: "Track supplies issued to programs and departments.",
-    action: `<button class="primary-btn"><i data-lucide="plus"></i>Add outward entry</button>`,
-    content: () => movementTable("out")
-  },
-  categories: {
-    title: "Categories",
-    subtitle: "Understand how supplies are grouped across the trust.",
-    action: `<button class="primary-btn"><i data-lucide="plus"></i>Add category</button>`,
-    content: () => `<div class="category-grid">${[
-      ["stethoscope", "Clinical & Pharma", "448 items", "Medicines, equipment, diagnostic tools"],
-      ["notebook-pen", "Program materials", "312 items", "Therapy tools, forms, mats, stationery"],
-      ["wheat", "Food & nutrition", "275 items", "Rice, flour, oil, provisions for kitchens"],
-      ["hammer", "Vocational & Care", "213 items", "Tailoring, carpentry, baking, farming supplies"]
-    ].map(item => `<article class="category-card"><div class="category-card-icon"><i data-lucide="${item[0]}"></i></div><h3>${item[1]}</h3><p>${item[3]}</p><b>${item[2]}</b></article>`).join("")}</div>`
-  },
-  programs: {
-    title: "Programs",
-    subtitle: "Monitor supply allocation across the trust's care and rehabilitation services.",
-    action: `<button class="primary-btn"><i data-lucide="plus"></i>Allocate stock</button>`,
-    content: () => `<div class="program-banner"><div><p class="eyebrow">M.S. Chellamuthu Trust & Research Foundation</p><h3>Mental Health for All</h3><p>Supporting affordable and accessible holistic care through well-supplied programs at KK Nagar.</p></div><i data-lucide="heart-handshake"></i></div>
-      <div class="program-grid">${[
-        ["stethoscope", "Clinical Treatment", "312 allocated", "Ahana Hospitals — psychiatric care & assessments"],
-        ["house-heart", "Residential Rehab", "186 allocated", "Shristi & Bodhi — psychosocial rehabilitation"],
-        ["pill", "De-addiction & Aftercare", "148 allocated", "Trishul — 30-bed treatment & counselling"],
-        ["briefcase-business", "Vocational Training", "224 allocated", "Care Factory — tailoring, baking, farming"],
-        ["baby", "Special Education", "136 allocated", "Aakaash School — children with disabilities"],
-        ["users-round", "Community Outreach", "92 allocated", "Rural mental health camps & awareness"]
-      ].map(item => `<article class="program-card"><div class="program-card-icon"><i data-lucide="${item[0]}"></i></div><div><h3>${item[1]}</h3><p>${item[3]}</p><b>${item[2]}</b></div></article>`).join("")}</div>`
-  },
-  suppliers: {
-    title: "Suppliers",
-    subtitle: "Keep vendor contacts and supply categories organized.",
-    action: `<button class="primary-btn"><i data-lucide="plus"></i>Add supplier</button>`,
-    content: () => `<article class="panel section-panel"><div class="panel-heading"><div><h3>Approved Suppliers</h3><p>Active suppliers supporting trust operations at KK Nagar</p></div></div><div class="table-wrap"><table><thead><tr><th scope="col">Supplier name</th><th scope="col">Category</th><th scope="col">Contact person</th><th scope="col">Phone</th><th scope="col">Status</th></tr></thead><tbody>
-      <tr><td>Madurai Medico Supplies</td><td>Clinical & Pharma</td><td>R. Kumar</td><td>+91 98765 43210</td><td><span class="status in-stock">Active</span></td></tr>
-      <tr><td>Southern Food Grains</td><td>Food & nutrition</td><td>S. Meena</td><td>+91 94432 11870</td><td><span class="status in-stock">Active</span></td></tr>
-      <tr><td>KK Nagar Stationers</td><td>Program materials</td><td>A. Selvam</td><td>+91 97891 42560</td><td><span class="status in-stock">Active</span></td></tr>
-      <tr><td>CleanCare Wholesale</td><td>Vocational & Care</td><td>P. Lakshmi</td><td>+91 98421 78235</td><td><span class="status in-stock">Active</span></td></tr>
-      </tbody></table></div></article>`
-  },
+  inward: { title: "Stock Inward", subtitle: "Record and review items received by the trust.", action: `<button class="primary-btn" onclick="openMovementModal('IN')"><i data-lucide="plus"></i>Add inward entry</button>`, content: () => renderMovementTable("in") },
+  outward: { title: "Stock Outward", subtitle: "Track supplies issued to programs and departments.", action: `<button class="primary-btn" onclick="openMovementModal('OUT')"><i data-lucide="plus"></i>Add outward entry</button>`, content: () => renderMovementTable("out") },
+  categories: { title: "Categories", subtitle: "Understand how supplies are grouped across the trust.", action: `<button class="primary-btn section-add-entity" data-type="categories"><i data-lucide="plus"></i>Add category</button>`, content: null },
+  programs: { title: "Programs", subtitle: "Monitor supply allocation across care and rehabilitation services.", action: `<button class="primary-btn section-add-entity" data-type="programs"><i data-lucide="plus"></i>Add program</button>`, content: null },
+  suppliers: { title: "Suppliers", subtitle: "Keep vendor contacts and supply categories organized.", action: `<button class="primary-btn section-add-entity" data-type="suppliers"><i data-lucide="plus"></i>Add supplier</button>`, content: null },
   reports: {
-    title: "Reports",
-    subtitle: "Generate clear summaries for review and planning.",
-    action: `<button class="primary-btn"><i data-lucide="download"></i>Export summary</button>`,
-    content: () => `<div class="report-grid">
-      <article class="report-card"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
-      <article class="report-card"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
-      <article class="report-card"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Monthly inward and outward records</p></div></article>
+    title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
+    content: async () => `<div class="report-grid">
+      <article class="report-card" onclick="generateReport('inventory')"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
+      <article class="report-card" onclick="generateReport('low_stock')"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
+      <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Monthly inward and outward records</p></div></article>
+      <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
     </div>`
   }
 };
 
-// ─── Movement Table ──────────────────────────────
-function movementTable(type) {
-  const isInward = type === "in";
-  const rows = isInward ? [
-    ["IN-1042", "Psychiatric medication packs", "+80 packs", "Madurai Medico Supplies", "Today, 10:20 AM"],
-    ["IN-1041", "Rice bags — 25 kg", "+40 bags", "Southern Food Grains", "01 Jun 2026"],
-    ["IN-1040", "Counselling assessment forms", "+100 packs", "KK Nagar Stationers", "31 May 2026"],
-    ["IN-1039", "Yoga mats", "+20 units", "CleanCare Wholesale", "30 May 2026"]
-  ] : [
-    ["OUT-0824", "Rice bags — 25 kg", "-15 bags", "Community kitchen", "Today, 09:48 AM"],
-    ["OUT-0823", "Psychiatric medication packs", "-25 packs", "Ahana Hospitals", "01 Jun 2026"],
-    ["OUT-0822", "Tailoring fabric rolls", "-8 rolls", "Care Factory", "31 May 2026"],
-    ["OUT-0821", "Children's drawing books", "-24 packs", "Aakaash School", "30 May 2026"]
-  ];
-  return `<article class="panel section-panel"><div class="panel-heading"><div><h3>${isInward ? "Recent Receipts" : "Recent Issues"}</h3><p>${isInward ? "Latest supplies received into inventory" : "Latest supplies issued from inventory"}</p></div></div><div class="table-wrap"><table><thead><tr><th scope="col">Reference</th><th scope="col">Item name</th><th scope="col">Quantity</th><th scope="col">${isInward ? "Supplier" : "Issued to"}</th><th scope="col">Date</th></tr></thead><tbody>${rows.map(row => `<tr><td>${row[0]}</td><td>${row[1]}</td><td><span class="movement-type ${type}"><i data-lucide="${isInward ? "arrow-down-to-line" : "arrow-up-from-line"}"></i>${row[2]}</span></td><td>${row[3]}</td><td>${row[4]}</td></tr>`).join("")}</tbody></table></div></article>`;
-}
-
 // ─── Navigation ──────────────────────────────────
-function switchPage(page) {
-  const navButton = document.querySelector(`.nav-item[data-page="${page}"]`);
-  if (!navButton) return;
+async function switchPage(page) {
+  const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (!btn) return;
   document.querySelector(".nav-item.active")?.classList.remove("active");
-  navButton.classList.add("active");
+  btn.classList.add("active");
   closeSidebar();
 
   if (page === "dashboard") {
     dashboard.hidden = false;
     sectionView.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true;
     pageHeading.textContent = "Inventory Dashboard";
-    animateMetrics();
-  } else {
-    const section = sectionData[page];
+    loadInventory();
+  } else if (page === "users") {
     dashboard.hidden = true;
+    sectionView.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = false;
+    pageHeading.textContent = "User Management";
+    loadUsers();
+  } else {
+    dashboard.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true;
     sectionView.hidden = false;
-    pageHeading.textContent = section.title;
+    const s = sectionData[page];
+    pageHeading.textContent = s.title;
+    
+    sectionView.innerHTML = `
+      <div class="section-intro"><div><p class="eyebrow">Inventory Management</p><h2>${s.title}</h2><p>${s.subtitle}</p></div><div id="sectionActionContainer">${s.action}</div></div>
+      ${skeletonCards(4)}
+    `;
+    renderIcons(sectionView);
 
-    // Skeleton shimmer loading
-    sectionView.innerHTML = `<div class="section-intro"><div><p class="eyebrow">Inventory Management</p><h2>${section.title}</h2><p>${section.subtitle}</p></div><div class="section-tools">${section.action}</div></div><div class="skeleton skeleton-stat" style="margin-bottom:12px"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>`;
-    lucide.createIcons();
+    let dynamicContent = "";
+    try {
+      if (page === 'categories') {
+        const data = await cachedFetch('/categories');
+        dynamicContent = `<div class="category-grid">${data.map(c => `<article class="category-card" style="position:relative"><div class="category-card-icon"><i data-lucide="shapes"></i></div><h3>${c.name}</h3><p>${c.description || 'No description'}</p><div style="position:absolute;top:16px;right:16px;display:flex;gap:8px;"><button class="icon-btn admin-only" onclick="editEntity('categories', '${c.id}', '${c.name.replace(/'/g, "\\'")}', '${(c.description || '').replace(/'/g, "\\'")}')" aria-label="Edit"><i data-lucide="pencil" style="width:16px;height:16px;color:var(--text-light)"></i></button><button class="icon-btn admin-only" onclick="deleteCategory('${c.id}')" aria-label="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;color:var(--danger)"></i></button></div></article>`).join("") || '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px">No categories found in database.</p>'}</div>`;
+      } else if (page === 'programs') {
+        const data = await cachedFetch('/programs');
+        dynamicContent = `<div class="program-banner"><div><p class="eyebrow">M.S. Chellamuthu Trust & Research Foundation</p><h3>Mental Health for All</h3><p>Supporting affordable and accessible holistic care through well-supplied programs.</p></div><i data-lucide="heart-handshake"></i></div>
+          <div class="program-grid">${data.map(p => `<article class="program-card">
+            <div class="program-card-icon"><i data-lucide="heart-handshake"></i></div>
+            <div style="flex:1"><h3>${p.name}</h3><p>${p.description || 'No description'}</p></div>
+            <div style="display:flex;gap:8px;align-self:flex-start">
+              <button class="icon-btn admin-only" onclick="editEntity('programs', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.description || '').replace(/'/g, "\\'")}')" aria-label="Edit"><i data-lucide="pencil" style="width:16px;height:16px;color:var(--text-light)"></i></button>
+              <button class="icon-btn admin-only" onclick="deleteProgram('${p.id}')" aria-label="Delete"><i data-lucide="trash-2" style="width:16px;height:16px;color:var(--danger)"></i></button>
+            </div>
+          </article>`).join("") || '<p style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px">No programs found in database.</p>'}</div>`;
+      } else if (page === 'suppliers') {
+        const data = await cachedFetch('/suppliers');
+        dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Approved Suppliers</h3><p>Active suppliers supporting trust operations</p></div></div><div class="table-wrap"><table><thead><tr><th>Supplier name</th><th>Description</th><th>Added on</th><th></th></tr></thead><tbody>
+          ${data.map(s => `<tr><td>${s.name}</td><td>${s.description || '-'}</td><td>${new Date(s.created_at).toLocaleDateString()}</td><td style="text-align:right"><button class="secondary-btn admin-only" onclick="deleteSupplier('${s.id}')" style="color:var(--danger);border-color:var(--danger);height:28px;padding:0 10px;font-size:11px;">Delete</button></td></tr>`).join("") || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No suppliers found in database.</td></tr>'}
+        </tbody></table></div></div>`;
+      } else {
+        dynamicContent = await s.content();
+      }
+    } catch (err) {
+      dynamicContent = `<div class="alert-item" style="margin-top:20px"><div class="alert-dot critical"></div><p>Error connecting to backend<span>${err.message}.</span></p></div>`;
+    }
 
-    setTimeout(() => {
-      sectionView.innerHTML = `<div class="section-intro"><div><p class="eyebrow">Inventory Management</p><h2>${section.title}</h2><p>${section.subtitle}</p></div><div class="section-tools">${section.action}</div></div>${section.content()}`;
-      sectionView.querySelector(".section-add-item")?.addEventListener("click", openModal);
-      sectionView.querySelectorAll(".report-card").forEach(card => card.addEventListener("click", () => showToast(`${card.querySelector("h3").textContent} ready to generate`)));
-      lucide.createIcons();
-    }, 400);
+    sectionView.innerHTML = `<div class="section-intro"><div><p class="eyebrow">Inventory Management</p><h2>${s.title}</h2><p>${s.subtitle}</p></div><div>${s.action}</div></div>${dynamicContent}`;
+    
+    // Role Enforcement hook for dynamically rendered buttons
+    enforceRoles();
+    
+    sectionView.querySelector(".section-add-item")?.addEventListener("click", openModal);
+    sectionView.querySelector(".section-add-entity")?.addEventListener("click", (e) => {
+      window.openAddEntityModal(e.currentTarget.dataset.type);
+    });
+    
+    // placeholder removed
+    const backupBtn = sectionView.querySelector("#backupBtnTrigger");
+    if (backupBtn) backupBtn.addEventListener("click", () => document.getElementById("backupModalBackdrop").classList.add("active"));
+    renderIcons(sectionView);
+  }
+
+  const activeSection = page === 'dashboard' ? dashboard : page === 'users' ? sectionUsers : sectionView;
+  if (activeSection) {
+    activeSection.classList.remove('page-enter');
+    void activeSection.offsetWidth; // force reflow
+    activeSection.classList.add('page-enter');
   }
 }
 
-// ─── Toast ───────────────────────────────────────
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add("show");
-  window.setTimeout(() => toast.classList.remove("show"), 2800);
-}
+// ─── Toast (Redeclaration removed) ────────────────
 
 // ─── Modal ───────────────────────────────────────
 function openModal() {
-  modal.hidden = false;
-  document.querySelector('input[name="name"]').focus();
-}
-function closeModal() {
-  modal.hidden = true;
   document.getElementById("addItemForm").reset();
+  if (globalSelectedBranch) {
+    const sel = document.getElementById('addItemBranch');
+    if (sel) sel.value = globalSelectedBranch;
+  }
+  modal.classList.add("active"); 
+  document.querySelector('input[name="name"]')?.focus(); 
+}
+function closeModal() { 
+  modal.classList.remove("active"); 
+  const form = document.getElementById("addItemForm");
+  if (form) {
+    form.reset();
+    form.querySelectorAll('input[type="file"]').forEach(input => {
+      if (window.updateFileName) window.updateFileName(input);
+    });
+  }
 }
 
-// ─── Event Listeners ─────────────────────────────
-document.getElementById("addItemBtn").addEventListener("click", openModal);
-document.getElementById("quickAdd").addEventListener("click", openModal);
-document.getElementById("closeModal").addEventListener("click", closeModal);
-document.getElementById("cancelModal").addEventListener("click", closeModal);
-modal.addEventListener("click", event => { if (event.target === modal) closeModal(); });
-document.addEventListener("keydown", event => { if (event.key === "Escape" && !modal.hidden) closeModal(); });
-categoryFilter.addEventListener("change", renderTable);
-search.addEventListener("input", renderTable);
+// ─── Item Detail View ────────────────────────────
+function openItemDetail(id) {
+  const item = inventory.find(i => i.id === id);
+  if (!item) return;
+  
+  document.getElementById("itemDetailTitle").textContent = item.name;
+  document.getElementById("itemDetailCategory").textContent = item.category;
+  document.getElementById("detailStock").textContent = `${item.stock} ${item.unit}`;
+  document.getElementById("detailThreshold").textContent = `${item.threshold} ${item.unit}`;
+  document.getElementById("detailDate").textContent = new Date(item.created_at).toLocaleDateString();
+  
+  const photoContainer = document.getElementById("detailProductPhoto");
+  if (item.product_photo_url) {
+    photoContainer.innerHTML = `<img src="${item.product_photo_url}" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
+  } else {
+    photoContainer.innerHTML = `<i data-lucide="image" style="width: 32px; height: 32px; color: var(--teal-600)"></i>`;
+  }
+  
+  const docsContainer = document.getElementById("detailDocuments");
+  let docsHtml = '';
+  if (item.bill_image_url) {
+    const isPdf = item.bill_image_url.toLowerCase().endsWith('.pdf');
+    docsHtml += `<button type="button" onclick="openDocumentViewer('${item.bill_image_url}', 'Bill Image', ${isPdf})" class="secondary-btn" style="height: 36px; padding: 0 12px; font-size: 13px;"><i data-lucide="receipt"></i> View Bill Image</button>`;
+  }
+  if (item.invoice_pdf_url) {
+    const isPdf = item.invoice_pdf_url.toLowerCase().endsWith('.pdf');
+    docsHtml += `<button type="button" onclick="openDocumentViewer('${item.invoice_pdf_url}', 'Invoice Copy', ${isPdf})" class="secondary-btn" style="height: 36px; padding: 0 12px; font-size: 13px;"><i data-lucide="file-text"></i> View Invoice PDF</button>`;
+  }
+  if (!item.bill_image_url && !item.invoice_pdf_url) {
+    docsHtml = `<p style="color: var(--muted); font-size: 13px;">No documents attached.</p>`;
+  }
+  docsContainer.innerHTML = docsHtml;
+  
+  renderIcons(document.getElementById('itemDetailModalBackdrop'));
+  document.getElementById("itemDetailModalBackdrop").classList.add("active");
+  document.getElementById("itemDetailModalBackdrop").dataset.itemId = id;
+}
 
-document.getElementById("addItemForm").addEventListener("submit", event => {
-  event.preventDefault();
-  const data = new FormData(event.target);
-  inventory.unshift({
-    name: data.get("name"),
-    category: data.get("category"),
-    stock: Number(data.get("stock")),
-    unit: data.get("unit"),
-    threshold: Number(data.get("threshold")),
-    updated: "Just now"
+function closeItemDetail() {
+  document.getElementById("itemDetailModalBackdrop").classList.remove("active");
+}
+
+document.getElementById("closeDetailModal").addEventListener("click", closeItemDetail);
+document.getElementById("itemDetailModalBackdrop").addEventListener("click", e => {
+  if (e.target === document.getElementById("itemDetailModalBackdrop")) closeItemDetail();
+});
+
+// ─── Edit & Delete Item ──────────────────────────
+const editModal = document.getElementById("editItemModalBackdrop");
+if (document.getElementById("editItemBtn")) {
+  document.getElementById("editItemBtn").addEventListener("click", () => {
+    const id = document.getElementById("itemDetailModalBackdrop").dataset.itemId;
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+    
+    document.getElementById("editItemId").value = item.id;
+    document.getElementById("editName").value = item.name;
+    document.getElementById("editCategory").value = item.category;
+    document.getElementById("editUnit").value = item.unit;
+    document.getElementById("editThreshold").value = item.threshold;
+    const upEl = document.getElementById("editUnitPrice");
+    if (upEl) upEl.value = item.unit_price || 0;
+    const supplierInput = document.getElementById('editItemSupplierInput');
+    if (supplierInput && item.default_supplier) {
+      supplierInput.value = item.default_supplier;
+    } else if (supplierInput) {
+      supplierInput.value = '';
+    }
+    
+    const programInput = document.getElementById('editItemProgramInput');
+    if (programInput && item.program) {
+      programInput.value = item.program;
+    } else if (programInput) {
+      programInput.value = '';
+    }
+    
+    const branchInput = document.getElementById('editItemBranch');
+    if (branchInput && item.branch_id) {
+      branchInput.value = item.branch_id;
+    }
+    
+    closeItemDetail();
+    if(editModal) editModal.classList.add("active");
   });
+}
+
+function closeEditModalFn() {
+  if (editModal) editModal.classList.remove("active");
+  const form = document.getElementById("editItemForm");
+  if (form) {
+    form.reset();
+    form.querySelectorAll('input[type="file"]').forEach(input => {
+      if (window.updateFileName) window.updateFileName(input);
+    });
+  }
+}
+
+if(document.getElementById("closeEditModal")) document.getElementById("closeEditModal").addEventListener("click", closeEditModalFn);
+if(document.getElementById("cancelEditModal")) document.getElementById("cancelEditModal").addEventListener("click", closeEditModalFn);
+if(editModal) editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModalFn(); });
+
+if (document.getElementById("deleteItemBtn")) {
+  document.getElementById("deleteItemBtn").addEventListener("click", async () => {
+    const id = document.getElementById("itemDetailModalBackdrop").dataset.itemId;
+    // FIX 3: Replace all confirm() dialogs with a custom modal
+    showConfirm("Are you sure you want to delete this item? This action cannot be undone.", async () => {
+      try {
+        await apiFetch(`/inventory/${id}`, { method: 'DELETE' });
+        invalidateCache('/inventory');
+        showToast("✓ Item deleted successfully");
+        closeItemDetail();
+        loadInventory();
+        if(document.querySelector(".nav-item.active")?.dataset.page === 'inventory') switchPage('inventory');
+      } catch (err) {
+        alert("Error deleting item: " + err.message);
+      }
+    });
+  });
+}
+
+if(document.getElementById("editItemForm")) {
+  document.getElementById("editItemForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+
+    try {
+      const d = new FormData(form);
+      const id = d.get("itemId");
+      
+      const fileData = new FormData();
+      let hasFiles = false;
+      ['productPhoto', 'billImage', 'invoiceCopy'].forEach(field => {
+        const file = d.get(field);
+        if (file && file.size > 0) {
+          fileData.append(field, file);
+          hasFiles = true;
+        }
+      });
+
+      let uploadedUrls = {};
+      if (hasFiles) {
+        submitBtn.innerHTML = '<span class="spinner"></span> Uploading files...';
+        uploadedUrls = await apiFetch('/uploads', { method: 'POST', body: fileData });
+      }
+
+      submitBtn.innerHTML = '<span class="spinner"></span> Updating item...';
+      const payload = {
+        name: d.get("name"),
+        category: d.get("category"),
+        unit: d.get("unit"),
+        threshold: d.get("threshold"),
+        unit_price: d.get("unit_price"),
+        branch_id: d.get("branch_id"),
+        default_supplier: document.getElementById('editItemSupplierInput')?.value || null,
+        program: document.getElementById('editItemProgramInput')?.value || null,
+        ...(uploadedUrls.productPhotoUrl && { product_photo_url: uploadedUrls.productPhotoUrl }),
+        ...(uploadedUrls.billImageUrl && { bill_image_url: uploadedUrls.billImageUrl }),
+        ...(uploadedUrls.invoicePdfUrl && { invoice_pdf_url: uploadedUrls.invoicePdfUrl })
+      };
+
+      await apiFetch(`/inventory/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      invalidateCache('/inventory');
+
+      showToast("✓ Item updated successfully");
+      editModal.classList.remove("active");
+      
+      loadInventory();
+      if(document.querySelector(".nav-item.active")?.dataset.page === 'inventory') switchPage('inventory');
+
+    } catch (err) {
+      alert("Error updating item: " + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// ─── Document Viewer ─────────────────────────────
+function openDocumentViewer(url, title, isPdf) {
+  document.getElementById("documentViewerTitle").textContent = title;
+  document.getElementById("documentDownloadBtn").href = url;
+  
+  const content = document.getElementById("documentViewerContent");
+  if (isPdf) {
+    content.innerHTML = `<iframe src="${url}" width="100%" height="100%" style="border:none;"></iframe>`;
+  } else {
+    content.innerHTML = `<img src="${url}" style="max-width:100%; max-height:100%; object-fit:contain;">`;
+  }
+  
+  document.getElementById("documentViewerModalBackdrop").classList.add("active");
+}
+
+function closeDocumentViewer() {
+  document.getElementById("documentViewerModalBackdrop").classList.remove("active");
+  document.getElementById("documentViewerContent").innerHTML = ''; // Clear memory
+}
+
+if(document.getElementById("closeDocumentViewer")) document.getElementById("closeDocumentViewer").addEventListener("click", closeDocumentViewer);
+if(document.getElementById("documentViewerModalBackdrop")) {
+  document.getElementById("documentViewerModalBackdrop").addEventListener("click", e => {
+    if (e.target === document.getElementById("documentViewerModalBackdrop")) closeDocumentViewer();
+  });
+}
+
+// ─── Login Form Submission ───────────────────────
+document.getElementById("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  
+  const inputs = e.target.querySelectorAll('input');
+  const username = inputs[0].value;
+  const password = inputs[1].value;
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.innerHTML = '<span class="spinner"></span> Signing in...';
+  submitBtn.disabled = true;
+
+  try {
+    const data = await apiFetch('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+    
+    localStorage.setItem('msc_token', data.token);
+    localStorage.setItem('msc_user', JSON.stringify(data.user));
+    
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("sessionExpiredMsg").style.display = "none";
+    document.getElementById("appShell").style.display = "";
+    
+    const userRole = data.user.role;
+    document.getElementById("profileAvatar").textContent = userRole.substring(0, 2).toUpperCase();
+    document.getElementById("profileName").textContent = userRole;
+    document.getElementById("profileRoleDesc").textContent = userRole === "Staff" ? "Inventory Staff" : "Store Manager";
+    
+    const dn = document.getElementById('dropdownName');
+    const dr = document.getElementById('dropdownRole');
+    if(dn) dn.textContent = data.user.username || userRole;
+    if(dr) dr.textContent = userRole === 'Staff' ? 'Inventory Staff' : 'Store Manager';
+    
+    const hr = new Date().getHours();
+    const greeting = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
+    document.getElementById("greetingText").textContent = `${greeting}, ${userRole}`;
+    
+    enforceRoles();
+    loadBranches();
+    loadInventory();
+    loadSuppliers();
+    loadPrograms();
+    loadCategories();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+// ─── Add Item Form Submission (with file uploads) 
+if(document.getElementById("addItemForm")) {
+  document.getElementById("addItemForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+
+    try {
+      const d = new FormData(form);
+      
+      // 1. Upload files if any are selected
+      const fileData = new FormData();
+      let hasFiles = false;
+      ['productPhoto', 'billImage', 'invoiceCopy'].forEach(field => {
+        const file = d.get(field);
+        if (file && file.size > 0) {
+          fileData.append(field, file);
+          hasFiles = true;
+        }
+      });
+
+      let uploadedUrls = {};
+      if (hasFiles) {
+        submitBtn.innerHTML = '<span class="spinner"></span> Uploading files...';
+        uploadedUrls = await apiFetch('/uploads', { method: 'POST', body: fileData });
+      }
+
+      // 2. Add inventory item
+      submitBtn.innerHTML = '<span class="spinner"></span> Creating item...';
+      const payload = {
+        name: d.get("name"),
+        category: d.get("category"),
+        stock: d.get("stock"),
+        unit: d.get("unit"),
+        threshold: d.get("threshold"),
+        unit_price: d.get("unit_price"),
+        branch_id: d.get("branch_id"),
+        default_supplier: document.getElementById('addItemSupplierInput')?.value || null,
+        program: document.getElementById('addItemProgramInput')?.value || null,
+        product_photo_url: uploadedUrls.productPhotoUrl || null,
+        bill_image_url: uploadedUrls.billImageUrl || null,
+        invoice_pdf_url: uploadedUrls.invoicePdfUrl || null
+      };
+
+      await apiFetch('/inventory', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      invalidateCache('/inventory');
+
+      showToast("✓ Item added successfully");
+      closeModal();
+      
+      // Refresh inventory if we are on dashboard or inventory page
+      const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+      if (activePage === 'dashboard' || activePage === 'inventory') {
+        loadInventory();
+        if(activePage === 'inventory') switchPage('inventory');
+      }
+
+    } catch (err) {
+      alert("Error adding item: " + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// ─── Add Entity Modal (Suppliers, Programs, Categories) ──
+window.openAddEntityModal = (type) => {
+  const modal = document.getElementById("addEntityModalBackdrop");
+  if (!modal) return;
+  document.getElementById("addEntityForm").reset();
+  document.getElementById("addEntityType").value = type;
+  
+  let title = "Add New";
+  if (type === "suppliers") title = "Add Supplier";
+  if (type === "programs") title = "Add Program";
+  if (type === "categories") title = "Add Category";
+  
+  document.getElementById("addEntityModalTitle").textContent = title;
+  modal.classList.add("active");
+};
+
+if (document.getElementById("addEntityModalBackdrop")) {
+  const modal = document.getElementById("addEntityModalBackdrop");
+  document.getElementById("closeAddEntityModal").addEventListener("click", () => modal.classList.remove("active"));
+  document.getElementById("cancelAddEntityModal").addEventListener("click", () => modal.classList.remove("active"));
+  modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("active"); });
+  
+  document.getElementById("addEntityForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById("addEntitySubmitBtn");
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+    
+    try {
+      const type = document.getElementById("addEntityType").value; // e.g. "suppliers"
+      const payload = {
+        name: document.getElementById("addEntityName").value,
+        description: document.getElementById("addEntityDescription").value,
+        branch_id: globalSelectedBranch || undefined
+      };
+      
+      await apiFetch(`/${type}`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      showToast(`✓ Added successfully`);
+      invalidateCache(`/${type}`);
+      
+      // Reload logic
+      if (type === "suppliers") await loadSuppliers();
+      else if (type === "programs") await loadPrograms();
+      
+      // Refresh current page if needed
+      const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+      if (activePage === type) switchPage(type);
+      
+      modal.classList.remove("active");
+    } catch (err) {
+      alert("Error adding item: " + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// ─── Edit Entity Logic ─────────────────────────────
+window.editEntity = (type, id, name, description) => {
+  document.getElementById("editEntityForm").reset();
+  document.getElementById("editEntityType").value = type;
+  document.getElementById("editEntityId").value = id;
+  document.getElementById("editEntityName").value = name;
+  document.getElementById("editEntityDescription").value = description;
+  const typeName = type.charAt(0).toUpperCase() + type.slice(1, -1);
+  document.getElementById("editEntityModalEyebrow").textContent = "Update Setup";
+  document.getElementById("editEntityModalTitle").textContent = `Edit ${typeName}`;
+  document.getElementById("editEntityModalBackdrop").classList.add("active");
+};
+
+const editEntityModal = document.getElementById("editEntityModalBackdrop");
+if (editEntityModal) {
+  if (document.getElementById("closeEditEntityModal")) document.getElementById("closeEditEntityModal").addEventListener("click", () => editEntityModal.classList.remove("active"));
+  if (document.getElementById("cancelEditEntityModal")) document.getElementById("cancelEditEntityModal").addEventListener("click", () => editEntityModal.classList.remove("active"));
+  editEntityModal.addEventListener("click", e => { if (e.target === editEntityModal) editEntityModal.classList.remove("active"); });
+  
+  document.getElementById("editEntityForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const submitBtn = document.getElementById("editEntitySubmitBtn");
+    const originalText = submitBtn.textContent;
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+    try {
+      const type = document.getElementById("editEntityType").value;
+      const id = document.getElementById("editEntityId").value;
+      const payload = {
+        name: document.getElementById("editEntityName").value,
+        description: document.getElementById("editEntityDescription").value
+      };
+      await apiFetch(`/${type}/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      showToast(`✓ Updated successfully`);
+      invalidateCache(`/${type}`);
+      if (type === "suppliers") await loadSuppliers();
+      else if (type === "programs") await loadPrograms();
+      else if (type === "categories") await loadCategories();
+      const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+      if (activePage === type) switchPage(type);
+      editEntityModal.classList.remove("active");
+    } catch (err) {
+      alert("Error updating item: " + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// ─── User Management ─────────────────────────────
+
+async function loadCategories() {
+  try {
+    const data = await cachedFetch('/categories');
+    const optionsHTML = '<option value="" disabled selected>Select Category</option>' + 
+      data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      
+    ['addItemCategory', 'editCategory'].forEach(id => {
+      const select = document.getElementById(id);
+      if (select) {
+        const currentVal = select.value;
+        select.innerHTML = optionsHTML;
+        if (currentVal && data.find(c => c.name === currentVal)) {
+          select.value = currentVal;
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Error loading categories for dropdown:', err);
+  }
+}
+
+async function loadUsers() {
+  document.getElementById('usersBody').innerHTML = skeletonRows(4, 4);
+  try {
+    const data = await cachedFetch('/auth/users');
+    const rows = data.map(u => `
+      <tr>
+        <td><strong>${u.username}</strong></td>
+        <td><span class="status ${u.role === 'Admin' ? 'healthy' : 'in-stock'}">${u.role}</span></td>
+        <td>${new Date(u.created_at).toLocaleDateString()}</td>
+        <td style="text-align:right;">
+          <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button class="icon-btn" onclick="openEditUser('${u.id}', '${u.username}', '${u.role}', '${u.branch_id || ''}')" aria-label="Edit User" title="Edit User"><i data-lucide="pencil"></i></button>
+            <button class="icon-btn" onclick="deleteUser('${u.id}')" aria-label="Delete User" title="Delete User"><i data-lucide="trash-2" style="color:var(--danger)"></i></button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+    document.getElementById('usersBody').innerHTML = rows || `<tr><td colspan="4">
+    <div style="text-align:center;padding:48px 20px">
+      <div style="width:48px;height:48px;border-radius:12px;background:var(--teal-50);display:grid;place-items:center;margin:0 auto 12px"><i data-lucide="users" style="width:22px;height:22px;color:var(--teal)"></i></div>
+      <p style="font:600 14px 'Outfit',sans-serif;color:var(--text);margin:0 0 4px">No users yet</p>
+      <p style="font-size:12px;color:var(--muted);margin:0">Add your first staff account using the button above</p>
+    </div>
+  </td></tr>`;
+    renderIcons(document.getElementById('usersBody'));
+  } catch (err) {
+    document.getElementById('usersBody').innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger)">Error loading users: ${err.message}</td></tr>`;
+  }
+}
+
+const addUserModal = document.getElementById("addUserModalBackdrop");
+if (document.getElementById("addUserBtn")) {
+  document.getElementById("addUserBtn").addEventListener("click", () => {
+    document.getElementById("addUserForm").reset();
+    if (globalSelectedBranch) {
+      const uSel = document.getElementById('addUserBranch');
+      if (uSel) uSel.value = globalSelectedBranch;
+    }
+    addUserModal.classList.add("active");
+  });
+  document.getElementById("closeAddUserModal").addEventListener("click", () => addUserModal.classList.remove("active"));
+  document.getElementById("cancelAddUserModal").addEventListener("click", () => addUserModal.classList.remove("active"));
+  addUserModal.addEventListener("click", e => { if (e.target === addUserModal) addUserModal.classList.remove("active"); });
+  
+  document.getElementById("addUserForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = new FormData(e.target);
+    const pwd = d.get('password');
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const ogText = submitBtn.textContent;
+    submitBtn.innerHTML = '<span class="spinner"></span> Creating...';
+    submitBtn.disabled = true;
+
+    try {
+      await apiFetch('/auth/users', {
+        method: 'POST',
+        body: JSON.stringify(Object.fromEntries(d.entries()))
+      });
+      invalidateCache('/auth/users');
+      showToast("✓ User created successfully");
+      addUserModal.classList.remove("active");
+      loadUsers();
+    } catch(err) {
+      alert("Error creating user: " + err.message);
+    } finally {
+      submitBtn.textContent = ogText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+const editUserModal = document.getElementById("editUserModalBackdrop");
+if (editUserModal) {
+  window.openEditUser = (id, username, role, branchId) => {
+    document.getElementById("editUserId").value = id;
+    document.getElementById("editUserUsername").value = username;
+    document.getElementById("editUserRole").value = role;
+    document.getElementById("editUserPassword").value = '';
+    const bSel = document.getElementById("editUserBranch");
+    if (bSel && branchId) bSel.value = branchId;
+    editUserModal.classList.add("active");
+  };
+  
+  document.getElementById("closeEditUserModal").addEventListener("click", () => editUserModal.classList.remove("active"));
+  document.getElementById("cancelEditUserModal").addEventListener("click", () => editUserModal.classList.remove("active"));
+  editUserModal.addEventListener("click", e => { if (e.target === editUserModal) editUserModal.classList.remove("active"); });
+
+  document.getElementById("editUserForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = new FormData(e.target);
+    const id = d.get('userId');
+    const pwd = d.get('password');
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const ogText = submitBtn.textContent;
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+
+    try {
+      const payload = { username: d.get('username'), role: d.get('role'), branch_id: d.get('branch_id') };
+      if (pwd) payload.password = pwd;
+
+      await apiFetch(`/auth/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      invalidateCache('/auth/users');
+      showToast("✓ User updated successfully");
+      editUserModal.classList.remove("active");
+      loadUsers();
+    } catch(err) {
+      alert("Error updating user: " + err.message);
+    } finally {
+      submitBtn.textContent = ogText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+window.deleteUser = async (id) => {
+  // FIX 3: Replace all confirm() dialogs with a custom modal
+  showConfirm("Are you sure you want to delete this user? This action cannot be undone.", async () => {
+    try {
+      await apiFetch(`/auth/users/${id}`, { method: 'DELETE' });
+      invalidateCache('/auth/users');
+      showToast("✓ User deleted successfully");
+      loadUsers();
+    } catch (err) {
+      alert("Error deleting user: " + err.message);
+    }
+  });
+};
+
+// ─── Stock Movement Logic ────────────────────────
+const movementModal = document.getElementById("addMovementModalBackdrop");
+if (movementModal) {
+  window.openMovementModal = (type) => {
+    document.getElementById("addMovementForm").reset();
+    document.getElementById("movementType").value = type;
+    
+    const isIn = type === 'IN';
+    document.getElementById("movementModalEyebrow").textContent = isIn ? "Stock Inward" : "Stock Outward";
+    document.getElementById("movementModalTitle").textContent = isIn ? "Add Receipt" : "Issue Supplies";
+    document.getElementById('supplierField').style.display = isIn ? 'block' : 'none';
+    document.getElementById('programField').style.display = isIn ? 'none' : 'block';
+
+    // Set the correct select as required
+    document.getElementById('movementSupplierSelect').required = isIn;
+    document.getElementById('movementProgramSelect').required = !isIn;
+    document.getElementById("movementSubmitBtn").textContent = isIn ? "Save Entry" : "Issue Stock";
+
+    const select = document.getElementById("movementItemSelect");
+    select.innerHTML = '<option value="">Select an item...</option>' + 
+      inventory.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
+
+    if (globalSelectedBranch) {
+      const bSel = document.getElementById('addMovementBranch');
+      if (bSel) bSel.value = globalSelectedBranch;
+    }
+
+    const userStr = localStorage.getItem('msc_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const isStaff = user && user.role === 'Staff';
+    
+    const bSel = document.getElementById('addMovementBranch');
+    if (bSel) {
+      if (isStaff) {
+        bSel.disabled = true;
+        // Ensure their branch is selected if they have one assigned
+        if (user.branch_id) bSel.value = user.branch_id;
+      } else {
+        bSel.disabled = false;
+      }
+    }
+
+    movementModal.classList.add("active");
+  };
+
+  if(document.getElementById("closeMovementModal")) document.getElementById("closeMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
+  if(document.getElementById("cancelMovementModal")) document.getElementById("cancelMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
+  movementModal.addEventListener("click", e => { if (e.target === movementModal) movementModal.classList.remove("active"); });
+
+  if(document.getElementById("addMovementForm")) {
+    document.getElementById("addMovementForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const d = new FormData(e.target);
+      const submitBtn = document.getElementById("movementSubmitBtn");
+      const ogText = submitBtn.textContent;
+      submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+      submitBtn.disabled = true;
+
+      try {
+        await apiFetch('/movements', {
+          method: 'POST',
+          body: JSON.stringify({
+            inventory_id: d.get('inventory_id'),
+            type: d.get('type'),
+            quantity: Number(d.get('quantity')),
+            party_name: (() => {
+              const supSel = document.getElementById('movementSupplierSelect');
+              const progSel = document.getElementById('movementProgramSelect');
+              if (d.get('type') === 'INWARD' && supSel && supSel.selectedIndex > 0) return supSel.options[supSel.selectedIndex].text;
+              if (d.get('type') === 'OUTWARD' && progSel && progSel.selectedIndex > 0) return progSel.options[progSel.selectedIndex].text;
+              return d.get('party_name');
+            })(),
+            reference_code: d.get('reference_code'),
+            notes: d.get('notes'),
+            branch_id: document.getElementById('addMovementBranch')?.value || undefined
+          })
+        });
+        invalidateCache('/inventory');
+        invalidateCache('/movements');
+        showToast("✓ Stock movement recorded");
+        movementModal.classList.remove("active");
+        
+        await loadInventory(); // refresh counts
+        
+        const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+        if (activePage) switchPage(activePage); // refresh the movement table UI
+
+      } catch(err) {
+        alert("Error saving movement: " + err.message);
+      } finally {
+        submitBtn.textContent = ogText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+}
+
+// ─── Bindings ────────────────────────────────────
+// FIX: password toggle
+const togglePassword = document.getElementById('togglePassword');
+const passwordInput = document.getElementById('passwordInput');
+const toggleIcon = document.getElementById('toggleIcon');
+
+if (togglePassword && passwordInput) {
+  togglePassword.addEventListener('click', () => {
+    const isPassword = passwordInput.type === 'password';
+    passwordInput.type = isPassword ? 'text' : 'password';
+    toggleIcon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+    lucide.createIcons({ nodes: [toggleIcon] });
+  });
+}
+// FIX: render eye icon on login screen
+lucide.createIcons({ nodes: document.querySelectorAll('#toggleIcon') });
+const mobileSearchBtn = document.getElementById('mobileSearchBtn');
+const mobileSearchBar = document.getElementById('mobileSearchBar');
+const mobileSearchInput = document.getElementById('mobileSearch');
+if (mobileSearchBtn) {
+  mobileSearchBtn.addEventListener('click', () => {
+    const isOpen = mobileSearchBar.style.display === 'block';
+    mobileSearchBar.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) mobileSearchInput.focus();
+  });
+  mobileSearchInput.addEventListener('input', () => {
+    search.value = mobileSearchInput.value;
+    renderTable();
+  });
+}
+const profileTrigger = document.getElementById('profileTrigger');
+const profileDropdown = document.getElementById('profileDropdown');
+if (profileTrigger) {
+  profileTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = profileDropdown.style.display === 'block';
+    profileDropdown.style.display = isOpen ? 'none' : 'block';
+  });
+  document.addEventListener('click', () => { profileDropdown.style.display = 'none'; });
+}
+
+if(document.getElementById("addItemBtn")) document.getElementById("addItemBtn").addEventListener("click", openModal);
+if(document.getElementById("quickAdd")) document.getElementById("quickAdd").addEventListener("click", openModal);
+if(document.getElementById("closeModal")) document.getElementById("closeModal").addEventListener("click", closeModal);
+if(document.getElementById("cancelModal")) document.getElementById("cancelModal").addEventListener("click", closeModal);
+if(modal) modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+
+const backupModal = document.getElementById("backupModalBackdrop");
+if(document.getElementById("closeBackupModal")) document.getElementById("closeBackupModal").addEventListener("click", () => backupModal.classList.remove("active"));
+if(backupModal) backupModal.addEventListener("click", e => { if (e.target === backupModal) backupModal.classList.remove("active"); });
+document.getElementById('backupLocalBtn')?.addEventListener('click', async () => {
+  try {
+    const token = localStorage.getItem('msc_token');
+    const response = await fetch(`${API_BASE}/reports/backup`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destination: 'local' })
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), {
+      href: url, download: `msc-backup-${Date.now()}.json`
+    }).click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Backup downloaded successfully');
+    backupModal.classList.remove('active');
+  } catch(err) { showToast('Backup failed: ' + err.message); }
+});
+
+document.getElementById('backupDriveBtn')?.addEventListener('click', () => {
+  showToast('Google Drive backup coming soon');
+  backupModal.classList.remove('active');
+});
+
+
+document.addEventListener("keydown", e => { 
+  if (e.key === "Escape") {
+    if (searchSuggestions) searchSuggestions.classList.remove('show');
+    if (modal && modal.classList.contains("active")) closeModal();
+    if (backupModal && backupModal.classList.contains("active")) backupModal.classList.remove("active");
+    if (document.getElementById("documentViewerModalBackdrop")?.classList.contains("active")) closeDocumentViewer();
+    else if (document.getElementById("itemDetailModalBackdrop")?.classList.contains("active")) closeItemDetail();
+    if (editModal && editModal.classList.contains("active")) editModal.classList.remove("active");
+    if (addUserModal && addUserModal.classList.contains("active")) addUserModal.classList.remove("active");
+    if (editUserModal && editUserModal.classList.contains("active")) editUserModal.classList.remove("active");
+    if (movementModal && movementModal.classList.contains("active")) movementModal.classList.remove("active");
+  }
+});
+
+function handleSearchOrFilter() {
+  currentPage = 1;
   renderTable();
-  closeModal();
-  showToast("✓ Item added to inventory");
+  const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+  if (activePage === 'inventory') renderInventorySection();
+}
+
+if(categoryFilter) categoryFilter.addEventListener("change", handleSearchOrFilter);
+if(search) {
+  search.addEventListener('input', () => {
+    handleSearchOrFilter();
+    showSuggestions(search.value.trim());
+  });
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-box')) {
+    searchSuggestions.classList.remove('show');
+  }
 });
 
-document.getElementById("exportBtn").addEventListener("click", () => {
-  const rows = [["Item name", "Category", "Stock", "Unit", "Status", "Last updated"], ...inventory.map(item => [item.name, item.category, item.stock, item.unit, getStatus(item)[0], item.updated])];
-  const csv = rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  const link = Object.assign(document.createElement("a"), { href: url, download: "msc-trust-inventory.csv" });
-  link.click();
-  URL.revokeObjectURL(url);
-  showToast("✓ Inventory report exported");
+document.getElementById('exportBtn')?.addEventListener('click', async () => {
+  try {
+    const token = localStorage.getItem('msc_token');
+    const response = await fetch(`${API_BASE}/reports/export`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    Object.assign(document.createElement('a'), {
+      href: url, download: 'msc-trust-inventory.csv'
+    }).click();
+    URL.revokeObjectURL(url);
+    showToast('✓ Inventory exported successfully');
+  } catch(err) {
+    showToast('Error exporting: ' + err.message);
+  }
 });
 
-document.querySelectorAll("[data-page]").forEach(button => button.addEventListener("click", () => switchPage(button.dataset.page)));
+document.querySelectorAll("[data-page]").forEach(b => b.addEventListener("click", () => switchPage(b.dataset.page)));
 
-// ─── Hamburger Menu ──────────────────────────────
 const menuBtn = document.getElementById("menuBtn");
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("sidebarOverlay");
+function openSidebar() { sidebar.classList.add("open"); menuBtn.classList.add("active"); overlay.classList.add("show"); }
+function closeSidebar() { sidebar.classList.remove("open"); menuBtn.classList.remove("active"); overlay.classList.remove("show"); }
+if(menuBtn) menuBtn.addEventListener("click", () => sidebar.classList.contains("open") ? closeSidebar() : openSidebar());
+if(overlay) overlay.addEventListener("click", closeSidebar);
+sidebar.querySelectorAll(".nav-item").forEach(n => n.addEventListener("click", closeSidebar));
 
-function openSidebar() {
-  sidebar.classList.add("open");
-  menuBtn.classList.add("active");
-  overlay.classList.add("show");
-}
-function closeSidebar() {
-  sidebar.classList.remove("open");
-  menuBtn.classList.remove("active");
-  overlay.classList.remove("show");
-}
-menuBtn.addEventListener("click", () => sidebar.classList.contains("open") ? closeSidebar() : openSidebar());
-overlay.addEventListener("click", closeSidebar);
-sidebar.querySelectorAll(".nav-link").forEach(link => link.addEventListener("click", closeSidebar));
-
-// ─── FAB ─────────────────────────────────────────
-document.getElementById("fabAdd").addEventListener("click", openModal);
-
-// ─── Other Listeners ─────────────────────────────
-document.querySelector(".notification-btn").addEventListener("click", () => showToast("You have 5 low stock alerts"));
-document.querySelector(".full-btn").addEventListener("click", () => showToast("Showing the latest low stock alerts"));
-document.querySelectorAll(".stat-card").forEach(card => card.addEventListener("click", () => showToast(`${card.querySelector("p").textContent}: ${card.querySelector("h3").textContent}`)));
-document.querySelectorAll(".more-btn").forEach(button => button.addEventListener("click", () => showToast("More options will appear here")));
-
-// ─── Chart Tooltip ───────────────────────────────
-const chartTooltip = document.getElementById("chartTooltip");
-const chartValues = [148, 173, 159, 221, 205, 255, 233];
-const chartLabels = ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7"];
-
-document.querySelectorAll(".chart-points.inward-points circle").forEach((dot, i) => {
-  dot.addEventListener("mouseenter", e => {
-    const rect = dot.closest(".line-chart").getBoundingClientRect();
-    const cx = dot.cx.baseVal.value;
-    const cy = dot.cy.baseVal.value;
-    const svg = dot.closest("svg");
-    const svgRect = svg.getBoundingClientRect();
-    const xRatio = svgRect.width / 700;
-    const yRatio = svgRect.height / 220;
-    chartTooltip.textContent = `${chartLabels[i]}: ${chartValues[i]} items`;
-    chartTooltip.classList.add("show");
-    const ttWidth = chartTooltip.offsetWidth;
-    chartTooltip.style.left = `${svg.offsetLeft + cx * xRatio - ttWidth / 2}px`;
-    chartTooltip.style.top = `${svg.offsetTop + cy * yRatio - 34}px`;
+if(document.getElementById("fabAdd")) document.getElementById("fabAdd").addEventListener("click", openModal);
+if (document.getElementById("notificationTrigger")) {
+  const trigger = document.getElementById("notificationTrigger");
+  const dropdown = document.getElementById("notificationDropdown");
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
   });
-  dot.addEventListener("mouseleave", () => chartTooltip.classList.remove("show"));
-});
+  document.addEventListener("click", (e) => {
+    if (!dropdown.contains(e.target) && e.target !== trigger) {
+      dropdown.style.display = "none";
+    }
+  });
+}
 
-// ─── Animate Count-Up ────────────────────────────
-function countUp(element, target, duration = 1200, prefix = "", suffix = "") {
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduceMotion) { element.textContent = prefix + target.toLocaleString("en-IN") + suffix; return; }
+// FIX 1: Logout button wiring
+if (document.getElementById('logoutBtn')) {
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('msc_token');
+    localStorage.removeItem('msc_user');
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginForm').reset();
+    showToast('You have been signed out.');
+  });
+}
 
-  element.textContent = prefix + "0" + suffix;
+// ─── Number Counter Animation ────────────────────
+function countUp(el, target, duration = 1200) {
+  if (!el) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = target.toLocaleString("en-IN"); return; }
+  el.textContent = "0";
   const start = performance.now();
-  const update = now => {
-    const elapsed = now - start;
-    const progress = Math.min(elapsed / duration, 1);
-    // Ease-out quart for smooth deceleration
-    const eased = 1 - Math.pow(1 - progress, 4);
-    const current = Math.round(target * eased);
-    element.textContent = prefix + current.toLocaleString("en-IN") + suffix;
-    if (progress < 1) requestAnimationFrame(update);
+  const update = t => {
+    const p = Math.min((t - start) / duration, 1);
+    el.textContent = Math.round(target * (1 - Math.pow(1 - p, 4))).toLocaleString("en-IN");
+    if (p < 1) requestAnimationFrame(update);
   };
   requestAnimationFrame(update);
 }
 
-function animateMetrics() {
-  countUp(document.getElementById("totalItems"), 1248, 1400);
-  countUp(document.getElementById("availableStock"), 1102, 1200);
-  countUp(document.getElementById("lowStockCount"), 18, 800);
-}
-
-// Intersection Observer — re-trigger count-up when stat cards scroll into view
-const statObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      animateMetrics();
-      statObserver.unobserve(entry.target);
+// ─── Custom File Upload Handler ──────────────────
+window.updateFileName = function(input) {
+  const box = input.parentElement.querySelector('.file-name');
+  const wrapper = input.parentElement.querySelector('.file-upload-box');
+  if (box && wrapper) {
+    if (input.files && input.files.length > 0) {
+      box.textContent = input.files[0].name;
+      wrapper.style.borderColor = 'var(--teal)';
+      wrapper.style.color = 'var(--teal)';
+      wrapper.style.backgroundColor = '#f0fdfa';
+    } else {
+      // Revert based on input name
+      if (input.name === 'productPhoto') box.textContent = 'Click to upload image';
+      else if (input.name === 'billImage') box.textContent = 'Click to upload bill';
+      else if (input.name === 'invoiceCopy') box.textContent = 'Click to upload invoice';
+      
+      wrapper.style.borderColor = '';
+      wrapper.style.color = '';
+      wrapper.style.backgroundColor = '';
     }
-  });
-}, { threshold: 0.3 });
-const statGrid = document.querySelector(".stat-grid");
-if (statGrid) statObserver.observe(statGrid);
-
-// ─── Smooth Number Transition (Filter Change) ────
-function animateItemCount(newCount) {
-  const el = document.getElementById("itemCount");
-  el.style.transition = "opacity .2s, transform .2s";
-  el.style.opacity = "0";
-  el.style.transform = "translateY(4px)";
-  setTimeout(() => {
-    el.textContent = `Showing ${newCount} item${newCount === 1 ? "" : "s"}`;
-    el.style.opacity = "1";
-    el.style.transform = "translateY(0)";
-  }, 200);
-}
-
-// Patch renderTable to animate the count
-const _origRenderTable = renderTable;
-renderTable = function() {
-  _origRenderTable();
-  const countText = document.getElementById("itemCount").textContent;
-  const match = countText.match(/(\d+)/);
-  if (match) animateItemCount(Number(match[1]));
+  }
 };
 
-// ─── Initialize ──────────────────────────────────
-_origRenderTable();
-renderAlerts();
-lucide.createIcons();
-animateMetrics();
+// ─── Initialization ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+});
+
+// ─── Reports Generation ──────────────────────────
+function downloadCSV(filename, rows) {
+  if (!rows || !rows.length) return showToast("No data available to export");
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => headers.map(header => {
+      let val = row[header] === null || row[header] === undefined ? '' : row[header];
+      val = val.toString().replace(/"/g, '""');
+      return `"${val}"`;
+    }).join(','))
+  ].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+window.generateReport = async (type) => {
+  showToast("Generating report...");
+  const token = localStorage.getItem('msc_token');
+  if (!token) return showToast('Error: You are not logged in.');
+
+  try {
+    if (type === 'inventory') {
+      window.open(`/api/reports/inventory-summary?token=${token}`, '_blank');
+      showToast("✓ Report generated");
+    } else if (type === 'low_stock') {
+      window.open(`/api/reports/low-stock?token=${token}`, '_blank');
+      showToast("✓ Report generated");
+    } else if (type === 'movements') {
+      const modal = document.getElementById('movementReportModalBackdrop');
+      if (modal) modal.classList.add('active');
+    } else if (type === 'backup') {
+      window.open(`/api/reports/backup-zip?token=${token}`, '_blank');
+      showToast("✓ Backup initiated");
+    }
+  } catch (err) {
+    showToast("Error generating report: " + err.message);
+  }
+};
+
+const closeMovementReportModal = document.getElementById('closeMovementReportModal');
+const cancelMovementReportModal = document.getElementById('cancelMovementReportModal');
+const movementReportModalBackdrop = document.getElementById('movementReportModalBackdrop');
+const movementReportForm = document.getElementById('movementReportForm');
+
+if (closeMovementReportModal) closeMovementReportModal.addEventListener('click', () => movementReportModalBackdrop.classList.remove('active'));
+if (cancelMovementReportModal) cancelMovementReportModal.addEventListener('click', () => movementReportModalBackdrop.classList.remove('active'));
+
+if (movementReportForm) {
+  movementReportForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const month = document.getElementById('movementReportMonth').value;
+    const year = document.getElementById('movementReportYear').value;
+    const token = localStorage.getItem('msc_token');
+    window.open(`/api/reports/movements?month=${month}&year=${year}&token=${token}`, '_blank');
+    movementReportModalBackdrop.classList.remove('active');
+    showToast("✓ Report generated");
+  });
+}
+
+// Role select branch required logic
+const addUserRole = document.getElementById("addUserRole");
+const addUserBranch = document.getElementById("addUserBranch");
+if (addUserRole && addUserBranch) {
+  addUserRole.addEventListener("change", (e) => {
+    addUserBranch.required = e.target.value === "Staff";
+  });
+  addUserBranch.required = addUserRole.value === "Staff";
+}
+
+const editUserRole = document.getElementById("editUserRole");
+const editUserBranch = document.getElementById("editUserBranch");
+if (editUserRole && editUserBranch) {
+  editUserRole.addEventListener("change", (e) => {
+    editUserBranch.required = e.target.value === "Staff";
+  });
+  editUserBranch.required = editUserRole.value === "Staff";
+}
