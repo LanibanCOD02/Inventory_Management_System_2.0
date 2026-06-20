@@ -36,25 +36,23 @@ app.use((req, res, next) => {
 
 // Import Routes
 const authRoutes = require('./routes/auth');
-const inventoryRoutes = require('./routes/inventory');
-const branchesRoutes = require('./routes/branches');
-const suppliersRoutes = require('./routes/suppliers');
-const categoriesRoutes = require('./routes/categories');
-const programsRoutes = require('./routes/programs');
-const dashboardRoutes = require('./routes/dashboard');
+const entitiesRoutes = require('./routes/entities');
 const uploadsRoutes = require('./routes/uploads');
+const inventoryRoutes = require('./routes/inventory');
+const dashboardRoutes = require('./routes/dashboard');
 const reportsRoutes = require('./routes/reports');
+const movementsRoutes = require('./routes/movements');
+const branchesRoutes = require('./routes/branches');
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/branches', branchesRoutes);
-app.use('/api/suppliers', suppliersRoutes);
-app.use('/api/categories', categoriesRoutes);
-app.use('/api/programs', programsRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api', entitiesRoutes); // Handles /api/categories, /api/programs, /api/suppliers
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/movements', movementsRoutes);
+app.use('/api/branches', branchesRoutes);
 
 // Serve Static Frontend Files
 app.use(express.static(__dirname));
