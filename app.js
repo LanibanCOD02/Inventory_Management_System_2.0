@@ -2019,6 +2019,7 @@ async function approveDeletion(reqId) {
     const res = await fetch(`${API_BASE}/inventory/deletion-requests/${reqId}/approve`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
     if(!res.ok) throw new Error("Failed to approve");
     showToast("Request approved.", "success");
+    invalidateCache('');
     loadRequests();
   } catch(e) { showToast(e.message, "error"); }
 }
