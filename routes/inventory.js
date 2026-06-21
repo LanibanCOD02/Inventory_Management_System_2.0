@@ -299,7 +299,7 @@ router.get('/deletion-requests/all', authenticateToken, async (req, res) => {
     
     // Admin sees all based on branch filter, Staff sees only their branch
     const requests = db.prepare(`
-      SELECT dr.*, i.name as item_name, i.product_photo_url, u.name as requested_by_name, b.name as branch_name
+      SELECT dr.*, i.name as item_name, i.product_photo_url, u.username as requested_by_name, b.name as branch_name
       FROM deletion_requests dr
       JOIN inventory_items i ON dr.item_id = i.id
       JOIN users u ON dr.requested_by = u.id
