@@ -418,26 +418,24 @@ form input:focus,form select:focus{border-color:var(--teal-light);box-shadow:0 0
   .profile>div:last-child{display:none}
   .dashboard{padding:20px 16px}
   .section-view{padding:20px 16px}
-  .metrics-row{grid-template-columns:1fr}
+  .metrics-row{grid-template-columns:repeat(2,1fr); gap:12px}
+  .metric-card { padding: 12px; gap: 10px; flex-direction: column; align-items: flex-start; }
+  .metric-icon { width: 36px; height: 36px; }
+  .metric-card h3 { font-size: 20px; }
+  .metric-card p { font-size: 11px; }
   .right-col{grid-template-columns:1fr}
   .inv-grid{grid-template-columns:repeat(2,1fr)}
   .category-grid,.program-grid{grid-template-columns:1fr}
   .report-grid{grid-template-columns:1fr}
   .fab{display:grid}
 
-  .metric-card { padding: 16px 18px; }
-  .metric-card h3 { font-size: 20px; }
   .inv-card-img { aspect-ratio: 16/9; }
   .section-intro { flex-direction: column; gap: 12px; }
   .section-intro > div:last-child { align-self: flex-start; }
   .login-split { flex-direction: column; }
   .login-left {
-    width: 100%;
-    min-height: 200px;
-    padding: 32px 24px;
-    justify-content: flex-start;
+    display: none;
   }
-  .login-left h1 { font-size: 28px; }
   .login-right { padding: 32px 24px; width: 100%; }
   .login-stats { gap: 20px; }
 }

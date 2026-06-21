@@ -104,27 +104,26 @@ async function initCharts() {
       if (catData.length <= 1 && catData[0]?.name !== 'No items') {
         categoryChart.clear();
         let emptyOverlay = document.getElementById('categoryChartEmpty');
+        catEl.style.display = 'none'; // Hide the 300px chart area
+        
         if (!emptyOverlay) {
           emptyOverlay = document.createElement('div');
           emptyOverlay.id = 'categoryChartEmpty';
-          emptyOverlay.style.position = 'absolute';
-          emptyOverlay.style.top = '70px'; // Below card header
-          emptyOverlay.style.left = '0';
-          emptyOverlay.style.right = '0';
-          emptyOverlay.style.bottom = '0';
           emptyOverlay.style.background = 'var(--surface)';
-          emptyOverlay.style.zIndex = '10';
+          emptyOverlay.style.padding = '32px 20px';
+          emptyOverlay.style.textAlign = 'center';
           emptyOverlay.style.borderRadius = '0 0 16px 16px';
           emptyOverlay.innerHTML = `
-            <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px">
-              <div style="width:52px;height:52px;border-radius:12px;background:var(--teal-50);display:grid;place-items:center">
-                <i data-lucide="pie-chart" style="width:24px;height:24px;color:var(--teal)"></i>
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:var(--teal-50);display:grid;place-items:center">
+                <i data-lucide="pie-chart" style="width:22px;height:22px;color:var(--teal)"></i>
               </div>
-              <p style="font:600 14px 'Outfit',sans-serif;color:var(--text);margin:0">Only one category</p>
-              <p style="font-size:12px;color:var(--muted);margin:0;text-align:center">Add items across multiple categories to see the distribution chart</p>
+              <div>
+                <p style="font:600 14px 'Outfit',sans-serif;color:var(--text);margin:0 0 4px">Only one category</p>
+                <p style="font-size:12px;color:var(--muted);margin:0;">Add items across multiple categories to see the distribution chart</p>
+              </div>
             </div>
           `;
-          catElParent.style.position = 'relative';
           catElParent.appendChild(emptyOverlay);
           if (window.lucide) lucide.createIcons({ nodes: emptyOverlay.querySelectorAll('[data-lucide]') });
         } else {
@@ -132,6 +131,7 @@ async function initCharts() {
         }
         return;
       } else {
+        catEl.style.display = 'block'; // Show the chart area
         const emptyOverlay = document.getElementById('categoryChartEmpty');
         if (emptyOverlay) emptyOverlay.style.display = 'none';
       }
