@@ -1748,21 +1748,11 @@ document.addEventListener('click', e => {
   }
 });
 
-document.getElementById('exportBtn')?.addEventListener('click', async () => {
-  try {
-    const token = localStorage.getItem('msc_token');
-    const response = await fetch(`${API_BASE}/reports/export`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    Object.assign(document.createElement('a'), {
-      href: url, download: 'msc-trust-inventory.csv'
-    }).click();
-    URL.revokeObjectURL(url);
-    showToast('✓ Inventory exported successfully');
-  } catch(err) {
-    showToast('Error exporting: ' + err.message);
+document.getElementById('exportBtn')?.addEventListener('click', () => {
+  if (typeof window.generateReport === 'function') {
+    window.generateReport('inventory');
+  } else {
+    showToast('Error: Report generation not ready.');
   }
 });
 
