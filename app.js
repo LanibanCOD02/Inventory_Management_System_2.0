@@ -471,10 +471,10 @@ function renderTable() {
       : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><svg width="16" height="16" stroke="var(--teal-600)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>`;
     
     return `<tr onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
-      <td><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>
-      <td><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill ${barCls}" style="width:${fillPct}%"></div></div><span>${item.stock} ${item.unit}</span></div></td>
-      <td><span class="status ${cls}">${label}</span></td>
-      <td>${new Date(item.created_at).toLocaleDateString()}</td>
+      <td data-label="Item"><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>
+      <td data-label="Stock"><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill ${barCls}" style="width:${fillPct}%"></div></div><span>${item.stock} ${item.unit}</span></div></td>
+      <td data-label="Status"><span class="status ${cls}">${label}</span></td>
+      <td data-label="Added On">${new Date(item.created_at).toLocaleDateString()}</td>
     </tr>`;
   });
 
@@ -668,22 +668,22 @@ async function renderMovementTable(type) {
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '-';
 
         return `<tr>
-          <td>${refCode}</td>
-          <td>${itemName}</td>
-          <td>
+          <td data-label="Reference">${refCode}</td>
+          <td data-label="Item name">${itemName}</td>
+          <td data-label="Quantity">
             <span class="movement-type ${typeClass}">
               <i data-lucide="${icon}"></i>
               ${sign}${quantity} ${itemUnit}
             </span>
           </td>
-          <td>${partyName}</td>
-          <td>${date}</td>
-          ${canVoid ? `<td>
-            <div style="display:flex;gap:6px;">
+          <td data-label="${isIn ? 'Supplier' : 'Issued to'}">${partyName}</td>
+          <td data-label="Date">${date}</td>
+          ${canVoid ? `<td data-label="Actions">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
               <button class="secondary-btn" style="height:28px;padding:0 10px;font-size:11px;color:var(--danger);border-color:var(--danger)"
                 onclick="voidMovement('${r.id}')">Void</button>
             </div>
-          </td>` : '<td></td>'}
+          </td>` : '<td data-label="Actions" style="display:none;"></td>'}
         </tr>`;
       }).join('');
     
@@ -1146,6 +1146,9 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
   
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalText = submitBtn.textContent;
+  
+  document.getElementById("loginErrorMsg").textContent = "";
+  
   submitBtn.innerHTML = '<span class="spinner"></span> Signing in...';
   submitBtn.disabled = true;
 
@@ -1183,7 +1186,7 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
     loadPrograms();
     loadCategories();
   } catch (err) {
-    alert(err.message);
+    document.getElementById("loginErrorMsg").textContent = err.message;
   } finally {
     submitBtn.textContent = originalText;
     submitBtn.disabled = false;
@@ -1410,10 +1413,10 @@ async function loadUsers() {
     const data = await cachedFetch('/auth/users');
     const rows = data.map(u => `
       <tr>
-        <td><strong>${u.username}</strong></td>
-        <td><span class="status ${u.role === 'Admin' ? 'healthy' : 'in-stock'}">${u.role}</span></td>
-        <td>${new Date(u.created_at).toLocaleDateString()}</td>
-        <td style="text-align:right;">
+        <td data-label="Username"><strong>${u.username}</strong></td>
+        <td data-label="Role"><span class="status ${u.role === 'Admin' ? 'healthy' : 'in-stock'}">${u.role}</span></td>
+        <td data-label="Added On">${new Date(u.created_at).toLocaleDateString()}</td>
+        <td data-label="Actions" style="text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:8px;">
             <button class="icon-btn" onclick="openEditUser('${u.id}', '${u.username}', '${u.role}', '${u.branch_id || ''}')" aria-label="Edit User" title="Edit User"><i data-lucide="pencil"></i></button>
             <button class="icon-btn" onclick="deleteUser('${u.id}')" aria-label="Delete User" title="Delete User"><i data-lucide="trash-2" style="color:var(--danger)"></i></button>
@@ -1980,7 +1983,14 @@ async function loadRequests() {
         `;
       }
       
-      return `<tr><td><div style="display:flex;align-items:center;gap:12px;"><img src="${req.product_photo_url || 'https://images.unsplash.com/photo-1584308666744-24d5e47854f9?w=100&q=80'}" alt="${req.item_name}" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;"><span style="font-weight:500;color:var(--text)">${req.item_name}</span></div></td><td>${req.requested_by_name}</td><td>${req.branch_name}</td><td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor};text-transform:capitalize;">${req.status}</span></td><td>${date}</td><td class="text-right">${actions}</td></tr>`;
+      return `<tr>
+        <td data-label="Item"><div style="display:flex;align-items:center;gap:12px;"><img src="${req.product_photo_url || 'https://images.unsplash.com/photo-1584308666744-24d5e47854f9?w=100&q=80'}" alt="${req.item_name}" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;"><span style="font-weight:500;color:var(--text)">${req.item_name}</span></div></td>
+        <td data-label="Requested By">${req.requested_by_name}</td>
+        <td data-label="Branch">${req.branch_name}</td>
+        <td data-label="Status"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor};text-transform:capitalize;">${req.status}</span></td>
+        <td data-label="Date">${date}</td>
+        <td data-label="Actions" class="text-right" style="text-align:right;">${actions}</td>
+      </tr>`;
     }).join('');
     lucide.createIcons();
   } catch (err) {
