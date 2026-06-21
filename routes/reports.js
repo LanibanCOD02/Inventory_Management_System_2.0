@@ -63,7 +63,8 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
           { header: 'Category', key: 'category', width: 20 },
           { header: 'Unit', key: 'unit', width: 15 },
           { header: 'Current Stock', key: 'stock', width: 15 },
-          { header: 'Threshold', key: 'threshold', width: 15 }
+          { header: 'Threshold', key: 'threshold', width: 15 },
+          { header: 'Date Added', key: 'created_at', width: 20 }
         ];
         sheet.getRow(1).font = { bold: true };
         
@@ -73,7 +74,8 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
             category: i.category || '-',
             unit: i.unit || '-',
             stock: i.stock,
-            threshold: i.threshold
+            threshold: i.threshold,
+            created_at: i.created_at ? i.created_at.split('T')[0] : '-'
           });
         });
       }
@@ -129,15 +131,17 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       ];
       sheet.getRow(1).font = { bold: true };
       
-      branchGroups[bId].forEach(i => {
-        sheet.addRow({
-          name: i.name,
-          category: i.category || '-',
-          stock: i.stock,
-          threshold: i.threshold,
-          shortage: i.threshold - i.stock
+      branchGroups[bId]
+        .sort((a, b) => (b.threshold - b.stock) - (a.threshold - a.stock))
+        .forEach(i => {
+          sheet.addRow({
+            name: i.name,
+            category: i.category || '-',
+            stock: i.stock,
+            threshold: i.threshold,
+            shortage: i.threshold - i.stock
+          });
         });
-      });
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -201,19 +205,30 @@ router.get('/movements', authenticateToken, async (req, res) => {
 
     // 3. Accumulate movements DURING the selected month
     const movementsDuring = db.prepare(`
-      SELECT item_id, movement_type, quantity, party_name 
-      FROM inventory_movements 
-      WHERE created_at >= ? AND created_at < ? 
-      AND (voided IS NULL OR voided = 0)
-      AND reference_code NOT LIKE 'VOID-%'
-      AND ${condition.replace(/branch_id/g, 'branch_id')}
+      SELECT m.item_id, m.movement_type, m.quantity, m.party_name, m.created_at, u.username as recorded_by 
+      FROM inventory_movements m
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.created_at >= ? AND m.created_at < ? 
+      AND (m.voided IS NULL OR m.voided = 0)
+      AND m.reference_code NOT LIKE 'VOID-%'
+      AND ${condition.replace(/branch_id/g, 'm.branch_id')}
+      ORDER BY m.created_at ASC
     `).all(startDate, endDate, ...params);
+
+    const detailedMovementsByBranch = {};
 
     movementsDuring.forEach(m => {
       if (itemMap[m.item_id]) {
         if (m.movement_type === 'IN') itemMap[m.item_id].in_month += m.quantity;
         if (m.movement_type === 'OUT') itemMap[m.item_id].out_month += m.quantity;
         if (m.party_name && m.party_name.trim()) itemMap[m.item_id].parties.add(m.party_name.trim());
+        
+        const bId = itemMap[m.item_id].branch_id || 'trust_wide';
+        if (!detailedMovementsByBranch[bId]) detailedMovementsByBranch[bId] = [];
+        detailedMovementsByBranch[bId].push({
+          ...m,
+          item_name: itemMap[m.item_id].name
+        });
       }
     });
 
@@ -283,6 +298,35 @@ router.get('/movements', authenticateToken, async (req, res) => {
             stock: i.stock_end_of_month
           });
         });
+
+        // Add the Detailed Log sheet for this branch
+        const detailSheetName = `Log - ${safeSheetName}`.substring(0, 31);
+        const detailSheet = workbook.addWorksheet(detailSheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
+        detailSheet.columns = [
+          { header: 'Date', key: 'date', width: 20 },
+          { header: 'Item Name', key: 'name', width: 30 },
+          { header: 'Movement Type', key: 'type', width: 15 },
+          { header: 'Quantity', key: 'quantity', width: 15 },
+          { header: 'Supplier/Party Name', key: 'party', width: 30 },
+          { header: 'Recorded By', key: 'recorded_by', width: 20 }
+        ];
+        detailSheet.getRow(1).font = { bold: true };
+
+        const branchDetails = detailedMovementsByBranch[bId] || [];
+        if (branchDetails.length === 0) {
+          detailSheet.addRow(['No movements recorded this month.']);
+        } else {
+          branchDetails.forEach(m => {
+            detailSheet.addRow({
+              date: m.created_at ? m.created_at.split('T')[0] : '-',
+              name: m.item_name,
+              type: m.movement_type,
+              quantity: m.quantity,
+              party: m.party_name || '-',
+              recorded_by: m.recorded_by || '-'
+            });
+          });
+        }
       }
     }
 
