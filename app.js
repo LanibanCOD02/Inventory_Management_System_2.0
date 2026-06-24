@@ -2106,9 +2106,9 @@ const closeAddBranchModal = document.getElementById('closeAddBranchModal');
 const cancelAddBranchModal = document.getElementById('cancelAddBranchModal');
 const addBranchForm = document.getElementById('addBranchForm');
 
-if(addBranchBtn) addBranchBtn.addEventListener('click', () => { addBranchForm.reset(); addBranchModalBackdrop.classList.add('show'); });
-if(closeAddBranchModal) closeAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('show'));
-if(cancelAddBranchModal) cancelAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('show'));
+if(addBranchBtn) addBranchBtn.addEventListener('click', () => { addBranchForm.reset(); addBranchModalBackdrop.classList.add('active'); });
+if(closeAddBranchModal) closeAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('active'));
+if(cancelAddBranchModal) cancelAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('active'));
 
 if(addBranchForm) {
   addBranchForm.addEventListener('submit', async (e) => {
@@ -2121,7 +2121,7 @@ if(addBranchForm) {
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
-      addBranchModalBackdrop.classList.remove('show');
+      addBranchModalBackdrop.classList.remove('active');
       showToast('Branch added successfully', 'success');
       loadBranches(); // Refresh dropdowns
       renderBranchesTable(); // Refresh table
@@ -2137,8 +2137,8 @@ const cancelEditBranchModal = document.getElementById('cancelEditBranchModal');
 const editBranchForm = document.getElementById('editBranchForm');
 let currentEditBranchId = null;
 
-if(closeEditBranchModal) closeEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('show'));
-if(cancelEditBranchModal) cancelEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('show'));
+if(closeEditBranchModal) closeEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('active'));
+if(cancelEditBranchModal) cancelEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('active'));
 
 window.editBranch = function(id, name, location, address, pincode) {
   currentEditBranchId = id;
@@ -2146,7 +2146,7 @@ window.editBranch = function(id, name, location, address, pincode) {
   document.getElementById('editBranchLocation').value = location;
   document.getElementById('editBranchAddress').value = address;
   document.getElementById('editBranchPincode').value = pincode;
-  editBranchModalBackdrop.classList.add('show');
+  editBranchModalBackdrop.classList.add('active');
 };
 
 if(editBranchForm) {
@@ -2160,7 +2160,7 @@ if(editBranchForm) {
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
-      editBranchModalBackdrop.classList.remove('show');
+      editBranchModalBackdrop.classList.remove('active');
       showToast('Branch updated successfully', 'success');
       loadBranches(); // Refresh dropdowns
       renderBranchesTable(); // Refresh table
@@ -2219,15 +2219,15 @@ if (transferStockBtn) {
         srcSel.value = globalSelectedBranch;
       }
       
-      transferStockModalBackdrop.classList.add('show');
+      transferStockModalBackdrop.classList.add('active');
     } catch(err) {
       showToast('Error loading data for transfer', 'error');
     }
   });
 }
 
-if(closeTransferModal) closeTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('show'));
-if(cancelTransferModal) cancelTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('show'));
+if(closeTransferModal) closeTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('active'));
+if(cancelTransferModal) cancelTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('active'));
 
 if(transferStockForm) {
   transferStockForm.addEventListener('submit', async (e) => {
@@ -2248,7 +2248,7 @@ if(transferStockForm) {
       if (!res.ok) throw new Error(data.error);
       
       showToast('Stock transferred successfully', 'success');
-      transferStockModalBackdrop.classList.remove('show');
+      transferStockModalBackdrop.classList.remove('active');
       
       invalidateCache('/inventory');
       invalidateCache('/movements');
