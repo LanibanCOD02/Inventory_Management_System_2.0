@@ -822,7 +822,7 @@ async function switchPage(page) {
     if(sectionBranches) sectionBranches.hidden = false;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     pageHeading.textContent = "Branch Management";
-    loadBranches();
+    renderBranchesTable();
   } else if (page === "users") {
     dashboard.hidden = true;
     sectionView.hidden = true;
@@ -2067,7 +2067,7 @@ function escapeHTML(str) {
   });
 }
 
-async function loadBranches() {
+async function renderBranchesTable() {
   const tbody = document.getElementById('branchesBody');
   if(!tbody) return;
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Loading branches...</td></tr>';
@@ -2123,7 +2123,8 @@ if(addBranchForm) {
       if(!res.ok) throw new Error((await res.json()).error);
       addBranchModalBackdrop.classList.remove('show');
       showToast('Branch added successfully', 'success');
-      loadBranches();
+      loadBranches(); // Refresh dropdowns
+      renderBranchesTable(); // Refresh table
     } catch(err) {
       showToast(err.message, 'error');
     }
@@ -2161,7 +2162,8 @@ if(editBranchForm) {
       if(!res.ok) throw new Error((await res.json()).error);
       editBranchModalBackdrop.classList.remove('show');
       showToast('Branch updated successfully', 'success');
-      loadBranches();
+      loadBranches(); // Refresh dropdowns
+      renderBranchesTable(); // Refresh table
     } catch(err) {
       showToast(err.message, 'error');
     }
@@ -2177,7 +2179,8 @@ window.deactivateBranch = async function(id) {
     });
     if(!res.ok) throw new Error((await res.json()).error);
     showToast('Branch deleted successfully', 'success');
-    loadBranches();
+    loadBranches(); // Refresh dropdowns
+    renderBranchesTable(); // Refresh table
   } catch(err) {
     showToast(err.message, 'error');
   }
