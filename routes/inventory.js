@@ -196,7 +196,8 @@ router.get('/movements', authenticateToken, async (req, res) => {
 // Get specific inventory item by ID (Full data including document URLs)
 router.get('/:id', authenticateToken, async (req, res, next) => {
   // Fallback just in case
-  if (req.params.id === 'movements') return next(); 
+  const reserved = ['movements', 'deletion-requests', 'bulk-import-template', 'bulk-import'];
+  if (reserved.includes(req.params.id)) return next();
   
   try {
     const { id } = req.params;
