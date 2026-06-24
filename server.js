@@ -24,7 +24,8 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors()); // Allow cross-origin requests from the frontend
-app.use(express.json()); // Parse incoming JSON payloads
+app.use(express.json({ limit: '50mb' })); // Parse incoming JSON payloads
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(dataDir, 'uploads')));
 

@@ -8,7 +8,7 @@ const { authenticateToken } = require('../middlewares/auth');
 
 // Setup multer to store files in memory temporarily
 const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 // POST /api/uploads
 // Accepts multiple files from specific fields

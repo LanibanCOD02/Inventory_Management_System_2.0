@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const ExcelJS = require('exceljs');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 function generateUUID() {
   return crypto.randomUUID();
@@ -477,6 +477,9 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
       branchMap[b.name.toLowerCase()] = b.id;
     }
     
+    // If a target branch was selected from the dropdown, use it for all rows
+    const targetBranchId = req.body.branch_id;
+    
     const checkItem = db.prepare('SELECT id, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
     const updateItem = db.prepare('UPDATE inventory_items SET category = ?, stock = ?, unit = ?, threshold = ?, deleted_at = NULL WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -499,18 +502,22 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
         let threshold = Number(thresholdRaw);
         if (isNaN(threshold)) threshold = 0;
         
-        if (!bName) {
-          errors.push(`Row ${rowNumber}: Missing Branch Name`);
-          return;
-        }
-        if (!iName) {
-          errors.push(`Row ${rowNumber}: Missing Item Name`);
-          return;
+        let branchId = targetBranchId;
+        
+        if (!branchId) {
+          if (!bName) {
+            errors.push(`Row ${rowNumber}: Missing Branch Name`);
+            return;
+          }
+          branchId = branchMap[bName.toLowerCase()];
+          if (!branchId) {
+            errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
+            return;
+          }
         }
         
-        const branchId = branchMap[bName.toLowerCase()];
-        if (!branchId) {
-          errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
+        if (!iName) {
+          errors.push(`Row ${rowNumber}: Missing Item Name`);
           return;
         }
         

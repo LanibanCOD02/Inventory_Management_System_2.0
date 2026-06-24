@@ -2279,6 +2279,7 @@ const bulkErrorsContainer = document.getElementById('bulkErrorsContainer');
 const bulkErrorsList = document.getElementById('bulkErrorsList');
 const bulkImportSubmitBtn = document.getElementById('bulkImportSubmitBtn');
 const downloadBulkTemplateBtn = document.getElementById('downloadBulkTemplateBtn');
+const bulkImportBranchSelect = document.getElementById('bulkImportBranchSelect');
 
 if (downloadBulkTemplateBtn) {
   downloadBulkTemplateBtn.addEventListener('click', async () => {
@@ -2303,13 +2304,25 @@ if (downloadBulkTemplateBtn) {
 }
 
 if (bulkImportBtn) {
-  bulkImportBtn.addEventListener('click', () => {
+  bulkImportBtn.addEventListener('click', async () => {
     // Reset modal state
     bulkImportForm.reset();
     bulkImportFileName.textContent = '';
     bulkImportResults.style.display = 'none';
     bulkErrorsContainer.style.display = 'none';
     bulkErrorsList.innerHTML = '';
+    
+    // Load branches
+    if (bulkImportBranchSelect) {
+      try {
+        const branches = await cachedFetch('/branches');
+        bulkImportBranchSelect.innerHTML = '<option value="">Read from spreadsheet ("Branch Name" column)</option>' + 
+          branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+      } catch (e) {
+        console.error('Failed to load branches for bulk import', e);
+      }
+    }
+    
     bulkImportModalBackdrop.classList.add('active');
   });
 }
