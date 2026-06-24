@@ -2261,3 +2261,98 @@ if(transferStockForm) {
     }
   });
 }
+
+// ==========================================
+// BULK IMPORT MODAL LOGIC
+// ==========================================
+const bulkImportBtn = document.getElementById('bulkImportBtn');
+const bulkImportModalBackdrop = document.getElementById('bulkImportModalBackdrop');
+const closeBulkImportModal = document.getElementById('closeBulkImportModal');
+const cancelBulkImportModal = document.getElementById('cancelBulkImportModal');
+const bulkImportForm = document.getElementById('bulkImportForm');
+const bulkImportFileInput = bulkImportForm?.querySelector('input[type="file"]');
+const bulkImportFileName = document.getElementById('bulkImportFileName');
+const bulkImportResults = document.getElementById('bulkImportResults');
+const bulkAddedCount = document.getElementById('bulkAddedCount');
+const bulkUpdatedCount = document.getElementById('bulkUpdatedCount');
+const bulkErrorsContainer = document.getElementById('bulkErrorsContainer');
+const bulkErrorsList = document.getElementById('bulkErrorsList');
+const bulkImportSubmitBtn = document.getElementById('bulkImportSubmitBtn');
+
+if (bulkImportBtn) {
+  bulkImportBtn.addEventListener('click', () => {
+    // Reset modal state
+    bulkImportForm.reset();
+    bulkImportFileName.textContent = '';
+    bulkImportResults.style.display = 'none';
+    bulkErrorsContainer.style.display = 'none';
+    bulkErrorsList.innerHTML = '';
+    bulkImportModalBackdrop.classList.add('active');
+  });
+}
+
+if (closeBulkImportModal) closeBulkImportModal.addEventListener('click', () => bulkImportModalBackdrop.classList.remove('active'));
+if (cancelBulkImportModal) cancelBulkImportModal.addEventListener('click', () => bulkImportModalBackdrop.classList.remove('active'));
+
+if (bulkImportFileInput) {
+  bulkImportFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      bulkImportFileName.textContent = e.target.files[0].name;
+    } else {
+      bulkImportFileName.textContent = '';
+    }
+  });
+}
+
+if (bulkImportForm) {
+  bulkImportForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!bulkImportFileInput.files.length) return;
+    
+    const ogText = bulkImportSubmitBtn.textContent;
+    bulkImportSubmitBtn.textContent = 'Processing...';
+    bulkImportSubmitBtn.disabled = true;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkImportFileInput.files[0]);
+      
+      const res = await fetch('/api/inventory/bulk-import', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      // Show results
+      bulkAddedCount.textContent = data.added || 0;
+      bulkUpdatedCount.textContent = data.updated || 0;
+      
+      if (data.errors && data.errors.length > 0) {
+        bulkErrorsList.innerHTML = data.errors.map(err => `<li>${err}</li>`).join('');
+        bulkErrorsContainer.style.display = 'block';
+      } else {
+        bulkErrorsContainer.style.display = 'none';
+      }
+      
+      bulkImportResults.style.display = 'block';
+      showToast('Bulk import completed', 'success');
+      
+      // Invalidate and reload if changes were made
+      if (data.added > 0 || data.updated > 0) {
+        invalidateCache('/inventory');
+        invalidateCache('/alerts');
+        if (document.getElementById('sectionInventory').classList.contains('active')) {
+          await loadInventory();
+        }
+      }
+    } catch(err) {
+      showToast(err.message, 'error');
+    } finally {
+      bulkImportSubmitBtn.textContent = ogText;
+      bulkImportSubmitBtn.disabled = false;
+    }
+  });
+}

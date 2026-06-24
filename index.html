@@ -120,6 +120,7 @@
           <h1 id="pageHeading">Inventory Dashboard</h1>
         </div>
         <div class="top-actions">
+          <button class="secondary-btn admin-only" id="bulkImportBtn" aria-label="Bulk Import" style="display:none;"><i data-lucide="file-up"></i><span class="desktop-only">Import</span></button>
           <button class="secondary-btn" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
           <label class="search-box">
             <i data-lucide="search"></i>
@@ -831,5 +832,59 @@
     </section>
   </div>
 
+  <!-- ─── Bulk Import Modal ────────────────────────────── -->
+  <div class="modal-backdrop" id="bulkImportModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="bulkImportModalTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Inventory Management</p><h2 id="bulkImportModalTitle">Bulk Import</h2></div>
+        <button class="icon-btn" id="closeBulkImportModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      
+      <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+        Upload a spreadsheet (.xlsx or .csv) to add or update multiple inventory items at once. Items are matched by <strong>Item Name</strong> and <strong>Branch Name</strong>.
+      </p>
+      
+      <div style="margin-bottom: 24px;">
+        <a href="/api/inventory/bulk-import-template" class="secondary-btn" style="display: inline-flex; text-decoration: none;" download>
+          <i data-lucide="download"></i> Download Template
+        </a>
+      </div>
+
+      <form id="bulkImportForm" style="display:flex; flex-direction:column; gap:16px;">
+        <div class="file-upload-wrapper">
+          <label class="file-upload-box">
+            <i data-lucide="upload-cloud" style="width:32px; height:32px; color:var(--primary); margin-bottom:12px;"></i>
+            <span style="font-weight:600; color:var(--text); margin-bottom:4px;">Upload Spreadsheet</span>
+            <span style="font-size:12px; color:var(--text-light); text-align:center;">Select .xlsx or .csv file</span>
+            <input required type="file" name="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="opacity: 0; position: absolute; width: 100%; height: 100%; cursor: pointer;">
+          </label>
+          <p id="bulkImportFileName" style="text-align: center; margin-top: 8px; font-size: 13px; color: var(--primary);"></p>
+        </div>
+        
+        <div id="bulkImportResults" style="display:none; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);">
+          <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--text);">Import Summary</h4>
+          <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+            <div style="flex: 1; padding: 12px; background: #ecfdf5; color: #065f46; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 700;" id="bulkAddedCount">0</div>
+              <div style="font-size: 12px;">Added</div>
+            </div>
+            <div style="flex: 1; padding: 12px; background: #eff6ff; color: #1e40af; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 700;" id="bulkUpdatedCount">0</div>
+              <div style="font-size: 12px;">Updated</div>
+            </div>
+          </div>
+          <div id="bulkErrorsContainer" style="display: none;">
+            <p style="font-size: 13px; font-weight: 600; color: var(--danger); margin-bottom: 8px;">Skipped Rows:</p>
+            <ul id="bulkErrorsList" style="font-size: 12px; color: var(--danger); margin: 0; padding-left: 16px; max-height: 120px; overflow-y: auto;"></ul>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 8px;">
+          <button type="button" class="secondary-btn" id="cancelBulkImportModal">Close</button>
+          <button class="primary-btn" type="submit" id="bulkImportSubmitBtn">Upload & Process</button>
+        </div>
+      </form>
+    </section>
+  </div>
 </body>
 </html>

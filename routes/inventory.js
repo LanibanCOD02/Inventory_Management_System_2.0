@@ -4,6 +4,10 @@ const db = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 const { getBranchFilterSql, getBranchId } = require('../config/branchFilter');
 const crypto = require('crypto');
+const multer = require('multer');
+const ExcelJS = require('exceljs');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 function generateUUID() {
   return crypto.randomUUID();
@@ -381,6 +385,148 @@ router.post('/deletion-requests/:reqId/reject', authenticateToken, requireAdmin,
     res.json({ message: 'Request rejected.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/inventory/bulk-import-template
+router.get('/bulk-import-template', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Bulk Import Template');
+    
+    worksheet.columns = [
+      { header: 'Branch Name', key: 'branch', width: 25 },
+      { header: 'Item Name', key: 'name', width: 30 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Unit', key: 'unit', width: 15 },
+      { header: 'Initial Stock', key: 'stock', width: 15 },
+      { header: 'Threshold', key: 'threshold', width: 15 }
+    ];
+    
+    worksheet.addRow({
+      branch: 'Main Branch',
+      name: 'Sample Item',
+      category: 'Stationery',
+      unit: 'pcs',
+      stock: 100,
+      threshold: 10
+    });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="bulk_import_template.xlsx"');
+    
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/inventory/bulk-import
+router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const filename = req.file.originalname.toLowerCase();
+    
+    if (filename.endsWith('.csv')) {
+      const { Readable } = require('stream');
+      await workbook.csv.read(Readable.from(req.file.buffer));
+    } else {
+      await workbook.xlsx.load(req.file.buffer);
+    }
+    
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) return res.status(400).json({ error: 'Empty spreadsheet' });
+    
+    const getVal = (cell) => {
+      if (!cell || cell.value == null) return '';
+      if (typeof cell.value === 'object') {
+        if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
+        if (cell.value.result !== undefined) return cell.value.result;
+        return cell.text || '';
+      }
+      return cell.value.toString();
+    };
+
+    const headerRow = worksheet.getRow(1);
+    const colMap = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const header = getVal(cell).trim().toLowerCase();
+      if (header === 'branch name') colMap['branch'] = colNumber;
+      if (header === 'item name') colMap['name'] = colNumber;
+      if (header === 'category') colMap['category'] = colNumber;
+      if (header === 'unit') colMap['unit'] = colNumber;
+      if (header === 'initial stock') colMap['stock'] = colNumber;
+      if (header === 'threshold') colMap['threshold'] = colNumber;
+    });
+    
+    if (!colMap['name'] || !colMap['branch']) {
+      return res.status(400).json({ error: 'Template missing required columns (Item Name, Branch Name)' });
+    }
+    
+    let added = 0;
+    let updated = 0;
+    const errors = [];
+    
+    const branches = db.prepare('SELECT id, name FROM branches WHERE deleted_at IS NULL').all();
+    const branchMap = {};
+    for (const b of branches) {
+      branchMap[b.name.toLowerCase()] = b.id;
+    }
+    
+    const checkItem = db.prepare('SELECT id, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
+    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, stock = ?, unit = ?, threshold = ?, deleted_at = NULL WHERE id = ?');
+    const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    
+    db.transaction(() => {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // skip header
+        
+        const bName = colMap['branch'] ? getVal(row.getCell(colMap['branch'])).trim() : '';
+        const iName = colMap['name'] ? getVal(row.getCell(colMap['name'])).trim() : '';
+        const cat = colMap['category'] ? getVal(row.getCell(colMap['category'])).trim() : '';
+        let unit = colMap['unit'] ? getVal(row.getCell(colMap['unit'])).trim() : 'pcs';
+        if (!unit) unit = 'pcs';
+        
+        let stockRaw = colMap['stock'] ? getVal(row.getCell(colMap['stock'])) : '';
+        let stock = Number(stockRaw);
+        if (isNaN(stock)) stock = 0;
+        
+        let thresholdRaw = colMap['threshold'] ? getVal(row.getCell(colMap['threshold'])) : '';
+        let threshold = Number(thresholdRaw);
+        if (isNaN(threshold)) threshold = 0;
+        
+        if (!bName) {
+          errors.push(`Row ${rowNumber}: Missing Branch Name`);
+          return;
+        }
+        if (!iName) {
+          errors.push(`Row ${rowNumber}: Missing Item Name`);
+          return;
+        }
+        
+        const branchId = branchMap[bName.toLowerCase()];
+        if (!branchId) {
+          errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
+          return;
+        }
+        
+        const existing = checkItem.get(iName, branchId);
+        if (existing) {
+          updateItem.run(cat || null, stock, unit, threshold, existing.id);
+          updated++;
+        } else {
+          insertItem.run(generateUUID(), iName, cat || null, stock, unit, threshold, branchId, new Date().toISOString());
+          added++;
+        }
+      });
+    })();
+    
+    res.json({ added, updated, errors });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to process file: ' + error.message });
   }
 });
 
