@@ -2278,6 +2278,29 @@ const bulkUpdatedCount = document.getElementById('bulkUpdatedCount');
 const bulkErrorsContainer = document.getElementById('bulkErrorsContainer');
 const bulkErrorsList = document.getElementById('bulkErrorsList');
 const bulkImportSubmitBtn = document.getElementById('bulkImportSubmitBtn');
+const downloadBulkTemplateBtn = document.getElementById('downloadBulkTemplateBtn');
+
+if (downloadBulkTemplateBtn) {
+  downloadBulkTemplateBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/inventory/bulk-import-template', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+      });
+      if (!res.ok) throw new Error('Failed to download template');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bulk_import_template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch(err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
 
 if (bulkImportBtn) {
   bulkImportBtn.addEventListener('click', () => {
