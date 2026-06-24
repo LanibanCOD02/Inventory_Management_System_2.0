@@ -1618,7 +1618,7 @@ if (movementModal) {
         if (d.get('type') === 'INWARD' && (d.get('productPhoto')?.size > 0 || d.get('invoiceCopy')?.size > 0)) {
           const uploadRes = await fetch('/api/uploads', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
             body: d
           });
           if (uploadRes.ok) uploadedUrls = await uploadRes.json();
@@ -2117,7 +2117,7 @@ if(addBranchForm) {
     try {
       const res = await fetch('/api/branches', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
@@ -2156,7 +2156,7 @@ if(editBranchForm) {
     try {
       const res = await fetch('/api/branches/' + currentEditBranchId, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
@@ -2175,7 +2175,7 @@ window.deactivateBranch = async function(id) {
   try {
     const res = await fetch('/api/branches/' + id + '/deactivate', {
       method: 'POST',
-      headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+      headers: {'Authorization': 'Bearer ' + localStorage.getItem('msc_token')}
     });
     if(!res.ok) throw new Error((await res.json()).error);
     showToast('Branch deleted successfully', 'success');
@@ -2241,7 +2241,7 @@ if(transferStockForm) {
     try {
       const res = await fetch('/api/movements/transfer', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
         body: JSON.stringify(Object.fromEntries(d))
       });
       const data = await res.json();
