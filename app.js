@@ -2054,6 +2054,19 @@ async function rejectDeletion(reqId) {
 
 
 // ─── Branch Management ──────────────────────────────
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>'"]/g, match => {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[match];
+  });
+}
+
 async function loadBranches() {
   const tbody = document.getElementById('branchesBody');
   if(!tbody) return;
