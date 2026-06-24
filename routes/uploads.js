@@ -14,7 +14,6 @@ const upload = multer({ storage: storage });
 // Accepts multiple files from specific fields
 const cpUpload = upload.fields([
   { name: 'productPhoto', maxCount: 1 },
-  { name: 'billImage', maxCount: 1 },
   { name: 'invoiceCopy', maxCount: 1 }
 ]);
 
@@ -24,13 +23,6 @@ router.post('/', authenticateToken, cpUpload, async (req, res) => {
     const files = req.files || {};
     const dataDir = process.env.DATA_DIR || path.join(__dirname, '..');
     
-    const processImage = async (inputPath, outputPath) => {
-        await sharp(inputPath)
-          .resize({ width: 800, withoutEnlargement: true })
-          .webp({ quality: 80 })
-          .toFile(outputPath);
-    };
-
     if (req.files.productPhoto) {
         const file = req.files.productPhoto[0];
         const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
@@ -45,22 +37,6 @@ router.post('/', authenticateToken, cpUpload, async (req, res) => {
           .toFile(filepath);
         
         uploadedUrls.productPhotoUrl = `/uploads/${folderName}/${filename}`;
-      }
-
-      if (req.files.billImage) {
-        const file = req.files.billImage[0];
-        const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
-        const folderName = 'bills';
-        const filepath = path.join(dataDir, 'uploads', folderName, filename);
-        
-        await fs.promises.mkdir(path.dirname(filepath), { recursive: true });
-        
-        await sharp(file.buffer)
-          .resize({ width: 800, withoutEnlargement: true })
-          .webp({ quality: 80 })
-          .toFile(filepath);
-        
-        uploadedUrls.billImageUrl = `/uploads/${folderName}/${filename}`;
       }
 
       if (req.files.invoiceCopy) {

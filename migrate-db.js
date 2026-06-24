@@ -14,7 +14,8 @@ async function migrateDatabase() {
       location TEXT,
       address TEXT,
       pincode TEXT,
-      created_at TEXT
+      created_at TEXT,
+      deleted_at TEXT
     );
 
     CREATE TABLE IF NOT EXISTS users (
@@ -56,7 +57,9 @@ async function migrateDatabase() {
       voided INTEGER DEFAULT 0,
       voided_at TEXT,
       voided_by TEXT,
-      branch_id TEXT NOT NULL
+      branch_id TEXT NOT NULL,
+      transfer_id TEXT,
+      recipient_name TEXT
     );
 
     CREATE TABLE IF NOT EXISTS categories (

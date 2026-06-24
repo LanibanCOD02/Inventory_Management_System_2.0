@@ -112,6 +112,7 @@ const toast = document.getElementById("toast");
 const dashboard = document.getElementById("dashboard");
 const sectionView = document.getElementById("sectionView");
 const sectionUsers = document.getElementById("sectionUsers");
+const sectionBranches = document.getElementById("sectionBranches");
 const pageHeading = document.getElementById("pageHeading");
 
 const searchSuggestions = document.createElement('div');
@@ -810,10 +811,18 @@ async function switchPage(page) {
   if (page === "dashboard") {
     dashboard.hidden = false;
     sectionView.hidden = true;
-    if(sectionUsers) sectionUsers.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     pageHeading.textContent = "Inventory Dashboard";
     loadInventory();
+  } else if (page === "branches") {
+    dashboard.hidden = true;
+    sectionView.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true;
+    if(sectionBranches) sectionBranches.hidden = false;
+    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
+    pageHeading.textContent = "Branch Management";
+    loadBranches();
   } else if (page === "users") {
     dashboard.hidden = true;
     sectionView.hidden = true;
@@ -824,13 +833,13 @@ async function switchPage(page) {
   } else if (page === "requests") {
     dashboard.hidden = true;
     sectionView.hidden = true;
-    if(sectionUsers) sectionUsers.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = false;
     pageHeading.textContent = "Deletion Requests";
     loadRequests();
   } else {
     dashboard.hidden = true;
-    if(sectionUsers) sectionUsers.hidden = true;
+    if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
     sectionView.hidden = false;
     const s = sectionData[page];
@@ -886,7 +895,7 @@ async function switchPage(page) {
     renderIcons(sectionView);
   }
 
-  const activeSection = page === 'dashboard' ? dashboard : page === 'users' ? sectionUsers : sectionView;
+  const activeSection = page === 'dashboard' ? dashboard : page === 'users' ? sectionUsers : page === 'branches' ? sectionBranches : sectionView;
   if (activeSection) {
     activeSection.classList.remove('page-enter');
     void activeSection.offsetWidth; // force reflow
@@ -1553,10 +1562,15 @@ if (movementModal) {
     document.getElementById("movementModalTitle").textContent = isIn ? "Add Receipt" : "Issue Supplies";
     document.getElementById('supplierField').style.display = isIn ? 'block' : 'none';
     document.getElementById('programField').style.display = isIn ? 'none' : 'block';
+    
+    const recipientField = document.getElementById('recipientField');
+    if (recipientField) recipientField.style.display = isIn ? 'none' : 'block';
+    const inwardFilesField = document.getElementById('inwardFilesField');
+    if (inwardFilesField) inwardFilesField.style.display = isIn ? 'block' : 'none';
 
     // Set the correct select as required
     document.getElementById('movementSupplierSelect').required = isIn;
-    document.getElementById('movementProgramSelect').required = !isIn;
+    document.getElementById('movementProgramSelect').required = false; // Program is always optional
     document.getElementById("movementSubmitBtn").textContent = isIn ? "Save Entry" : "Issue Stock";
 
     const select = document.getElementById("movementItemSelect");
@@ -1600,6 +1614,16 @@ if (movementModal) {
       submitBtn.disabled = true;
 
       try {
+        let uploadedUrls = {};
+        if (d.get('type') === 'INWARD' && (d.get('productPhoto')?.size > 0 || d.get('invoiceCopy')?.size > 0)) {
+          const uploadRes = await fetch('/api/uploads', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+            body: d
+          });
+          if (uploadRes.ok) uploadedUrls = await uploadRes.json();
+        }
+
         await apiFetch('/movements', {
           method: 'POST',
           body: JSON.stringify({
@@ -1613,9 +1637,12 @@ if (movementModal) {
               if (d.get('type') === 'OUTWARD' && progSel && progSel.selectedIndex > 0) return progSel.options[progSel.selectedIndex].text;
               return d.get('party_name');
             })(),
+            recipient_name: d.get('recipient_name') || undefined,
             reference_code: d.get('reference_code'),
             notes: d.get('notes'),
-            branch_id: document.getElementById('addMovementBranch')?.value || undefined
+            branch_id: document.getElementById('addMovementBranch')?.value || undefined,
+            product_photo_url: uploadedUrls.productPhotoUrl,
+            invoice_pdf_url: uploadedUrls.invoicePdfUrl
           })
         });
         invalidateCache('/inventory');
@@ -2023,4 +2050,198 @@ async function rejectDeletion(reqId) {
     showToast("Request rejected.", "success");
     loadRequests();
   } catch(e) { showToast(e.message, "error"); }
+}
+
+
+// ─── Branch Management ──────────────────────────────
+async function loadBranches() {
+  const tbody = document.getElementById('branchesBody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Loading branches...</td></tr>';
+  try {
+    const branches = await cachedFetch('/branches');
+    tbody.innerHTML = '';
+    if(branches.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No branches found</td></tr>';
+      return;
+    }
+    branches.forEach(b => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight:500;color:var(--text)">${escapeHTML(b.name)}</td>
+        <td>${escapeHTML(b.location || '-')}</td>
+        <td>${escapeHTML(b.address || '-')}</td>
+        <td style="text-align:right">
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="icon-btn" onclick="editBranch('${b.id}', '${escapeHTML(b.name)}', '${escapeHTML(b.location||'')}', '${escapeHTML(b.address||'')}', '${escapeHTML(b.pincode||'')}')"><i data-lucide="pencil" style="width:16px;height:16px;color:var(--text-light)"></i></button>
+            <button class="icon-btn" onclick="deactivateBranch('${b.id}')"><i data-lucide="trash-2" style="width:16px;height:16px;color:var(--danger)"></i></button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+    renderIcons(tbody);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger)">Error loading branches: ${err.message}</td></tr>`;
+  }
+}
+
+// Branch modal logic
+const addBranchBtn = document.getElementById('addBranchBtn');
+const addBranchModalBackdrop = document.getElementById('addBranchModalBackdrop');
+const closeAddBranchModal = document.getElementById('closeAddBranchModal');
+const cancelAddBranchModal = document.getElementById('cancelAddBranchModal');
+const addBranchForm = document.getElementById('addBranchForm');
+
+if(addBranchBtn) addBranchBtn.addEventListener('click', () => { addBranchForm.reset(); addBranchModalBackdrop.classList.add('show'); });
+if(closeAddBranchModal) closeAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('show'));
+if(cancelAddBranchModal) cancelAddBranchModal.addEventListener('click', () => addBranchModalBackdrop.classList.remove('show'));
+
+if(addBranchForm) {
+  addBranchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    try {
+      const res = await fetch('/api/branches', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        body: JSON.stringify(data)
+      });
+      if(!res.ok) throw new Error((await res.json()).error);
+      addBranchModalBackdrop.classList.remove('show');
+      showToast('Branch added successfully', 'success');
+      loadBranches();
+    } catch(err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+const editBranchModalBackdrop = document.getElementById('editBranchModalBackdrop');
+const closeEditBranchModal = document.getElementById('closeEditBranchModal');
+const cancelEditBranchModal = document.getElementById('cancelEditBranchModal');
+const editBranchForm = document.getElementById('editBranchForm');
+let currentEditBranchId = null;
+
+if(closeEditBranchModal) closeEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('show'));
+if(cancelEditBranchModal) cancelEditBranchModal.addEventListener('click', () => editBranchModalBackdrop.classList.remove('show'));
+
+window.editBranch = function(id, name, location, address, pincode) {
+  currentEditBranchId = id;
+  document.getElementById('editBranchName').value = name;
+  document.getElementById('editBranchLocation').value = location;
+  document.getElementById('editBranchAddress').value = address;
+  document.getElementById('editBranchPincode').value = pincode;
+  editBranchModalBackdrop.classList.add('show');
+};
+
+if(editBranchForm) {
+  editBranchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    try {
+      const res = await fetch('/api/branches/' + currentEditBranchId, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        body: JSON.stringify(data)
+      });
+      if(!res.ok) throw new Error((await res.json()).error);
+      editBranchModalBackdrop.classList.remove('show');
+      showToast('Branch updated successfully', 'success');
+      loadBranches();
+    } catch(err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+window.deactivateBranch = async function(id) {
+  if(!confirm('Are you sure you want to delete this branch?')) return;
+  try {
+    const res = await fetch('/api/branches/' + id + '/deactivate', {
+      method: 'POST',
+      headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+    });
+    if(!res.ok) throw new Error((await res.json()).error);
+    showToast('Branch deleted successfully', 'success');
+    loadBranches();
+  } catch(err) {
+    showToast(err.message, 'error');
+  }
+};
+\n
+// ─── Transfer Stock Logic ──────────────────────────────
+const transferStockBtn = document.getElementById('transferStockBtn');
+const transferStockModalBackdrop = document.getElementById('transferStockModalBackdrop');
+const closeTransferModal = document.getElementById('closeTransferModal');
+const cancelTransferModal = document.getElementById('cancelTransferModal');
+const transferStockForm = document.getElementById('transferStockForm');
+
+if (transferStockBtn) {
+  transferStockBtn.addEventListener('click', async () => {
+    transferStockForm.reset();
+    
+    // Load Items and Branches
+    try {
+      const [items, branches] = await Promise.all([
+        cachedFetch('/inventory'),
+        cachedFetch('/branches')
+      ]);
+      
+      const itemSel = document.getElementById('transferItemSelect');
+      const srcSel = document.getElementById('transferSourceBranch');
+      const dstSel = document.getElementById('transferDestinationBranch');
+      
+      itemSel.innerHTML = '<option value="" disabled selected>Select an item...</option>' + 
+        items.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
+        
+      const branchOptions = branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+      srcSel.innerHTML = '<option value="" disabled selected>Select Source...</option>' + branchOptions;
+      dstSel.innerHTML = '<option value="" disabled selected>Select Destination...</option>' + branchOptions;
+      
+      if (globalSelectedBranch) {
+        srcSel.value = globalSelectedBranch;
+      }
+      
+      transferStockModalBackdrop.classList.add('show');
+    } catch(err) {
+      showToast('Error loading data for transfer', 'error');
+    }
+  });
+}
+
+if(closeTransferModal) closeTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('show'));
+if(cancelTransferModal) cancelTransferModal.addEventListener('click', () => transferStockModalBackdrop.classList.remove('show'));
+
+if(transferStockForm) {
+  transferStockForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const d = new FormData(e.target);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const ogText = submitBtn.textContent;
+    submitBtn.textContent = 'Transferring...';
+    submitBtn.disabled = true;
+    
+    try {
+      const res = await fetch('/api/movements/transfer', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token')},
+        body: JSON.stringify(Object.fromEntries(d))
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      showToast('Stock transferred successfully', 'success');
+      transferStockModalBackdrop.classList.remove('show');
+      
+      invalidateCache('/inventory');
+      invalidateCache('/movements');
+      await loadInventory();
+    } catch(err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.textContent = ogText;
+      submitBtn.disabled = false;
+    }
+  });
 }

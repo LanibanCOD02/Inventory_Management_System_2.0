@@ -63,11 +63,11 @@ router.get('/', authenticateToken, async (req, res) => {
 // POST /api/movements
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id } = req.body;
+    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id, recipient_name, product_photo_url, invoice_pdf_url } = req.body;
     
     const qty = Number(quantity);
     if (!qty || qty <= 0) return res.status(400).json({ error: 'Quantity must be positive' });
-    if (!party_name) return res.status(400).json({ error: 'Party name is required' });
+    if (type === 'INWARD' && !party_name) return res.status(400).json({ error: 'Party name (Supplier) is required for INWARD movements' });
 
     const resolvedBranchId = getBranchId(req.user, branch_id);
 
@@ -87,13 +87,20 @@ router.post('/', authenticateToken, async (req, res) => {
       const moveId = generateUUID();
       
       db.prepare(`
-        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(moveId, refCode, inventory_id, movement_type, qty, party_name, req.user.id, resolvedBranchId || null, new Date().toISOString());
+        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, recipient_name) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(moveId, refCode, inventory_id, movement_type, qty, party_name || null, req.user.id, resolvedBranchId || null, new Date().toISOString(), recipient_name || null);
 
-      // Adjust stock
-      const amount = movement_type === 'IN' ? qty : -qty;
-      db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ?').run(amount, inventory_id);
+      // Adjust stock and file URLs if INWARD
+      let updateSql = 'UPDATE inventory_items SET stock = stock + ?';
+      let updateParams = [amount];
+      if (movement_type === 'IN') {
+        if (product_photo_url) { updateSql += ', product_photo_url = ?'; updateParams.push(product_photo_url); }
+        if (invoice_pdf_url) { updateSql += ', invoice_pdf_url = ?'; updateParams.push(invoice_pdf_url); }
+      }
+      updateSql += ' WHERE id = ?';
+      updateParams.push(inventory_id);
+      db.prepare(updateSql).run(...updateParams);
       
       return db.prepare('SELECT * FROM inventory_movements WHERE id = ?').get(moveId);
     });
@@ -140,6 +147,62 @@ router.post('/:id/void', authenticateToken, requireAdmin, async (req, res) => {
     if (err.message === 'Movement not found') return res.status(404).json({ success: false, error: err.message });
     if (err.message === 'Movement already voided') return res.status(400).json({ success: false, error: err.message });
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/movements/transfer
+router.post('/transfer', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { inventory_id, source_branch_id, destination_branch_id, quantity } = req.body;
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) return res.status(400).json({ error: 'Quantity must be positive' });
+    if (!source_branch_id || !destination_branch_id) return res.status(400).json({ error: 'Both source and destination branches are required' });
+    if (source_branch_id === destination_branch_id) return res.status(400).json({ error: 'Source and destination branches must be different' });
+
+    const transferTransaction = db.transaction(() => {
+      // 1. Verify source item exists and has enough stock
+      const sourceItem = db.prepare('SELECT * FROM inventory_items WHERE id = ? AND branch_id = ?').get(inventory_id, source_branch_id);
+      if (!sourceItem) throw new Error('Source item not found in the specified branch');
+      if (sourceItem.stock < qty) throw new Error('Insufficient stock at source branch');
+
+      // 2. Find or create destination item
+      let destItem = db.prepare('SELECT * FROM inventory_items WHERE name = ? AND branch_id = ? AND deleted_at IS NULL').get(sourceItem.name, destination_branch_id);
+      if (!destItem) {
+        const newDestItemId = generateUUID();
+        db.prepare(`
+          INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, branch_id, created_at)
+          VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)
+        `).run(newDestItemId, sourceItem.name, sourceItem.category, sourceItem.unit, sourceItem.threshold, sourceItem.unit_price, destination_branch_id, new Date().toISOString());
+        destItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(newDestItemId);
+      }
+
+      const transferId = generateUUID();
+      const refCode = `TRN-${Math.floor(Math.random() * 90000) + 10000}`;
+
+      // 3. Deduct stock from source and create OUT movement
+      db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ?').run(qty, sourceItem.id);
+      db.prepare(`
+        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, transfer_id)
+        VALUES (?, ?, ?, 'OUT', ?, 'Branch Transfer', ?, ?, ?, ?)
+      `).run(generateUUID(), refCode, sourceItem.id, qty, req.user.id, source_branch_id, new Date().toISOString(), transferId);
+
+      // 4. Add stock to destination and create IN movement
+      db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ?').run(qty, destItem.id);
+      db.prepare(`
+        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, transfer_id)
+        VALUES (?, ?, ?, 'IN', ?, 'Branch Transfer', ?, ?, ?, ?)
+      `).run(generateUUID(), refCode, destItem.id, qty, req.user.id, destination_branch_id, new Date().toISOString(), transferId);
+
+      return { success: true, transfer_id: transferId };
+    });
+
+    const result = transferTransaction();
+    res.json(result);
+  } catch (error) {
+    if (error.message === 'Source item not found in the specified branch' || error.message === 'Insufficient stock at source branch') {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: error.message });
   }
 });
 

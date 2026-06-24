@@ -89,6 +89,7 @@
         <button class="nav-item" data-page="suppliers"><i data-lucide="truck"></i><span>Suppliers</span></button>
         <button class="nav-item" data-page="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reports</span></button>
         <button class="nav-item admin-only" data-page="users"><i data-lucide="users"></i><span>Users</span></button>
+        <button class="nav-item admin-only" data-page="branches"><i data-lucide="map"></i><span>Branches</span></button>
         <button class="nav-item" data-page="requests">
           <i data-lucide="git-pull-request"></i><span>Requests</span>
           <span id="adminPendingRequestsBadge" class="admin-only" style="display:none; margin-left:auto; background:var(--amber); color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px;">0</span>
@@ -119,6 +120,7 @@
           <h1 id="pageHeading">Inventory Dashboard</h1>
         </div>
         <div class="top-actions">
+          <button class="secondary-btn" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
           <label class="search-box">
             <i data-lucide="search"></i>
             <span class="sr-only">Search inventory</span>
@@ -291,6 +293,22 @@
         </div>
       </section>
 
+      <!-- ─── Branches Section ────────────────────────────── -->
+      <section class="section-branches" id="sectionBranches" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
+        <div class="card">
+          <div class="card-header">
+            <div><h3>Branch Management</h3><p>Manage multiple branch locations</p></div>
+            <button class="primary-btn" id="addBranchBtn"><i data-lucide="map-pin"></i>Add branch</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">Branch Name</th><th scope="col">Location</th><th scope="col">Address</th><th scope="col" style="text-align:right">Actions</th></tr></thead>
+              <tbody id="branchesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- Deletion Requests Section -->
       <section class="section-requests" id="sectionRequests" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
         <div class="view-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
@@ -366,30 +384,22 @@
           </span>
         </label>
         
-        <label class="file-upload-wrapper">
-          <span class="file-label">Product photo</span>
-          <div class="file-upload-box">
-            <i data-lucide="image" class="file-icon"></i>
-            <span class="file-name">Click to upload image</span>
-          </div>
-          <input type="file" name="productPhoto" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
-        </label>
         <div class="form-row">
           <label class="file-upload-wrapper">
-            <span class="file-label">Bill / Receipt</span>
+            <span class="file-label">Product photo (optional)</span>
             <div class="file-upload-box">
-              <i data-lucide="receipt" class="file-icon"></i>
-              <span class="file-name">Click to upload bill</span>
+              <i data-lucide="image" class="file-icon"></i>
+              <span class="file-name">Click to upload image</span>
             </div>
-            <input type="file" name="billImage" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
+            <input type="file" name="productPhoto" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
           </label>
           <label class="file-upload-wrapper">
-            <span class="file-label">GST Invoice</span>
+            <span class="file-label">Invoice</span>
             <div class="file-upload-box">
               <i data-lucide="file-text" class="file-icon"></i>
               <span class="file-name">Click to upload invoice</span>
             </div>
-            <input type="file" name="invoiceCopy" accept="application/pdf,image/*" class="file-input-hidden" onchange="updateFileName(this)">
+            <input type="file" name="invoiceCopy" accept="application/pdf" class="file-input-hidden" onchange="updateFileName(this)">
           </label>
         </div>
 
@@ -538,30 +548,22 @@
             </div>
             <div style="padding:12px; background:var(--bg-alt); border-radius:6px; margin-bottom:16px;">
               <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px;">Upload new files below to replace existing ones. Leave empty to keep existing files.</p>
-              <label class="file-upload-wrapper">
-                <span class="file-label">Product photo</span>
-                <div class="file-upload-box">
-                  <i data-lucide="image" class="file-icon"></i>
-                  <span class="file-name">Click to upload new image</span>
-                </div>
-                <input type="file" name="productPhoto" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
-              </label>
               <div class="form-row">
                 <label class="file-upload-wrapper">
-                  <span class="file-label">Bill / Receipt</span>
+                  <span class="file-label">Product photo (optional)</span>
                   <div class="file-upload-box">
-                    <i data-lucide="receipt" class="file-icon"></i>
-                    <span class="file-name">Click to upload new bill</span>
+                    <i data-lucide="image" class="file-icon"></i>
+                    <span class="file-name">Click to upload new image</span>
                   </div>
-                  <input type="file" name="billImage" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
+                  <input type="file" name="productPhoto" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
                 </label>
                 <label class="file-upload-wrapper">
-                  <span class="file-label">GST Invoice</span>
+                  <span class="file-label">Invoice</span>
                   <div class="file-upload-box">
                     <i data-lucide="file-text" class="file-icon"></i>
                     <span class="file-name">Click to upload new invoice</span>
                   </div>
-                  <input type="file" name="invoiceCopy" accept="application/pdf,image/*" class="file-input-hidden" onchange="updateFileName(this)">
+                  <input type="file" name="invoiceCopy" accept="application/pdf" class="file-input-hidden" onchange="updateFileName(this)">
                 </label>
               </div>
             </div>
@@ -656,6 +658,82 @@
     </section>
   </div>
 
+  <!-- ─── Add Branch Modal ────────────────────────── -->
+  <div class="modal-backdrop" id="addBranchModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="addBranchTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Organization</p><h2 id="addBranchTitle">Add Branch</h2></div>
+        <button class="icon-btn" id="closeAddBranchModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="addBranchForm" style="display:flex; flex-direction:column; gap:16px;">
+        <label>Branch Name<input required name="name" type="text" placeholder="e.g. Central Warehouse"></label>
+        <label>Location<input name="location" type="text" placeholder="e.g. City Name"></label>
+        <label>Address<textarea name="address" rows="2" placeholder="Full address..."></textarea></label>
+        <label>Pincode<input name="pincode" type="text" placeholder="e.g. 110001"></label>
+        <div class="modal-actions" style="margin-top:8px;">
+          <button type="button" class="secondary-btn" id="cancelAddBranchModal">Cancel</button>
+          <button class="primary-btn" type="submit">Create Branch</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- ─── Edit Branch Modal ────────────────────────── -->
+  <div class="modal-backdrop" id="editBranchModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="editBranchTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Organization</p><h2 id="editBranchTitle">Edit Branch</h2></div>
+        <button class="icon-btn" id="closeEditBranchModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="editBranchForm" style="display:flex; flex-direction:column; gap:16px;">
+        <label>Branch Name<input required name="name" id="editBranchName" type="text"></label>
+        <label>Location<input name="location" id="editBranchLocation" type="text"></label>
+        <label>Address<textarea name="address" id="editBranchAddress" rows="2"></textarea></label>
+        <label>Pincode<input name="pincode" id="editBranchPincode" type="text"></label>
+        <div class="modal-actions" style="margin-top:8px;">
+          <button type="button" class="secondary-btn" id="cancelEditBranchModal">Cancel</button>
+          <button class="primary-btn" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- ─── Transfer Stock Modal ────────────────────────── -->
+  <div class="modal-backdrop" id="transferStockModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="transferModalTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Inventory Transfer</p><h2 id="transferModalTitle">Transfer Stock</h2></div>
+        <button class="icon-btn" id="closeTransferModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      <form id="transferStockForm" style="display:flex; flex-direction:column; gap:16px;">
+        <label>Item
+          <select required name="inventory_id" id="transferItemSelect">
+            <option value="">Select an item...</option>
+          </select>
+        </label>
+        <div class="form-row">
+          <label>Source Branch
+            <select required name="source_branch_id" id="transferSourceBranch">
+              <option value="" disabled selected>Select Source...</option>
+            </select>
+          </label>
+          <label>Destination Branch
+            <select required name="destination_branch_id" id="transferDestinationBranch">
+              <option value="" disabled selected>Select Destination...</option>
+            </select>
+          </label>
+        </div>
+        <label>Quantity to Transfer
+          <input required name="quantity" type="number" min="1" value="1">
+        </label>
+        <div class="modal-actions" style="margin-top:8px;">
+          <button type="button" class="secondary-btn" id="cancelTransferModal">Cancel</button>
+          <button class="primary-btn" type="submit">Complete Transfer</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <!-- ─── Add Movement Modal ────────────────────────── -->
   <div class="modal-backdrop" id="addMovementModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="movementModalTitle">
@@ -689,12 +767,40 @@
             </div>
             <!-- For OUTWARD — program dropdown -->
             <div id="programField" style="display:none">
-              <label>Issued To (Program)
+              <label>Issued To (Program - Optional)
                 <select name="party_name" id="movementProgramSelect">
                   <option value="">Select program...</option>
                 </select>
               </label>
             </div>
+          </div>
+        </div>
+        
+        <div id="recipientField" style="display:none">
+          <label>Recipient (who received this - Optional)
+            <input type="text" name="recipient_name" id="movementRecipientInput" placeholder="e.g. John Doe, Partner NGO...">
+          </label>
+        </div>
+        
+        <div id="inwardFilesField" style="display:none; padding:12px; background:var(--bg-alt); border-radius:6px; margin-bottom:16px;">
+          <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px;">Upload files to attach to this item.</p>
+          <div class="form-row">
+            <label class="file-upload-wrapper">
+              <span class="file-label">Product photo (optional)</span>
+              <div class="file-upload-box">
+                <i data-lucide="image" class="file-icon"></i>
+                <span class="file-name">Click to upload image</span>
+              </div>
+              <input type="file" name="productPhoto" accept="image/*" class="file-input-hidden" onchange="updateFileName(this)">
+            </label>
+            <label class="file-upload-wrapper">
+              <span class="file-label">Invoice (optional)</span>
+              <div class="file-upload-box">
+                <i data-lucide="file-text" class="file-icon"></i>
+                <span class="file-name">Click to upload invoice</span>
+              </div>
+              <input type="file" name="invoiceCopy" accept="application/pdf" class="file-input-hidden" onchange="updateFileName(this)">
+            </label>
           </div>
         </div>
         

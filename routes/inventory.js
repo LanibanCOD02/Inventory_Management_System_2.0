@@ -61,7 +61,7 @@ router.get('/alerts', authenticateToken, async (req, res) => {
 // Add new item
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, category, stock, unit, threshold, unit_price, product_photo_url, bill_image_url, invoice_pdf_url, branch_id, default_supplier } = req.body;
+    const { name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, branch_id, default_supplier, program } = req.body;
 
     const resolvedBranchId = getBranchId(req.user, branch_id);
 
@@ -87,9 +87,9 @@ router.post('/', authenticateToken, async (req, res) => {
         itemId = existing.id;
         db.prepare(`
           UPDATE inventory_items 
-          SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, bill_image_url = ?, invoice_pdf_url = ?, deleted_at = NULL 
+          SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, deleted_at = NULL 
           WHERE id = ?
-        `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, bill_image_url, invoice_pdf_url, itemId);
+        `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, itemId);
       } else {
         return res.status(400).json({ error: 'An item with this exact name already exists in active inventory.' });
       }
@@ -97,9 +97,9 @@ router.post('/', authenticateToken, async (req, res) => {
       // Insert new
       itemId = generateUUID();
       db.prepare(`
-        INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, bill_image_url, invoice_pdf_url, branch_id, default_supplier, created_at) 
+        INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, branch_id, default_supplier, program, created_at) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, bill_image_url, invoice_pdf_url, resolvedBranchId || null, default_supplier || null, new Date().toISOString());
+      `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, resolvedBranchId || null, default_supplier || null, program || null, new Date().toISOString());
     }
 
     const insertedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(itemId);
@@ -247,7 +247,7 @@ router.post('/:id/movement', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, category, unit, threshold, unit_price, product_photo_url, bill_image_url, invoice_pdf_url, default_supplier, program, branch_id } = req.body;
+    const { name, category, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, default_supplier, program, branch_id } = req.body;
 
     const updates = [];
     const params = [];
@@ -258,7 +258,6 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (threshold !== undefined) { updates.push('threshold = ?'); params.push(Number(threshold)); }
     if (unit_price !== undefined) { updates.push('unit_price = ?'); params.push(Number(unit_price)); }
     if (product_photo_url !== undefined) { updates.push('product_photo_url = ?'); params.push(product_photo_url); }
-    if (bill_image_url !== undefined) { updates.push('bill_image_url = ?'); params.push(bill_image_url); }
     if (invoice_pdf_url !== undefined) { updates.push('invoice_pdf_url = ?'); params.push(invoice_pdf_url); }
     if (default_supplier !== undefined) { updates.push('default_supplier = ?'); params.push(default_supplier); }
     if (program !== undefined) { updates.push('program = ?'); params.push(program); }

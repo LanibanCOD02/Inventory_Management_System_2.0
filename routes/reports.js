@@ -205,7 +205,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
 
     // 3. Accumulate movements DURING the selected month
     const movementsDuring = db.prepare(`
-      SELECT m.item_id, m.movement_type, m.quantity, m.party_name, m.created_at, u.username as recorded_by 
+      SELECT m.item_id, m.movement_type, m.quantity, m.party_name, m.created_at, m.recipient_name, u.username as recorded_by 
       FROM inventory_movements m
       LEFT JOIN users u ON m.created_by = u.id
       WHERE m.created_at >= ? AND m.created_at < ? 
@@ -308,6 +308,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
           { header: 'Movement Type', key: 'type', width: 15 },
           { header: 'Quantity', key: 'quantity', width: 15 },
           { header: 'Supplier/Party Name', key: 'party', width: 30 },
+          { header: 'Recipient', key: 'recipient', width: 25 },
           { header: 'Recorded By', key: 'recorded_by', width: 20 }
         ];
         detailSheet.getRow(1).font = { bold: true };
@@ -323,6 +324,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
               type: m.movement_type,
               quantity: m.quantity,
               party: m.party_name || '-',
+              recipient: m.recipient_name || '-',
               recorded_by: m.recorded_by || '-'
             });
           });
