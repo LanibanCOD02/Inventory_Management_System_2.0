@@ -2169,7 +2169,7 @@ window.deactivateBranch = async function(id) {
     showToast(err.message, 'error');
   }
 };
-\n
+
 // ─── Transfer Stock Logic ──────────────────────────────
 const transferStockBtn = document.getElementById('transferStockBtn');
 const transferStockModalBackdrop = document.getElementById('transferStockModalBackdrop');
