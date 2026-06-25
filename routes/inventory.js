@@ -336,12 +336,18 @@ router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
     if (existing) return res.status(400).json({ error: 'A deletion request is already pending for this item.' });
     
     const reqId = generateUUID();
-    const { reason, reason_details, resale_price } = req.body;
+    const { reason, reason_details, resale_price, quantity } = req.body;
+    
+    // Validate quantity
+    const reqQty = parseInt(quantity, 10);
+    if (!reqQty || reqQty <= 0 || reqQty > item.stock) {
+      return res.status(400).json({ error: `Invalid quantity. Must be between 1 and ${item.stock}` });
+    }
     
     db.prepare(`
-      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at, reason, reason_details, resale_price)
-      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)
-    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString(), reason || null, reason_details || null, resale_price || null);
+      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at, reason, reason_details, resale_price, quantity)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString(), reason || null, reason_details || null, resale_price || null, reqQty);
     
     res.status(201).json({ message: 'Deletion request submitted.' });
   } catch (error) {
@@ -357,14 +363,28 @@ router.post('/deletion-requests/:reqId/approve', authenticateToken, requireAdmin
     if (!request) return res.status(404).json({ error: 'Request not found' });
     if (request.status !== 'pending') return res.status(400).json({ error: 'Request is no longer pending' });
     
-    // Start transaction to approve and soft-delete
+    // Get the original item to check its stock
+    const item = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(request.item_id);
+    if (!item) return res.status(404).json({ error: 'Associated item not found' });
+    
+    const reqQty = request.quantity || item.stock; // fallback if quantity wasn't set (e.g. old requests)
+    
+    // Start transaction to approve and soft-delete/reduce
     const approveTx = db.transaction(() => {
       // 1. Update request
       db.prepare(`UPDATE deletion_requests SET status = 'approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?`)
         .run(req.user.id, new Date().toISOString(), reqId);
-      // 2. Soft-delete item
-      db.prepare('UPDATE inventory_items SET deleted_at = ? WHERE id = ?')
-        .run(new Date().toISOString(), request.item_id);
+        
+      // 2. Reduce stock or soft-delete
+      if (reqQty >= item.stock) {
+        // Full quantity requested -> soft delete
+        db.prepare('UPDATE inventory_items SET deleted_at = ?, stock = 0 WHERE id = ?')
+          .run(new Date().toISOString(), request.item_id);
+      } else {
+        // Partial quantity requested -> reduce stock only
+        db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ?')
+          .run(reqQty, request.item_id);
+      }
     });
     approveTx();
     

@@ -14,5 +14,6 @@ try { db.exec("ALTER TABLE branches ADD COLUMN deleted_at TEXT"); } catch (e) { 
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason TEXT"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason_details TEXT"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN resale_price REAL"); } catch (e) { /* Ignore if exists */ }
+try { db.exec("ALTER TABLE deletion_requests ADD COLUMN quantity INTEGER"); } catch (e) { /* Ignore if exists */ }
 
 module.exports = db;

@@ -326,6 +326,7 @@
                   <th>Item</th>
                   <th>Requested By</th>
                   <th>Branch</th>
+                  <th>Qty</th>
                   <th>Reason</th>
                   <th>Status</th>
                   <th>Date</th>
@@ -333,7 +334,7 @@
                 </tr>
               </thead>
               <tbody id="requestsTableBody">
-                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
+                <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
               </tbody>
             </table>
           </div>
@@ -904,16 +905,22 @@
       </div>
       <form id="deletionRequestForm" style="display:flex; flex-direction:column; gap:16px;">
         <input type="hidden" id="delReqItemId">
+        <input type="hidden" id="delReqMaxStock">
         
-        <label>Reason for deletion
-          <select id="delReqReason" required name="reason">
-            <option value="">Select a reason...</option>
-            <option value="mistake">Mistake / Data Entry Error</option>
-            <option value="scrap">Scrap / Damaged / Expired</option>
-            <option value="resale">Resale</option>
-            <option value="other">Other (please specify)</option>
-          </select>
-        </label>
+        <div class="form-row">
+          <label style="flex: 2">Reason for deletion
+            <select id="delReqReason" required name="reason">
+              <option value="">Select a reason...</option>
+              <option value="mistake">Mistake / Data Entry Error</option>
+              <option value="scrap">Scrap / Damaged / Expired</option>
+              <option value="resale">Resale</option>
+              <option value="other">Other (please specify)</option>
+            </select>
+          </label>
+          <label style="flex: 1">Quantity
+            <input type="number" id="delReqQuantity" required min="1" step="1">
+          </label>
+        </div>
 
         <div id="delReqPriceWrapper" style="display:none;">
           <label>Resale Price (₹)

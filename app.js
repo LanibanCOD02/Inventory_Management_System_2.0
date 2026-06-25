@@ -962,6 +962,7 @@ function openItemDetail(id) {
   renderIcons(document.getElementById('itemDetailModalBackdrop'));
   document.getElementById("itemDetailModalBackdrop").classList.add("active");
   document.getElementById("itemDetailModalBackdrop").dataset.itemId = id;
+  document.getElementById("itemDetailModalBackdrop").dataset.itemStock = item.stock;
 }
 
 function closeItemDetail() {
@@ -1048,7 +1049,8 @@ if (document.getElementById("deleteItemBtn")) {
 if (document.getElementById("requestDeletionBtn")) {
   document.getElementById("requestDeletionBtn").addEventListener("click", () => {
     const id = document.getElementById("itemDetailModalBackdrop").dataset.itemId;
-    requestDeletion(id);
+    const stock = document.getElementById("itemDetailModalBackdrop").dataset.itemStock;
+    requestDeletion(id, stock);
   });
 }
 
@@ -2024,6 +2026,7 @@ async function loadRequests() {
         <td data-label="Item"><div style="display:flex;align-items:center;gap:12px;"><img src="${req.product_photo_url || 'https://images.unsplash.com/photo-1584308666744-24d5e47854f9?w=100&q=80'}" alt="${req.item_name}" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;"><span style="font-weight:500;color:var(--text)">${req.item_name}</span></div></td>
         <td data-label="Requested By">${req.requested_by_name}</td>
         <td data-label="Branch">${req.branch_name}</td>
+        <td data-label="Qty"><strong>${req.quantity || 'All'}</strong></td>
         <td data-label="Reason">${reasonHtml}</td>
         <td data-label="Status"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor};text-transform:capitalize;">${req.status}</span></td>
         <td data-label="Date">${date}</td>
@@ -2047,6 +2050,9 @@ const delReqDetailsWrapper = document.getElementById('delReqDetailsWrapper');
 const delReqDetailsLabel = document.getElementById('delReqDetailsLabel');
 const delReqDetails = document.getElementById('delReqDetails');
 const delReqItemId = document.getElementById('delReqItemId');
+
+const delReqQuantity = document.getElementById('delReqQuantity');
+const delReqMaxStock = document.getElementById('delReqMaxStock');
 
 function closeDeletionRequestModalFunc() {
   deletionRequestModalBackdrop.classList.remove('active');
@@ -2089,7 +2095,8 @@ if (deletionRequestForm) {
     const body = {
       reason: delReqReason.value,
       reason_details: delReqDetails.value,
-      resale_price: delReqPrice.value
+      resale_price: delReqPrice.value,
+      quantity: delReqQuantity.value
     };
     
     try {
@@ -2110,8 +2117,13 @@ if (deletionRequestForm) {
   });
 }
 
-function requestDeletion(itemId) {
+function requestDeletion(itemId, maxStock = 1) {
   delReqItemId.value = itemId;
+  delReqMaxStock.value = maxStock;
+  if(delReqQuantity) {
+    delReqQuantity.max = maxStock;
+    delReqQuantity.value = maxStock;
+  }
   deletionRequestModalBackdrop.classList.add('active');
 }
 

@@ -338,6 +338,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
       { header: 'Date Approved', key: 'date_approved', width: 20 },
       { header: 'Branch', key: 'branch', width: 25 },
       { header: 'Item Name', key: 'item_name', width: 30 },
+      { header: 'Quantity', key: 'quantity', width: 15 },
       { header: 'Resale Price (₹)', key: 'price', width: 20 },
       { header: 'Notes', key: 'notes', width: 40 },
       { header: 'Approved By', key: 'approved_by', width: 20 }
@@ -345,7 +346,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     resaleSheet.getRow(1).font = { bold: true };
 
     const resales = db.prepare(`
-      SELECT dr.reviewed_at, b.name as branch_name, i.name as item_name, dr.resale_price, dr.reason_details, u.username as approved_by_name
+      SELECT dr.reviewed_at, b.name as branch_name, i.name as item_name, dr.quantity, dr.resale_price, dr.reason_details, u.username as approved_by_name
       FROM deletion_requests dr
       JOIN inventory_items i ON dr.item_id = i.id
       JOIN branches b ON dr.branch_id = b.id
@@ -366,6 +367,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
           date_approved: r.reviewed_at ? r.reviewed_at.split('T')[0] : '-',
           branch: r.branch_name,
           item_name: r.item_name,
+          quantity: r.quantity || 'All',
           price: r.resale_price || 0,
           notes: r.reason_details || '-',
           approved_by: r.approved_by_name || '-'
