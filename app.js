@@ -1417,13 +1417,20 @@ async function loadCategories() {
 }
 
 async function loadUsers() {
-  document.getElementById('usersBody').innerHTML = skeletonRows(4, 4);
+  document.getElementById('usersBody').innerHTML = skeletonRows(5, 4);
   try {
-    const data = await cachedFetch('/auth/users');
+    const [data, branches] = await Promise.all([
+      cachedFetch('/auth/users'),
+      cachedFetch('/branches')
+    ]);
+    const branchMap = {};
+    branches.forEach(b => branchMap[b.id] = b.name);
+    
     const rows = data.map(u => `
       <tr>
         <td data-label="Username"><strong>${u.username}</strong></td>
         <td data-label="Role"><span class="status ${u.role === 'Admin' ? 'healthy' : 'in-stock'}">${u.role}</span></td>
+        <td data-label="Branch">${u.branch_id ? (branchMap[u.branch_id] || u.branch_id) : '-'}</td>
         <td data-label="Added On">${new Date(u.created_at).toLocaleDateString()}</td>
         <td data-label="Actions" style="text-align:right;">
           <div style="display:flex; justify-content:flex-end; gap:8px;">
@@ -1433,7 +1440,7 @@ async function loadUsers() {
         </td>
       </tr>
     `).join("");
-    document.getElementById('usersBody').innerHTML = rows || `<tr><td colspan="4">
+    document.getElementById('usersBody').innerHTML = rows || `<tr><td colspan="5">
     <div style="text-align:center;padding:48px 20px">
       <div style="width:48px;height:48px;border-radius:12px;background:var(--teal-50);display:grid;place-items:center;margin:0 auto 12px"><i data-lucide="users" style="width:22px;height:22px;color:var(--teal)"></i></div>
       <p style="font:600 14px 'Outfit',sans-serif;color:var(--text);margin:0 0 4px">No users yet</p>
@@ -1442,7 +1449,7 @@ async function loadUsers() {
   </td></tr>`;
     renderIcons(document.getElementById('usersBody'));
   } catch (err) {
-    document.getElementById('usersBody').innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--danger)">Error loading users: ${err.message}</td></tr>`;
+    document.getElementById('usersBody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--danger)">Error loading users: ${err.message}</td></tr>`;
   }
 }
 
