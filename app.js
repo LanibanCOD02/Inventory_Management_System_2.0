@@ -1417,7 +1417,7 @@ async function loadCategories() {
 }
 
 async function loadUsers() {
-  document.getElementById('usersBody').innerHTML = skeletonRows(5, 4);
+  document.getElementById('usersBody').innerHTML = skeletonRows(4, 5);
   try {
     const [data, branches] = await Promise.all([
       cachedFetch('/auth/users'),
