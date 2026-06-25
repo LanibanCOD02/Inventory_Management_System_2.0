@@ -119,6 +119,33 @@ const searchSuggestions = document.createElement('div');
 searchSuggestions.className = 'search-suggestions';
 document.querySelector('.search-box')?.appendChild(searchSuggestions);
 
+// --- Info Modal ---
+const infoModalBackdrop = document.getElementById('infoModalBackdrop');
+const infoModalMessage = document.getElementById('infoModalMessage');
+
+window.showInfoModal = function(message) {
+  if (infoModalMessage) infoModalMessage.textContent = message;
+  if (infoModalBackdrop) {
+    renderIcons(infoModalBackdrop);
+    infoModalBackdrop.classList.add('active');
+  }
+};
+
+const closeInfoModal = () => {
+  if (infoModalBackdrop) infoModalBackdrop.classList.remove('active');
+};
+
+const infoModalCloseIcon = document.getElementById('infoModalCloseIcon');
+const infoModalCloseBtn = document.getElementById('infoModalCloseBtn');
+
+if (infoModalCloseIcon) infoModalCloseIcon.addEventListener('click', closeInfoModal);
+if (infoModalCloseBtn) infoModalCloseBtn.addEventListener('click', closeInfoModal);
+if (infoModalBackdrop) {
+  infoModalBackdrop.addEventListener('click', e => {
+    if (e.target === infoModalBackdrop) closeInfoModal();
+  });
+}
+
 // ─── Toast ───────────────────────────────────────
 window.showToast = function(msg, type = 'success') {
   const container = document.getElementById('toastContainer');
@@ -2011,11 +2038,23 @@ async function loadRequests() {
       }
       
       let reasonHtml = `<span style="font-size:12px; font-weight:500; text-transform:capitalize;">${req.reason || 'N/A'}</span>`;
+      
+      const formatDetails = (details) => {
+        if (!details) return '';
+        const maxLen = 60;
+        if (details.length > maxLen) {
+          const truncated = details.substring(0, maxLen) + '...';
+          const safeDetails = encodeURIComponent(details);
+          return `<span style="cursor:pointer; color:var(--teal-600); text-decoration:underline" title="View full notes" onclick="showInfoModal(decodeURIComponent('${safeDetails}'))">${truncated}</span>`;
+        }
+        return details;
+      };
+
       if (req.reason === 'resale') {
         reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">Price: ₹${req.resale_price}</span>`;
-        if (req.reason_details) reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">Notes: ${req.reason_details}</span>`;
+        if (req.reason_details) reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">Notes: ${formatDetails(req.reason_details)}</span>`;
       } else if (req.reason === 'other' && req.reason_details) {
-        reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">${req.reason_details}</span>`;
+        reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">${formatDetails(req.reason_details)}</span>`;
       } else if (req.reason === 'mistake') {
         reasonHtml = `<span style="font-size:12px; font-weight:500;">Mistake</span>`;
       } else if (req.reason === 'scrap') {

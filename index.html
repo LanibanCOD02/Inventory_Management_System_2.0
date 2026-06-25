@@ -323,14 +323,14 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Requested By</th>
-                  <th>Branch</th>
-                  <th>Qty</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th style="text-align:right;">Actions</th>
+                  <th style="width:15%">Item</th>
+                  <th style="width:12%">Requested By</th>
+                  <th style="width:20%">Branch</th>
+                  <th style="width:6%">Qty</th>
+                  <th style="width:22%">Reason</th>
+                  <th style="width:10%">Status</th>
+                  <th style="width:10%">Date</th>
+                  <th style="width:5%; text-align:right;">Actions</th>
                 </tr>
               </thead>
               <tbody id="requestsTableBody">
@@ -830,6 +830,20 @@
       <div class="modal-actions">
         <button class="secondary-btn" id="confirmModalCancel">Cancel</button>
         <button class="primary-btn" id="confirmModalOk" style="background:var(--danger,#dc2626);border-color:var(--danger,#dc2626)">Delete</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Custom Info Modal for long notes -->
+  <div class="modal-backdrop" id="infoModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle" style="width:min(400px,90vw)">
+      <div class="modal-heading" style="margin-bottom:16px">
+        <div><p class="eyebrow">Details</p><h2 id="infoModalTitle">Notes</h2></div>
+        <button class="icon-btn" id="infoModalCloseIcon" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      <div id="infoModalMessage" style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;white-space:pre-wrap;word-break:break-word;max-height:60vh;overflow-y:auto;"></div>
+      <div class="modal-actions">
+        <button class="secondary-btn" id="infoModalCloseBtn">Close</button>
       </div>
     </section>
   </div>
