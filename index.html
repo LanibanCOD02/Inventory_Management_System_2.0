@@ -326,13 +326,14 @@
                   <th>Item</th>
                   <th>Requested By</th>
                   <th>Branch</th>
+                  <th>Reason</th>
                   <th>Status</th>
                   <th>Date</th>
-                  <th class="text-right">Actions</th>
+                  <th style="text-align:right;">Actions</th>
                 </tr>
               </thead>
               <tbody id="requestsTableBody">
-                <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
+                <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
               </tbody>
             </table>
           </div>
@@ -893,5 +894,45 @@
       </form>
     </section>
   </div>
+
+  <!-- Deletion Request Modal -->
+  <div class="modal-backdrop" id="deletionRequestModalBackdrop">
+    <section class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Request Deletion</h2>
+        <button class="icon-btn" id="closeDeletionRequestModal" title="Close"><i data-lucide="x"></i></button>
+      </div>
+      <form id="deletionRequestForm" style="display:flex; flex-direction:column; gap:16px;">
+        <input type="hidden" id="delReqItemId">
+        
+        <div>
+          <label style="display:block; margin-bottom:8px; font-size:13px; font-weight:600; color:var(--text);">Reason for deletion</label>
+          <select id="delReqReason" required style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--white); color:var(--text);">
+            <option value="">Select a reason...</option>
+            <option value="mistake">Mistake / Data Entry Error</option>
+            <option value="scrap">Scrap / Damaged / Expired</option>
+            <option value="resale">Resale</option>
+            <option value="other">Other (please specify)</option>
+          </select>
+        </div>
+
+        <div id="delReqPriceWrapper" style="display:none;">
+          <label style="display:block; margin-bottom:8px; font-size:13px; font-weight:600; color:var(--text);">Resale Price (₹)</label>
+          <input type="number" id="delReqPrice" min="0" step="0.01" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--white); color:var(--text);" placeholder="e.g. 500">
+        </div>
+
+        <div id="delReqDetailsWrapper" style="display:none;">
+          <label id="delReqDetailsLabel" style="display:block; margin-bottom:8px; font-size:13px; font-weight:600; color:var(--text);">Details</label>
+          <textarea id="delReqDetails" rows="3" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--white); color:var(--text);" placeholder="Enter details..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+          <button type="button" class="secondary-btn" id="cancelDeletionRequestModal">Cancel</button>
+          <button class="primary-btn" type="submit">Submit Request</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
 </body>
 </html>

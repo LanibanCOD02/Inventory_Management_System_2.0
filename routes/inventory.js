@@ -336,10 +336,12 @@ router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
     if (existing) return res.status(400).json({ error: 'A deletion request is already pending for this item.' });
     
     const reqId = generateUUID();
+    const { reason, reason_details, resale_price } = req.body;
+    
     db.prepare(`
-      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at)
-      VALUES (?, ?, ?, ?, 'pending', ?)
-    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString());
+      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at, reason, reason_details, resale_price)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString(), reason || null, reason_details || null, resale_price || null);
     
     res.status(201).json({ message: 'Deletion request submitted.' });
   } catch (error) {

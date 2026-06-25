@@ -332,6 +332,53 @@ router.get('/movements', authenticateToken, async (req, res) => {
       }
     }
 
+    // === Add Resale Log Sheet ===
+    const resaleSheet = workbook.addWorksheet('Resale Log');
+    resaleSheet.columns = [
+      { header: 'Date Approved', key: 'date_approved', width: 20 },
+      { header: 'Branch', key: 'branch', width: 25 },
+      { header: 'Item Name', key: 'item_name', width: 30 },
+      { header: 'Resale Price (₹)', key: 'price', width: 20 },
+      { header: 'Notes', key: 'notes', width: 40 },
+      { header: 'Approved By', key: 'approved_by', width: 20 }
+    ];
+    resaleSheet.getRow(1).font = { bold: true };
+
+    const resales = db.prepare(`
+      SELECT dr.reviewed_at, b.name as branch_name, i.name as item_name, dr.resale_price, dr.reason_details, u.username as approved_by_name
+      FROM deletion_requests dr
+      JOIN inventory_items i ON dr.item_id = i.id
+      JOIN branches b ON dr.branch_id = b.id
+      LEFT JOIN users u ON dr.reviewed_by = u.id
+      WHERE dr.reason = 'resale' AND dr.status = 'approved'
+      AND dr.reviewed_at >= ? AND dr.reviewed_at < ?
+      AND ${condition.replace(/branch_id/g, 'dr.branch_id')}
+      ORDER BY dr.reviewed_at ASC
+    `).all(startDate, endDate, ...params);
+
+    if (resales.length === 0) {
+      resaleSheet.addRow(['No resales recorded this month.']);
+    } else {
+      let totalResalePrice = 0;
+      resales.forEach(r => {
+        totalResalePrice += (r.resale_price || 0);
+        resaleSheet.addRow({
+          date_approved: r.reviewed_at ? r.reviewed_at.split('T')[0] : '-',
+          branch: r.branch_name,
+          item_name: r.item_name,
+          price: r.resale_price || 0,
+          notes: r.reason_details || '-',
+          approved_by: r.approved_by_name || '-'
+        });
+      });
+      resaleSheet.addRow({}); // Empty row
+      const totalRow = resaleSheet.addRow({
+        item_name: 'TOTAL RESALE INCOME:',
+        price: totalResalePrice
+      });
+      totalRow.font = { bold: true };
+    }
+
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="Movement_History_${year}_${month}.xlsx"`);
     

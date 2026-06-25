@@ -2000,10 +2000,23 @@ async function loadRequests() {
         `;
       }
       
+      let reasonHtml = `<span style="font-size:12px; font-weight:500; text-transform:capitalize;">${req.reason || 'N/A'}</span>`;
+      if (req.reason === 'resale') {
+        reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">Price: ₹${req.resale_price}</span>`;
+        if (req.reason_details) reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">Notes: ${req.reason_details}</span>`;
+      } else if (req.reason === 'other' && req.reason_details) {
+        reasonHtml += `<br><span style="font-size:11px; color:var(--text-light)">${req.reason_details}</span>`;
+      } else if (req.reason === 'mistake') {
+        reasonHtml = `<span style="font-size:12px; font-weight:500;">Mistake</span>`;
+      } else if (req.reason === 'scrap') {
+        reasonHtml = `<span style="font-size:12px; font-weight:500;">Scrap</span>`;
+      }
+      
       return `<tr>
         <td data-label="Item"><div style="display:flex;align-items:center;gap:12px;"><img src="${req.product_photo_url || 'https://images.unsplash.com/photo-1584308666744-24d5e47854f9?w=100&q=80'}" alt="${req.item_name}" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover;"><span style="font-weight:500;color:var(--text)">${req.item_name}</span></div></td>
         <td data-label="Requested By">${req.requested_by_name}</td>
         <td data-label="Branch">${req.branch_name}</td>
+        <td data-label="Reason">${reasonHtml}</td>
         <td data-label="Status"><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}20;color:${statusColor};text-transform:capitalize;">${req.status}</span></td>
         <td data-label="Date">${date}</td>
         <td data-label="Actions" class="text-right" style="text-align:right;">${actions}</td>
@@ -2015,18 +2028,83 @@ async function loadRequests() {
   }
 }
 
-async function requestDeletion(itemId) {
-  if (!confirm("Submit a request to delete this item?")) return;
-  try {
-    const token = localStorage.getItem('msc_token');
-    const res = await fetch(`${API_BASE}/inventory/${itemId}/request-deletion`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
-    const data = await res.json();
-    if(!res.ok) throw new Error(data.error || "Failed to submit request");
-    showToast("Deletion request submitted.", "success");
-    closeModal(); closeItemDetail();
-    if(document.querySelector(".nav-item.active")?.dataset.page === 'dashboard') loadInventory();
-    else if(document.querySelector(".nav-item.active")?.dataset.page === 'requests') loadRequests();
-  } catch(e) { showToast(e.message, "error"); }
+const deletionRequestModalBackdrop = document.getElementById('deletionRequestModalBackdrop');
+const closeDeletionRequestModal = document.getElementById('closeDeletionRequestModal');
+const cancelDeletionRequestModal = document.getElementById('cancelDeletionRequestModal');
+const deletionRequestForm = document.getElementById('deletionRequestForm');
+const delReqReason = document.getElementById('delReqReason');
+const delReqPriceWrapper = document.getElementById('delReqPriceWrapper');
+const delReqPrice = document.getElementById('delReqPrice');
+const delReqDetailsWrapper = document.getElementById('delReqDetailsWrapper');
+const delReqDetailsLabel = document.getElementById('delReqDetailsLabel');
+const delReqDetails = document.getElementById('delReqDetails');
+const delReqItemId = document.getElementById('delReqItemId');
+
+function closeDeletionRequestModalFunc() {
+  deletionRequestModalBackdrop.classList.remove('active');
+  deletionRequestForm.reset();
+  delReqPriceWrapper.style.display = 'none';
+  delReqPrice.required = false;
+  delReqDetailsWrapper.style.display = 'none';
+  delReqDetails.required = false;
+}
+
+if (closeDeletionRequestModal) closeDeletionRequestModal.addEventListener('click', closeDeletionRequestModalFunc);
+if (cancelDeletionRequestModal) cancelDeletionRequestModal.addEventListener('click', closeDeletionRequestModalFunc);
+
+if (delReqReason) {
+  delReqReason.addEventListener('change', () => {
+    const reason = delReqReason.value;
+    
+    delReqPriceWrapper.style.display = reason === 'resale' ? 'block' : 'none';
+    delReqPrice.required = reason === 'resale';
+    
+    if (reason === 'other') {
+      delReqDetailsWrapper.style.display = 'block';
+      delReqDetailsLabel.textContent = 'Please specify reason';
+      delReqDetails.required = true;
+    } else if (reason === 'resale') {
+      delReqDetailsWrapper.style.display = 'block';
+      delReqDetailsLabel.textContent = 'Notes (Optional - e.g. buyer name)';
+      delReqDetails.required = false;
+    } else {
+      delReqDetailsWrapper.style.display = 'none';
+      delReqDetails.required = false;
+    }
+  });
+}
+
+if (deletionRequestForm) {
+  deletionRequestForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const itemId = delReqItemId.value;
+    const body = {
+      reason: delReqReason.value,
+      reason_details: delReqDetails.value,
+      resale_price: delReqPrice.value
+    };
+    
+    try {
+      const token = localStorage.getItem('msc_token');
+      const res = await fetch(`${API_BASE}/inventory/${itemId}/request-deletion`, {
+        method: 'POST',
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || "Failed to submit request");
+      showToast("Deletion request submitted.", "success");
+      closeDeletionRequestModalFunc();
+      closeItemDetail();
+      if(document.querySelector(".nav-item.active")?.dataset.page === 'dashboard') loadInventory();
+      else if(document.querySelector(".nav-item.active")?.dataset.page === 'requests') loadRequests();
+    } catch(e) { showToast(e.message, "error"); }
+  });
+}
+
+function requestDeletion(itemId) {
+  delReqItemId.value = itemId;
+  deletionRequestModalBackdrop.classList.add('active');
 }
 
 async function approveDeletion(reqId) {

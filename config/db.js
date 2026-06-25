@@ -11,5 +11,8 @@ db.pragma('journal_mode = WAL');
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN transfer_id TEXT"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN recipient_name TEXT"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE branches ADD COLUMN deleted_at TEXT"); } catch (e) { /* Ignore if exists */ }
+try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason TEXT"); } catch (e) { /* Ignore if exists */ }
+try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason_details TEXT"); } catch (e) { /* Ignore if exists */ }
+try { db.exec("ALTER TABLE deletion_requests ADD COLUMN resale_price REAL"); } catch (e) { /* Ignore if exists */ }
 
 module.exports = db;
