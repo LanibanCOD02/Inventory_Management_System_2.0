@@ -1717,7 +1717,8 @@ if(document.getElementById("addItemBtn")) document.getElementById("addItemBtn").
 if(document.getElementById("quickAdd")) document.getElementById("quickAdd").addEventListener("click", openModal);
 if(document.getElementById("closeModal")) document.getElementById("closeModal").addEventListener("click", closeModal);
 if(document.getElementById("cancelModal")) document.getElementById("cancelModal").addEventListener("click", closeModal);
-if(modal) modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
+// backdrop click to close is disabled for Add Item per request
+// if(modal) modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 
 const backupModal = document.getElementById("backupModalBackdrop");
 if(document.getElementById("closeBackupModal")) document.getElementById("closeBackupModal").addEventListener("click", () => backupModal.classList.remove("active"));
