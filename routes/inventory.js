@@ -331,17 +331,23 @@ router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden: Item belongs to another branch' });
     }
     
-    // Check if pending request already exists
-    const existing = db.prepare('SELECT * FROM deletion_requests WHERE item_id = ? AND status = ?').get(id, 'pending');
-    if (existing) return res.status(400).json({ error: 'A deletion request is already pending for this item.' });
-    
     const reqId = generateUUID();
     const { reason, reason_details, resale_price, quantity } = req.body;
     
+    // Calculate how much stock is already tied up in pending requests
+    // If an old request doesn't have a quantity, it means the full stock was requested
+    const pendingSumResult = db.prepare('SELECT SUM(IFNULL(quantity, ?)) as total_pending FROM deletion_requests WHERE item_id = ? AND status = ?').get(item.stock, id, 'pending');
+    const totalPending = pendingSumResult.total_pending || 0;
+    
     // Validate quantity
     const reqQty = parseInt(quantity, 10);
-    if (!reqQty || reqQty <= 0 || reqQty > item.stock) {
-      return res.status(400).json({ error: `Invalid quantity. Must be between 1 and ${item.stock}` });
+    if (!reqQty || reqQty <= 0) {
+      return res.status(400).json({ error: 'Invalid quantity.' });
+    }
+    
+    const availableStock = item.stock - totalPending;
+    if (reqQty > availableStock) {
+      return res.status(400).json({ error: `Cannot request deletion of ${reqQty} units. Only ${availableStock} unit(s) are currently available after accounting for other pending requests.` });
     }
     
     db.prepare(`
