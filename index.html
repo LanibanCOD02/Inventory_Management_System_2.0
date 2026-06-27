@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="styles.css?v=8">
   <script src="https://unpkg.com/lucide@latest" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js" defer></script>
-  <script src="app.js?v=14" defer></script>
+  <script src="app.js?v=15" defer></script>
   <script src="charts.js?v=2" defer></script>
 </head>
 <body>
@@ -534,6 +534,8 @@
               <label>Unit<select name="unit" id="editUnit"><option>Units</option><option>Boxes</option><option>Bags</option><option>Packs</option><option>Bottles</option><option>Rolls</option></select></label>
               <label>Minimum stock level<input required name="threshold" id="editThreshold" type="number" min="0"></label>
               <label>Unit price (₹)<input required name="unit_price" id="editUnitPrice" type="number" min="0" step="0.01"></label>
+            </div>
+            <div class="form-row">
               <label>Default Supplier (Optional)
                 <input type="text" name="default_supplier" id="editItemSupplierInput"
                   list="supplierDatalist" placeholder="Type or select supplier...">

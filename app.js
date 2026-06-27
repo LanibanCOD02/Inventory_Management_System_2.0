@@ -291,6 +291,22 @@ async function loadBranches() {
     if(editUserBranch) editUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     if(addMovementBranch) addMovementBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     
+    if (addItemBranch) {
+      addItemBranch.addEventListener('change', (e) => {
+        window.updateSupplierDropdowns(e.target.value);
+        window.updateProgramDropdowns(e.target.value);
+        if (document.getElementById('addItemSupplierInput')) document.getElementById('addItemSupplierInput').value = '';
+        if (document.getElementById('addItemProgramInput')) document.getElementById('addItemProgramInput').value = '';
+      });
+    }
+    if (editItemBranch) {
+      editItemBranch.addEventListener('change', (e) => {
+        window.updateSupplierDropdowns(e.target.value);
+        window.updateProgramDropdowns(e.target.value);
+        if (document.getElementById('editItemSupplierInput')) document.getElementById('editItemSupplierInput').value = '';
+        if (document.getElementById('editItemProgramInput')) document.getElementById('editItemProgramInput').value = '';
+      });
+    }
     if(globalSelect) {
       globalSelect.onchange = async (e) => {
         globalSelectedBranch = e.target.value;
@@ -412,28 +428,40 @@ function setupAddNewHint(inputId, hintId, nameSpanId, type) {
   });
 }
 
+let globalSuppliers = [];
+let globalPrograms = [];
+
+window.updateSupplierDropdowns = function(branchId = null) {
+  const data = branchId ? globalSuppliers.filter(s => String(s.branch_id) === String(branchId)) : globalSuppliers;
+  populateDatalist('supplierDatalist', data);
+  const select = document.getElementById('movementSupplierSelect');
+  if (select) {
+    select.innerHTML = `<option value="">Select supplier...</option>` +
+      data.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+  }
+};
+
+window.updateProgramDropdowns = function(branchId = null) {
+  const data = branchId ? globalPrograms.filter(p => String(p.branch_id) === String(branchId)) : globalPrograms;
+  populateDatalist('programDatalist', data);
+  const select = document.getElementById('movementProgramSelect');
+  if (select) {
+    select.innerHTML = `<option value="">Select program...</option>` +
+      data.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+  }
+};
+
 async function loadSuppliers() {
   try {
-    const data = await cachedFetch('/suppliers');
-    populateDatalist('supplierDatalist', data);
-    // also populate movement select
-    const select = document.getElementById('movementSupplierSelect');
-    if (select) {
-      select.innerHTML = `<option value="">Select supplier...</option>` +
-        data.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
-    }
+    globalSuppliers = await cachedFetch('/suppliers');
+    window.updateSupplierDropdowns();
   } catch(err) { console.error('Failed to load suppliers:', err); }
 }
 
 async function loadPrograms() {
   try {
-    const data = await cachedFetch('/programs');
-    populateDatalist('programDatalist', data);
-    const select = document.getElementById('movementProgramSelect');
-    if (select) {
-      select.innerHTML = `<option value="">Select program...</option>` +
-        data.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-    }
+    globalPrograms = await cachedFetch('/programs');
+    window.updateProgramDropdowns();
   } catch(err) { console.error('Failed to load programs:', err); }
 }
 
@@ -959,6 +987,11 @@ function openModal() {
     const sel = document.getElementById('addItemBranch');
     if (sel) sel.value = globalSelectedBranch;
   }
+  
+  const sel = document.getElementById('addItemBranch');
+  window.updateSupplierDropdowns(sel?.value);
+  window.updateProgramDropdowns(sel?.value);
+  
   modal.classList.add("active"); 
   document.querySelector('input[name="name"]')?.focus(); 
 }
@@ -1068,6 +1101,11 @@ if (document.getElementById("editItemBtn")) {
     const branchInput = document.getElementById('editItemBranch');
     if (branchInput && item.branch_id) {
       branchInput.value = item.branch_id;
+      window.updateSupplierDropdowns(item.branch_id);
+      window.updateProgramDropdowns(item.branch_id);
+    } else {
+      window.updateSupplierDropdowns();
+      window.updateProgramDropdowns();
     }
     
     closeItemDetail();
@@ -1642,6 +1680,12 @@ if (movementModal) {
     addMovementBranch.addEventListener('change', () => {
       updateMovementItemDropdown();
       document.getElementById("movementItemSelect").value = "";
+      
+      const branchId = addMovementBranch.value;
+      window.updateSupplierDropdowns(branchId);
+      window.updateProgramDropdowns(branchId);
+      if (document.getElementById('movementSupplierSelect')) document.getElementById('movementSupplierSelect').value = '';
+      if (document.getElementById('movementProgramSelect')) document.getElementById('movementProgramSelect').value = '';
     });
   }
 
@@ -1687,6 +1731,9 @@ if (movementModal) {
 
     // Populate filtered items after branch has been set
     updateMovementItemDropdown();
+    const branchId = bSel ? bSel.value : null;
+    window.updateSupplierDropdowns(branchId);
+    window.updateProgramDropdowns(branchId);
 
     movementModal.classList.add("active");
   };
