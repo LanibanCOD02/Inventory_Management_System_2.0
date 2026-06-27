@@ -984,11 +984,12 @@ function openItemDetail(id) {
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
+  const branchContainer = document.getElementById('itemDetailBranchContainer');
   if (currentUser && currentUser.role === 'Admin' && (!document.getElementById('globalBranchSelector') || !document.getElementById('globalBranchSelector').value)) {
     branchSpan.textContent = item.branch_name || 'All Branches';
-    branchSpan.style.display = 'inline-block';
+    branchContainer.style.display = 'flex';
   } else {
-    branchSpan.style.display = 'none';
+    branchContainer.style.display = 'none';
   }
   document.getElementById("detailStock").textContent = `${item.stock} ${item.unit}`;
   document.getElementById("detailThreshold").textContent = `${item.threshold} ${item.unit}`;

@@ -121,7 +121,7 @@
         </div>
         <div class="top-actions">
           <button class="secondary-btn admin-only" id="bulkImportBtn" aria-label="Bulk Import" style="display:none;"><i data-lucide="file-up"></i><span class="desktop-only">Import</span></button>
-          <button class="secondary-btn" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
+          <button class="secondary-btn admin-only" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
           <label class="search-box">
             <i data-lucide="search"></i>
             <span class="sr-only">Search inventory</span>
@@ -441,7 +441,7 @@
   <div class="modal-backdrop" id="itemDetailModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="itemDetailTitle" style="width: min(500px, 90vw);">
       <div class="modal-heading" style="margin-bottom: 16px;">
-        <div><p class="eyebrow" id="itemDetailCategory">Category</p><span id="itemDetailBranch" style="display:inline-block; font-size:12px; font-weight:600; color:var(--teal-700); background:var(--teal-50); padding:2px 8px; border-radius:12px; margin-top:4px;"></span><h2 id="itemDetailTitle">Item Name</h2></div>
+        <div><p class="eyebrow" id="itemDetailCategory">Category</p><h2 id="itemDetailTitle">Item Name</h2><div id="itemDetailBranchContainer" style="display:flex; align-items:center; gap:4px; margin-top:4px; font-size:13px; color:var(--text-secondary); display:none;"><i data-lucide="map-pin" style="width:14px; height:14px;"></i><span id="itemDetailBranch"></span></div></div>
         <div style="display:flex; gap:8px">
           <button class="icon-btn admin-only" id="editItemBtn" aria-label="Edit item" title="Edit Item"><i data-lucide="pencil"></i></button>
           <button class="icon-btn admin-only" id="deleteItemBtn" aria-label="Delete item" title="Delete Item"><i data-lucide="trash-2" style="color: var(--danger)"></i></button>
