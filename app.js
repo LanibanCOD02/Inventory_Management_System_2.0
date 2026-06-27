@@ -2619,7 +2619,7 @@ if (bulkImportForm) {
       if (data.added > 0 || data.updated > 0) {
         invalidateCache('/inventory');
         invalidateCache('/alerts');
-        if (activePage === 'inventory') {
+        if (document.querySelector(".nav-item.active")?.dataset.page === 'inventory') {
           await loadInventory();
         }
       }
