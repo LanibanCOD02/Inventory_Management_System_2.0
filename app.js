@@ -141,9 +141,11 @@ const infoModalCloseBtn = document.getElementById('infoModalCloseBtn');
 if (infoModalCloseIcon) infoModalCloseIcon.addEventListener('click', closeInfoModal);
 if (infoModalCloseBtn) infoModalCloseBtn.addEventListener('click', closeInfoModal);
 if (infoModalBackdrop) {
-  infoModalBackdrop.addEventListener('click', e => {
-    if (e.target === infoModalBackdrop) closeInfoModal();
-  });
+  // infoModalBackdrop.addEventListener('click', e => {
+
+  //     if (e.target === infoModalBackdrop) closeInfoModal();
+
+  //   });
 }
 
 // ─── Toast ───────────────────────────────────────
@@ -187,7 +189,7 @@ function showConfirm(message, onConfirm) {
   const handleOk = () => { close(); onConfirm(); okBtn.removeEventListener('click', handleOk); cancelBtn.removeEventListener('click', close); };
   okBtn.addEventListener('click', handleOk);
   cancelBtn.addEventListener('click', close);
-  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); }, { once: true });
+  // backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); }, { once: true });
 }
 
 // ─── Role Enforcement ────────────────────────────
@@ -1028,9 +1030,11 @@ function closeItemDetail() {
 }
 
 document.getElementById("closeDetailModal").addEventListener("click", closeItemDetail);
-document.getElementById("itemDetailModalBackdrop").addEventListener("click", e => {
-  if (e.target === document.getElementById("itemDetailModalBackdrop")) closeItemDetail();
-});
+// document.getElementById("itemDetailModalBackdrop").addEventListener("click", e => {
+
+//   if (e.target === document.getElementById("itemDetailModalBackdrop")) closeItemDetail();
+
+// });
 
 // ─── Edit & Delete Item ──────────────────────────
 const editModal = document.getElementById("editItemModalBackdrop");
@@ -1084,7 +1088,7 @@ function closeEditModalFn() {
 
 if(document.getElementById("closeEditModal")) document.getElementById("closeEditModal").addEventListener("click", closeEditModalFn);
 if(document.getElementById("cancelEditModal")) document.getElementById("cancelEditModal").addEventListener("click", closeEditModalFn);
-if(editModal) editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModalFn(); });
+// if(editModal) // editModal.addEventListener("click", e => { if (e.target === editModal) closeEditModalFn(); });
 
 if (document.getElementById("deleteItemBtn")) {
   document.getElementById("deleteItemBtn").addEventListener("click", async () => {
@@ -1200,9 +1204,11 @@ function closeDocumentViewer() {
 
 if(document.getElementById("closeDocumentViewer")) document.getElementById("closeDocumentViewer").addEventListener("click", closeDocumentViewer);
 if(document.getElementById("documentViewerModalBackdrop")) {
-  document.getElementById("documentViewerModalBackdrop").addEventListener("click", e => {
-    if (e.target === document.getElementById("documentViewerModalBackdrop")) closeDocumentViewer();
-  });
+  // document.getElementById("documentViewerModalBackdrop").addEventListener("click", e => {
+
+  //     if (e.target === document.getElementById("documentViewerModalBackdrop")) closeDocumentViewer();
+
+  //   });
 }
 
 // ─── Login Form Submission ───────────────────────
@@ -1355,7 +1361,7 @@ if (document.getElementById("addEntityModalBackdrop")) {
   const modal = document.getElementById("addEntityModalBackdrop");
   document.getElementById("closeAddEntityModal").addEventListener("click", () => modal.classList.remove("active"));
   document.getElementById("cancelAddEntityModal").addEventListener("click", () => modal.classList.remove("active"));
-  modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("active"); });
+  // modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("active"); });
   
   document.getElementById("addEntityForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -1417,7 +1423,7 @@ const editEntityModal = document.getElementById("editEntityModalBackdrop");
 if (editEntityModal) {
   if (document.getElementById("closeEditEntityModal")) document.getElementById("closeEditEntityModal").addEventListener("click", () => editEntityModal.classList.remove("active"));
   if (document.getElementById("cancelEditEntityModal")) document.getElementById("cancelEditEntityModal").addEventListener("click", () => editEntityModal.classList.remove("active"));
-  editEntityModal.addEventListener("click", e => { if (e.target === editEntityModal) editEntityModal.classList.remove("active"); });
+  // // editEntityModal.addEventListener("click", e => { if (e.target === editEntityModal) editEntityModal.classList.remove("active"); });
   
   document.getElementById("editEntityForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -1525,7 +1531,7 @@ if (document.getElementById("addUserBtn")) {
   });
   document.getElementById("closeAddUserModal").addEventListener("click", () => addUserModal.classList.remove("active"));
   document.getElementById("cancelAddUserModal").addEventListener("click", () => addUserModal.classList.remove("active"));
-  addUserModal.addEventListener("click", e => { if (e.target === addUserModal) addUserModal.classList.remove("active"); });
+  // // addUserModal.addEventListener("click", e => { if (e.target === addUserModal) addUserModal.classList.remove("active"); });
   
   document.getElementById("addUserForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -1569,7 +1575,7 @@ if (editUserModal) {
   
   document.getElementById("closeEditUserModal").addEventListener("click", () => editUserModal.classList.remove("active"));
   document.getElementById("cancelEditUserModal").addEventListener("click", () => editUserModal.classList.remove("active"));
-  editUserModal.addEventListener("click", e => { if (e.target === editUserModal) editUserModal.classList.remove("active"); });
+  // // editUserModal.addEventListener("click", e => { if (e.target === editUserModal) editUserModal.classList.remove("active"); });
 
   document.getElementById("editUserForm").addEventListener("submit", async e => {
     e.preventDefault();
@@ -1669,7 +1675,7 @@ if (movementModal) {
 
   if(document.getElementById("closeMovementModal")) document.getElementById("closeMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
   if(document.getElementById("cancelMovementModal")) document.getElementById("cancelMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
-  movementModal.addEventListener("click", e => { if (e.target === movementModal) movementModal.classList.remove("active"); });
+  // // movementModal.addEventListener("click", e => { if (e.target === movementModal) movementModal.classList.remove("active"); });
 
   if(document.getElementById("addMovementForm")) {
     document.getElementById("addMovementForm").addEventListener("submit", async e => {
@@ -1782,7 +1788,7 @@ if(document.getElementById("cancelModal")) document.getElementById("cancelModal"
 
 const backupModal = document.getElementById("backupModalBackdrop");
 if(document.getElementById("closeBackupModal")) document.getElementById("closeBackupModal").addEventListener("click", () => backupModal.classList.remove("active"));
-if(backupModal) backupModal.addEventListener("click", e => { if (e.target === backupModal) backupModal.classList.remove("active"); });
+// if(backupModal) // backupModal.addEventListener("click", e => { if (e.target === backupModal) backupModal.classList.remove("active"); });
 document.getElementById('backupLocalBtn')?.addEventListener('click', async () => {
   try {
     const token = localStorage.getItem('msc_token');
