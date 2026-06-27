@@ -490,6 +490,16 @@ function renderTable() {
   if (currentPage > totalPages && totalPages > 0) currentPage = 1;
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  const isAllBranches = user && user.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value);
+  const theadTr = document.getElementById('inventoryTableHeader');
+  if (theadTr) {
+    if (isAllBranches) {
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Branch</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+    } else {
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+    }
+  }
+
   const mappedRows = paginated.map(item => {
     const [label, cls] = getStatus(item);
     const barCls = getBarClass(item);
@@ -498,8 +508,11 @@ function renderTable() {
       ? `<img class="item-thumb" src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
       : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><svg width="16" height="16" stroke="var(--teal-600)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>`;
     
+    const branchCol = isAllBranches ? `<td data-label="Branch"><span style="font-size:13px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px;">${item.branch_name || 'All'}</span></td>` : '';
+    
     return `<tr onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
       <td data-label="Item"><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>
+      ${branchCol}
       <td data-label="Stock"><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill ${barCls}" style="width:${fillPct}%"></div></div><span>${item.stock} ${item.unit}</span></div></td>
       <td data-label="Status"><span class="status ${cls}">${label}</span></td>
       <td data-label="Added On">${new Date(item.created_at).toLocaleDateString()}</td>
@@ -960,6 +973,13 @@ function openItemDetail(id) {
   
   document.getElementById("itemDetailTitle").textContent = item.name;
   document.getElementById("itemDetailCategory").textContent = item.category;
+  const branchSpan = document.getElementById("itemDetailBranch");
+  if (user && user.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value)) {
+    branchSpan.textContent = item.branch_name || 'All Branches';
+    branchSpan.style.display = 'inline-block';
+  } else {
+    branchSpan.style.display = 'none';
+  }
   document.getElementById("detailStock").textContent = `${item.stock} ${item.unit}`;
   document.getElementById("detailThreshold").textContent = `${item.threshold} ${item.unit}`;
   document.getElementById("detailDate").textContent = new Date(item.created_at).toLocaleDateString();

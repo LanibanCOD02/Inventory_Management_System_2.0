@@ -93,7 +93,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
       // Adjust stock and file URLs if INWARD
       let updateSql = 'UPDATE inventory_items SET stock = stock + ?';
-      let updateParams = [amount];
+      let updateParams = [movement_type === 'IN' ? qty : -qty];
       if (movement_type === 'IN') {
         if (product_photo_url) { updateSql += ', product_photo_url = ?'; updateParams.push(product_photo_url); }
         if (invoice_pdf_url) { updateSql += ', invoice_pdf_url = ?'; updateParams.push(invoice_pdf_url); }

@@ -233,7 +233,7 @@
             </div>
             <div class="table-wrap">
               <table>
-                <thead><tr><th scope="col">Item</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th></tr></thead>
+                <thead><tr id="inventoryTableHeader"><th scope="col">Item</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th></tr></thead>
                 <tbody id="inventoryBody"></tbody>
               </table>
             </div>
@@ -441,7 +441,7 @@
   <div class="modal-backdrop" id="itemDetailModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="itemDetailTitle" style="width: min(500px, 90vw);">
       <div class="modal-heading" style="margin-bottom: 16px;">
-        <div><p class="eyebrow" id="itemDetailCategory">Category</p><h2 id="itemDetailTitle">Item Name</h2></div>
+        <div><p class="eyebrow" id="itemDetailCategory">Category</p><span id="itemDetailBranch" style="display:inline-block; font-size:12px; font-weight:600; color:var(--teal-700); background:var(--teal-50); padding:2px 8px; border-radius:12px; margin-top:4px;"></span><h2 id="itemDetailTitle">Item Name</h2></div>
         <div style="display:flex; gap:8px">
           <button class="icon-btn admin-only" id="editItemBtn" aria-label="Edit item" title="Edit Item"><i data-lucide="pencil"></i></button>
           <button class="icon-btn admin-only" id="deleteItemBtn" aria-label="Delete item" title="Delete Item"><i data-lucide="trash-2" style="color: var(--danger)"></i></button>
