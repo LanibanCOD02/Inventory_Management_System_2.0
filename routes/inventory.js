@@ -512,7 +512,7 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
     const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
     const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, deleted_at = NULL WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertMovement = db.prepare('INSERT INTO inventory_movements (inventory_id, movement_type, quantity, party_name, reference_code) VALUES (?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\')');
+    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?)');
     
     db.transaction(() => {
       worksheet.eachRow((row, rowNumber) => {
@@ -558,9 +558,10 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
           updated++;
         } else {
           const newId = generateUUID();
-          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, new Date().toISOString());
+          const nowStr = new Date().toISOString();
+          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr);
           if (stock > 0) {
-            insertMovement.run(newId, stock);
+            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr);
           }
           added++;
         }
