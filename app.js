@@ -1689,7 +1689,8 @@ if (movementModal) {
     });
   }
 
-  window.openMovementModal = (type) => {
+  window.openMovementModal = async (type) => {
+    await loadInventory(); // Ensure inventory list is fully up-to-date
     document.getElementById("addMovementForm").reset();
     document.getElementById("movementType").value = type;
     
