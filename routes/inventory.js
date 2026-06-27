@@ -509,9 +509,10 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
     // If a target branch was selected from the dropdown, use it for all rows
     const targetBranchId = req.body.branch_id;
     
-    const checkItem = db.prepare('SELECT id, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
-    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, stock = ?, unit = ?, threshold = ?, deleted_at = NULL WHERE id = ?');
+    const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
+    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, deleted_at = NULL WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertMovement = db.prepare('INSERT INTO inventory_movements (inventory_id, movement_type, quantity, party_name, reference_code) VALUES (?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\')');
     
     db.transaction(() => {
       worksheet.eachRow((row, rowNumber) => {
@@ -552,10 +553,15 @@ router.post('/bulk-import', authenticateToken, requireAdmin, upload.single('file
         
         const existing = checkItem.get(iName, branchId);
         if (existing) {
-          updateItem.run(cat || null, stock, unit, threshold, existing.id);
+          // Note: We deliberately do NOT overwrite stock for existing items via bulk import
+          updateItem.run(cat || null, unit, threshold, existing.id);
           updated++;
         } else {
-          insertItem.run(generateUUID(), iName, cat || null, stock, unit, threshold, branchId, new Date().toISOString());
+          const newId = generateUUID();
+          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, new Date().toISOString());
+          if (stock > 0) {
+            insertMovement.run(newId, stock);
+          }
           added++;
         }
       });
