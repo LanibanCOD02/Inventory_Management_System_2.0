@@ -1626,6 +1626,25 @@ window.deleteUser = async (id) => {
 // ─── Stock Movement Logic ────────────────────────
 const movementModal = document.getElementById("addMovementModalBackdrop");
 if (movementModal) {
+  function updateMovementItemDropdown() {
+    const select = document.getElementById("movementItemSelect");
+    const branchId = document.getElementById('addMovementBranch')?.value;
+    
+    // Filter inventory based on selected branch, or show all if no branch is selected yet
+    const filteredInventory = branchId ? inventory.filter(i => String(i.branch_id) === String(branchId)) : inventory;
+    
+    select.innerHTML = '<option value="">Select an item...</option>' + 
+      filteredInventory.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
+  }
+
+  const addMovementBranch = document.getElementById('addMovementBranch');
+  if (addMovementBranch) {
+    addMovementBranch.addEventListener('change', () => {
+      updateMovementItemDropdown();
+      document.getElementById("movementItemSelect").value = "";
+    });
+  }
+
   window.openMovementModal = (type) => {
     document.getElementById("addMovementForm").reset();
     document.getElementById("movementType").value = type;
@@ -1646,10 +1665,6 @@ if (movementModal) {
     document.getElementById('movementProgramSelect').required = false; // Program is always optional
     document.getElementById("movementSubmitBtn").textContent = isIn ? "Save Entry" : "Issue Stock";
 
-    const select = document.getElementById("movementItemSelect");
-    select.innerHTML = '<option value="">Select an item...</option>' + 
-      inventory.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
-
     if (globalSelectedBranch) {
       const bSel = document.getElementById('addMovementBranch');
       if (bSel) bSel.value = globalSelectedBranch;
@@ -1669,6 +1684,9 @@ if (movementModal) {
         bSel.disabled = false;
       }
     }
+
+    // Populate filtered items after branch has been set
+    updateMovementItemDropdown();
 
     movementModal.classList.add("active");
   };
