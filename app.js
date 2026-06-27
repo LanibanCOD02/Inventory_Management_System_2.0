@@ -490,7 +490,12 @@ function renderTable() {
   if (currentPage > totalPages && totalPages > 0) currentPage = 1;
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const isAllBranches = user && user.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value);
+  const currentUser = (() => {
+    const token = localStorage.getItem('msc_token');
+    try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
+    catch(e) { return null; }
+  })();
+  const isAllBranches = currentUser && currentUser.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value);
   const theadTr = document.getElementById('inventoryTableHeader');
   if (theadTr) {
     if (isAllBranches) {
@@ -974,7 +979,12 @@ function openItemDetail(id) {
   document.getElementById("itemDetailTitle").textContent = item.name;
   document.getElementById("itemDetailCategory").textContent = item.category;
   const branchSpan = document.getElementById("itemDetailBranch");
-  if (user && user.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value)) {
+  const currentUser = (() => {
+    const token = localStorage.getItem('msc_token');
+    try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
+    catch(e) { return null; }
+  })();
+  if (currentUser && currentUser.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value)) {
     branchSpan.textContent = item.branch_name || 'All Branches';
     branchSpan.style.display = 'inline-block';
   } else {
