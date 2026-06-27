@@ -495,7 +495,7 @@ function renderTable() {
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
-  const isAllBranches = currentUser && currentUser.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value);
+  const isAllBranches = currentUser && currentUser.role === 'Admin' && (!document.getElementById('globalBranchSelector') || !document.getElementById('globalBranchSelector').value);
   const theadTr = document.getElementById('inventoryTableHeader');
   if (theadTr) {
     if (isAllBranches) {
@@ -984,7 +984,7 @@ function openItemDetail(id) {
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
-  if (currentUser && currentUser.role === 'Admin' && (!globalBranchFilter || !globalBranchFilter.value)) {
+  if (currentUser && currentUser.role === 'Admin' && (!document.getElementById('globalBranchSelector') || !document.getElementById('globalBranchSelector').value)) {
     branchSpan.textContent = item.branch_name || 'All Branches';
     branchSpan.style.display = 'inline-block';
   } else {
