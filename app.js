@@ -508,6 +508,14 @@ window.changePage = (dir) => {
   renderTable();
 };
 
+function getCategoryIcon(category) {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('clinic') || cat.includes('pharma') || cat.includes('med')) return 'cross';
+  if (cat.includes('school') || cat.includes('educat') || cat.includes('station')) return 'book';
+  if (cat.includes('program') || cat.includes('material')) return 'briefcase';
+  return 'package';
+}
+
 function renderTable() {
   const term = search.value.trim().toLowerCase();
   const cat = categoryFilter.value;
@@ -541,7 +549,7 @@ function renderTable() {
     const fillPct = item.stock === 0 ? 0 : Math.min(Math.round(item.stock / (item.threshold * 2) * 100), 100);
     const imgHtml = item.product_photo_url
       ? `<img class="item-thumb" src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
-      : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><svg width="16" height="16" stroke="var(--teal-600)" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg></div>`;
+      : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><i data-lucide="${getCategoryIcon(item.category)}" style="width:16px;height:16px;color:var(--teal-600)"></i></div>`;
     
     const branchCol = isAllBranches ? `<td data-label="Branch"><span style="font-size:13px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px;">${item.branch_name || 'All'}</span></td>` : '';
     
@@ -623,7 +631,7 @@ function showSuggestions(term) {
     );
     const [, cls] = getStatus(i);
     return `<div class="suggestion-item" onclick="selectSuggestion('${i.id}', '${i.name.replace(/'/g, "\\'")}')">
-      <i data-lucide="package"></i>
+      <i data-lucide="${getCategoryIcon(i.category)}"></i>
       <div style="flex:1;min-width:0">
         <div>${highlighted}</div>
         <div style="font-size:11px;color:var(--muted)">${i.category}</div>
@@ -688,7 +696,7 @@ function itemCard(item) {
   const [label, cls] = getStatus(item);
   const imgHtml = item.product_photo_url
     ? `<img src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
-    : `<span class="inv-icon-fallback"><i data-lucide="package"></i></span>`;
+    : `<span class="inv-icon-fallback"><i data-lucide="${getCategoryIcon(item.category)}"></i></span>`;
   return `<article class="inv-card" onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
     <div class="inv-card-img">${imgHtml}</div>
     <div class="inv-card-body">
@@ -1034,7 +1042,7 @@ function openItemDetail(id) {
   if (item.product_photo_url) {
     photoContainer.innerHTML = `<img src="${item.product_photo_url}" alt="${item.name}" style="width: 100%; height: 100%; object-fit: cover;">`;
   } else {
-    photoContainer.innerHTML = `<i data-lucide="image" style="width: 32px; height: 32px; color: var(--teal-600)"></i>`;
+    photoContainer.innerHTML = `<i data-lucide="${getCategoryIcon(item.category)}" style="width: 32px; height: 32px; color: var(--teal-600)"></i>`;
   }
   
   const docsContainer = document.getElementById("detailDocuments");
