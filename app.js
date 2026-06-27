@@ -886,9 +886,13 @@ const sectionData = {
 // ─── Navigation ──────────────────────────────────
 async function switchPage(page) {
   const btn = document.querySelector(`.nav-item[data-page="${page}"]`);
-  if (!btn) return;
-  document.querySelector(".nav-item.active")?.classList.remove("active");
-  btn.classList.add("active");
+  if (btn) {
+    document.querySelector(".nav-item.active")?.classList.remove("active");
+    btn.classList.add("active");
+  } else {
+    // If we're going to a sub-page without a nav item (e.g. inward/outward), remove active from others
+    document.querySelector(".nav-item.active")?.classList.remove("active");
+  }
   closeSidebar();
 
   if (page === "dashboard") {
@@ -1676,8 +1680,8 @@ if (movementModal) {
     const select = document.getElementById("movementItemSelect");
     const branchId = document.getElementById('addMovementBranch')?.value;
     
-    // Filter inventory based on selected branch, or show all if no branch is selected yet
-    const filteredInventory = branchId ? inventory.filter(i => String(i.branch_id) === String(branchId)) : inventory;
+    // Filter inventory based on selected branch. If no branch is selected, show NO items to prevent wrong-branch selection.
+    const filteredInventory = branchId ? inventory.filter(i => String(i.branch_id) === String(branchId)) : [];
     
     select.innerHTML = '<option value="">Select an item...</option>' + 
       filteredInventory.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
