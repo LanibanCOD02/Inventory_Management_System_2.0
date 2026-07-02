@@ -566,9 +566,9 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
     const targetBranchId = req.body.branch_id;
     
     const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
-    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = ?, deleted_at = NULL WHERE id = ?');
-    const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?)');
+    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
+    const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, item_code, serial_number, total_price) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?, ?, ?, ?)');
     const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
     
     db.transaction(() => {
@@ -618,15 +618,15 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         
         const existing = checkItem.get(iName, branchId);
         if (existing) {
-          updateItem.run(cat || null, unit, threshold, stock, existing.id);
+          updateItem.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
           updated++;
         } else {
           const newId = generateUUID();
           const nowStr = new Date().toISOString();
-          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice);
+          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice, iCode || null, sNum || null);
             insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
           if (stock > 0) {
-            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr);
+            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr, iCode || null, sNum || null, stock * unitPrice);
           }
           added++;
         }
