@@ -45,19 +45,36 @@ router.post('/transfer', authenticateToken, (req, res) => {
     if (!item_id || !quantity || !from_branch_id || !to_branch_id) {
       return res.status(400).json({ error: 'item_id, quantity, from_branch_id and to_branch_id are required' });
     }
-    // Staff can only transfer FROM their own branch
-    if (req.user.role !== 'Admin' && req.user.role !== 'admin' && req.user.branch_id !== from_branch_id) {
+    
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'admin';
+    if (!isAdmin && req.user.branch_id !== from_branch_id) {
       return res.status(403).json({ error: 'You can only transfer stock from your own branch' });
     }
+
+    if (from_branch_id === to_branch_id && from_block_id && to_block_id && from_block_id === to_block_id) {
+      return res.status(400).json({ error: 'Cannot transfer stock to the same block. Please select a different destination block.' });
+    }
+
     // Check sufficient stock at source
     const item = db.prepare('SELECT * FROM inventory_items WHERE id = ? AND branch_id = ? AND deleted_at IS NULL').get(item_id, from_branch_id);
     if (!item) return res.status(404).json({ error: 'Item not found in source branch' });
     if (item.stock < quantity) return res.status(400).json({ error: `Insufficient stock. Available: ${item.stock}` });
 
+    const isInternal = from_branch_id === to_branch_id;
+    const crypto = require('crypto');
+    const now = new Date().toISOString();
+
+    if (!isInternal && !isAdmin) {
+      const reqId = crypto.randomUUID();
+      db.prepare(`INSERT INTO transfer_requests (id, item_id, from_branch_id, to_branch_id, from_block_id, to_block_id, quantity, notes, requested_by, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`)
+        .run(reqId, item_id, from_branch_id, to_branch_id, from_block_id || null, to_block_id || null, quantity, notes || null, req.user.id, now);
+      return res.json({ success: true, message: 'Transfer request submitted and is pending admin approval.' });
+    }
+
     // Run as a transaction
     const transfer = db.transaction(() => {
-      const crypto = require('crypto');
-      const now = new Date().toISOString();
+
 
       // Deduct from source branch
       db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ? AND branch_id = ?')
@@ -71,8 +88,8 @@ router.post('/transfer', authenticateToken, (req, res) => {
       } else {
         // Create the item in destination branch if it doesn't exist
         const newId = crypto.randomUUID();
-        db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(newId, item.name, item.category, quantity, item.unit, item.threshold, to_branch_id, now);
+        db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(newId, item.name, item.category, quantity, item.unit, item.threshold, to_branch_id, now, item.unit_price || 0, item.item_code || null, item.serial_number || null);
       }
 
       // Log outward movement at source

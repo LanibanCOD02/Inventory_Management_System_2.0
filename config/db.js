@@ -60,4 +60,28 @@ try {
   console.error("Failed to create price_history table:", e);
 }
 
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS transfer_requests (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL,
+      from_branch_id TEXT NOT NULL,
+      to_branch_id TEXT NOT NULL,
+      from_block_id TEXT,
+      to_block_id TEXT,
+      quantity INTEGER NOT NULL,
+      notes TEXT,
+      requested_by TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      created_at TEXT NOT NULL,
+      updated_at TEXT,
+      FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+      FOREIGN KEY (from_branch_id) REFERENCES branches(id),
+      FOREIGN KEY (to_branch_id) REFERENCES branches(id)
+    );
+  `);
+} catch (e) {
+  console.error("Failed to create transfer_requests table:", e);
+}
+
 module.exports = db;

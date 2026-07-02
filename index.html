@@ -91,6 +91,7 @@
         <button class="nav-item" data-page="priceHistory"><i data-lucide="trending-up"></i><span>Price History</span></button>
         <button class="nav-item admin-only" data-page="users"><i data-lucide="users"></i><span>Users</span></button>
         <button class="nav-item admin-only" data-page="branches"><i data-lucide="map"></i><span>Branches</span></button>
+        <button class="nav-item" data-page="transfers"><i data-lucide="arrow-right-left"></i><span>Transfer Requests</span></button>
         <button class="nav-item" data-page="requests">
           <i data-lucide="git-pull-request"></i><span>Requests</span>
           <span id="adminPendingRequestsBadge" class="admin-only" style="display:none; margin-left:auto; background:var(--amber); color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px;">0</span>
@@ -311,6 +312,36 @@
       </section>
 
       <!-- Deletion Requests Section -->
+      <!-- ─── Transfer Requests View ────────────────────────── -->
+      <section class="section-transfers" id="sectionTransfers" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
+        <div class="page-header" style="margin-bottom: 24px;">
+          <div>
+            <h2 style="font-size: 24px; font-weight: 700; color: var(--text);">Transfer Requests</h2>
+            <p style="color: var(--muted); margin-top: 4px;">Manage pending stock transfers</p>
+          </div>
+        </div>
+        <div class="card section-panel">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Item</th>
+                  <th>From</th>
+                  <th>To</th>
+                  <th>Quantity</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transfersTableBody">
+                <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted);">Loading requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section class="section-requests" id="sectionRequests" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
         <div class="view-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
           <div>
@@ -710,26 +741,49 @@
         <div><p class="eyebrow">Inventory Transfer</p><h2 id="transferModalTitle">Transfer Stock</h2></div>
         <button class="icon-btn" id="closeTransferModal" aria-label="Close modal"><i data-lucide="x"></i></button>
       </div>
+
+      <!-- Smart Toggle -->
+      <div class="transfer-toggle" style="display:flex; gap:8px; margin-bottom:16px; padding: 4px; background: var(--bg); border-radius: 8px;">
+        <button type="button" id="btnTransferBranch" class="toggle-btn active" style="flex:1; padding:8px; border:none; border-radius:4px; font-weight:600; cursor:pointer; background:var(--white); box-shadow:0 1px 3px rgba(0,0,0,0.1); color:var(--text);">🏢 Branch Transfer</button>
+        <button type="button" id="btnTransferBlock" class="toggle-btn" style="flex:1; padding:8px; border:none; border-radius:4px; font-weight:600; cursor:pointer; background:transparent; color:var(--muted);">📦 Block Transfer</button>
+      </div>
+
       <form id="transferStockForm" style="display:flex; flex-direction:column; gap:16px;">
+        <input type="hidden" name="transfer_mode" id="transferMode" value="BRANCH">
         <label>Item
-          <select required name="inventory_id" id="transferItemSelect">
+          <select required name="item_id" id="transferItemSelect">
             <option value="">Select an item...</option>
           </select>
         </label>
         <div class="form-row">
           <label>Source Branch
-            <select required name="source_branch_id" id="transferSourceBranch">
+            <select required name="from_branch_id" id="transferSourceBranch">
               <option value="" disabled selected>Select Source...</option>
             </select>
           </label>
+          <label id="transferFromBlockContainer" style="display:none;">Source Block
+            <select name="from_block_id" id="transferFromBlock">
+              <option value="">Select Source Block...</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-row">
           <label>Destination Branch
-            <select required name="destination_branch_id" id="transferDestinationBranch">
+            <select required name="to_branch_id" id="transferDestinationBranch">
               <option value="" disabled selected>Select Destination...</option>
+            </select>
+          </label>
+          <label id="transferToBlockContainer" style="display:none;">Destination Block
+            <select name="to_block_id" id="transferToBlock">
+              <option value="">Select Destination Block...</option>
             </select>
           </label>
         </div>
         <label>Quantity to Transfer
           <input required name="quantity" type="number" min="1" value="1">
+        </label>
+        <label>Notes (Optional)
+          <input name="notes" type="text" placeholder="Reason for transfer...">
         </label>
         <div class="modal-actions" style="margin-top:8px;">
           <button type="button" class="secondary-btn" id="cancelTransferModal">Cancel</button>
