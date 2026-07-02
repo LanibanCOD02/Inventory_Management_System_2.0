@@ -544,13 +544,15 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
       if (header === 'unit') colMap['unit'] = colNumber;
       if (header === 'initial stock') colMap['stock'] = colNumber;
       if (header === 'threshold') colMap['threshold'] = colNumber;
-        if (header === 'unit price') colMap['price'] = colNumber;
+      if (header === 'unit price') colMap['price'] = colNumber;
+      if (header === 'item code') colMap['item_code'] = colNumber;
+      if (header === 'serial number') colMap['serial_number'] = colNumber;
     });
     
-          const isAdmin = req.user.role === 'Admin' || req.user.role === 'admin';
-      if (!colMap['name'] || (isAdmin && !req.body.branch_id && colMap['branch'] === undefined)) {
-        return res.status(400).json({ error: 'Template missing required columns (Item Name, Branch Name)' });
-      }
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'admin';
+    if (!colMap['name'] || (isAdmin && !req.body.branch_id && colMap['branch'] === undefined)) {
+      return res.status(400).json({ error: 'Template missing required columns (Item Name, Branch Name)' });
+    }
     
     let added = 0;
     let updated = 0;
@@ -578,6 +580,9 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         const bName = colMap['branch'] ? getVal(row.getCell(colMap['branch'])).trim() : '';
         const iName = colMap['name'] ? getVal(row.getCell(colMap['name'])).trim() : '';
         const cat = colMap['category'] ? getVal(row.getCell(colMap['category'])).trim() : '';
+        const iCode = colMap['item_code'] ? getVal(row.getCell(colMap['item_code'])).trim() : '';
+        const sNum = colMap['serial_number'] ? getVal(row.getCell(colMap['serial_number'])).trim() : '';
+        
         let unit = colMap['unit'] ? getVal(row.getCell(colMap['unit'])).trim() : 'pcs';
         if (!unit) unit = 'pcs';
         
