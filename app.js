@@ -753,7 +753,6 @@ async function renderMovementTable(type) {
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '-';
 
         return `<tr>
-          <td data-label="Reference">${refCode}</td>
           <td data-label="Item name">${itemName}</td>
           <td data-label="Quantity">
             <span class="movement-type ${typeClass}">
@@ -787,7 +786,7 @@ async function renderMovementTable(type) {
       `;
     }
 
-    return `<div class="card section-panel"><div class="card-header"><div><h3>${isIn ? "Recent Receipts" : "Recent Issues"}</h3><p>${isIn ? "Latest supplies received" : "Latest supplies issued"}</p></div></div><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Item name</th><th>Quantity</th><th>Item Code</th><th>Serial Number</th><th>Reference No.</th><th>${isIn ? "Supplier" : "Issued to"}</th><th>Total Price</th><th>Date</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No movements found.</td></tr>`}</tbody></table></div>${paginationHtml}</div>`;
+    return `<div class="card section-panel"><div class="card-header"><div><h3>${isIn ? "Recent Receipts" : "Recent Issues"}</h3><p>${isIn ? "Latest supplies received" : "Latest supplies issued"}</p></div></div><div class="table-wrap"><table><thead><tr><th>Item name</th><th>Quantity</th><th>Item Code</th><th>Serial Number</th><th>Reference No.</th><th>${isIn ? "Supplier" : "Issued to"}</th><th>Total Price</th><th>Date</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No movements found.</td></tr>`}</tbody></table></div>${paginationHtml}</div>`;
   } catch (err) {
     return `<div class="alert-item"><div class="alert-dot critical"></div><p>Error loading movements<span>${err.message}</span></p></div>`;
   }
