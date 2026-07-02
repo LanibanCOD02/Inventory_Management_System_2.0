@@ -377,6 +377,31 @@
     </main>
   </div>
 
+  <!-- ─── Add Block Modal ────────────────────────────── -->
+  <div class="modal-backdrop" id="addBlockModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div><p class="eyebrow">Branch Management</p><h2 id="addBlockModalTitle">Add New Block</h2></div>
+        <button class="icon-btn" onclick="closeModal('addBlockModalBackdrop')"><i data-lucide="x"></i></button>
+      </div>
+      <form id="addBlockForm" class="modal-body">
+        <input type="hidden" id="addBlockBranchId">
+        <div class="form-group">
+          <label>Block Name <span class="required">*</span></label>
+          <input type="text" id="addBlockName" required placeholder="e.g. Block A, Warehouse 1...">
+        </div>
+        <div class="form-group">
+          <label>Description <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span></label>
+          <textarea id="addBlockDescription" placeholder="Optional notes..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" onclick="closeModal('addBlockModalBackdrop')">Cancel</button>
+          <button type="submit" class="primary-btn">Create Block</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ─── Modal ──────────────────────────────────── -->
   <div class="modal-backdrop" id="modalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -395,6 +420,10 @@
         <label>Category<select name="category" id="addItemCategory" required>
           <option value="" disabled selected>Select Category</option>
         </select></label>
+        <div class="form-row">
+          <label>Item Code <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="item_code" placeholder="e.g. SKU-123"></label>
+          <label>Serial No. <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="serial_number" placeholder="e.g. SN-987654321"></label>
+        </div>
         <div class="form-row">
           <label>Quantity<input required name="stock" type="number" min="0" value="0"></label>
           <label>Unit<select name="unit"><option>Units</option><option>Boxes</option><option>Bags</option><option>Packs</option><option>Bottles</option><option>Rolls</option></select></label>
@@ -486,6 +515,8 @@
           <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px;">
             <p style="color: var(--text-secondary); font-size: 14px;">Current Stock: <strong id="detailStock" style="color: var(--text); font-size: 16px;"></strong></p>
             <p style="color: var(--text-secondary); font-size: 14px;">Minimum Threshold: <strong id="detailThreshold" style="color: var(--text);"></strong></p>
+            <p id="detailItemCodeP" style="color: var(--text-secondary); font-size: 14px; display: none;">Item Code: <strong id="detailItemCode" style="color: var(--text);"></strong></p>
+            <p id="detailSerialNumberP" style="color: var(--text-secondary); font-size: 14px; display: none;">Serial No: <strong id="detailSerialNumber" style="color: var(--text);"></strong></p>
             <p style="color: var(--text-secondary); font-size: 14px;">Added on: <strong id="detailDate" style="color: var(--text)"></strong></p>
           </div>
         </div>
@@ -812,6 +843,11 @@
         <label>Item<select required name="inventory_id" id="movementItemSelect">
           <option value="">Select an item...</option>
         </select></label>
+
+        <div class="form-row">
+          <label>Item Code <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="item_code" id="movementItemCode" placeholder="e.g. SKU-123"></label>
+          <label>Serial No. <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="serial_number" id="movementSerialNumber" placeholder="e.g. SN-987654321"></label>
+        </div>
         
         <div class="form-row">
           <label>Quantity<input required name="quantity" type="number" min="1" value="1"></label>

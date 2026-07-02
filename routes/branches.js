@@ -127,9 +127,12 @@ router.get('/:id/blocks', authenticateToken, (req, res) => {
   }
 });
 
-// POST /api/branches/:id/blocks — add a new block to a branch (Admin only)
-router.post('/:id/blocks', authenticateToken, requireAdmin, (req, res) => {
+// POST /api/branches/:id/blocks — add a new block to a branch
+router.post('/:id/blocks', authenticateToken, (req, res) => {
   try {
+    if (req.user.role !== 'Admin' && req.user.role !== 'admin' && req.user.branch_id !== req.params.id) {
+      return res.status(403).json({ error: 'Access denied: You can only add blocks to your own branch.' });
+    }
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Block name is required' });
     const id = crypto.randomUUID();

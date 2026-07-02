@@ -92,9 +92,9 @@ router.post('/', authenticateToken, async (req, res) => {
         itemId = existing.id;
         db.prepare(`
           UPDATE inventory_items 
-          SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, deleted_at = NULL 
+          SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, item_code = ?, serial_number = ?, deleted_at = NULL 
           WHERE id = ?
-        `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, itemId);
+        `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, item_code || null, serial_number || null, itemId);
       } else {
         return res.status(400).json({ error: 'An item with this exact name already exists in active inventory.' });
       }
@@ -132,9 +132,9 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       db.prepare(`
-        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString());
+        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, item_code, serial_number) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString(), item_code || null, serial_number || null);
     }
 
     res.status(201).json(insertedItem);

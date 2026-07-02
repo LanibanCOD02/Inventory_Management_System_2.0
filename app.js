@@ -1078,6 +1078,21 @@ function openItemDetail(id) {
   }
   document.getElementById("detailStock").textContent = `${item.stock} ${item.unit}`;
   document.getElementById("detailThreshold").textContent = `${item.threshold} ${item.unit}`;
+  
+  if (item.item_code) {
+    document.getElementById("detailItemCodeP").style.display = "block";
+    document.getElementById("detailItemCode").textContent = item.item_code;
+  } else {
+    document.getElementById("detailItemCodeP").style.display = "none";
+  }
+
+  if (item.serial_number) {
+    document.getElementById("detailSerialNumberP").style.display = "block";
+    document.getElementById("detailSerialNumber").textContent = item.serial_number;
+  } else {
+    document.getElementById("detailSerialNumberP").style.display = "none";
+  }
+
   document.getElementById("detailDate").textContent = new Date(item.created_at).toLocaleDateString();
   
   const photoContainer = document.getElementById("detailProductPhoto");
@@ -1516,6 +1531,8 @@ if(document.getElementById("addItemForm")) {
         threshold: d.get("threshold"),
         unit_price: d.get("unit_price"),
         branch_id: d.get("branch_id"),
+        item_code: d.get("item_code"),
+        serial_number: d.get("serial_number"),
         default_supplier: document.getElementById('addItemSupplierInput')?.value || null,
         program: document.getElementById('addItemProgramInput')?.value || null,
         product_photo_url: uploadedUrls.productPhotoUrl || null,
@@ -2537,7 +2554,8 @@ async function renderBranchesTable() {
             <p>${escapeHTML(b.location || '')}${b.address ? ` · ${escapeHTML(b.address)}` : ''}</p>
           </div>
           <div class="card-actions">
-            <button class="secondary-btn admin-only" onclick="window.openAddBlockModal('${b.id}')"><i data-lucide="plus"></i>Add Block</button>
+            ${(JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'Admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').branch_id === b.id) ? 
+              `<button class="secondary-btn" onclick="window.openAddBlockModal('${b.id}')"><i data-lucide="plus"></i>Add Block</button>` : ''}
             <button class="primary-btn" onclick="window.openTransferModal('${b.id}', '${escapeHTML(b.name).replace(/'/g, "\\'")}')"><i data-lucide="arrow-left-right"></i>Transfer Stock</button>
             <div style="display:flex; gap:4px; margin-left:8px; padding-left:12px; border-left:1px solid var(--border);" class="admin-only">
               <button class="icon-btn" onclick="editBranch('${b.id}', '${escapeHTML(b.name).replace(/'/g, "\\'")}', '${escapeHTML(b.location||'').replace(/'/g, "\\'")}', '${escapeHTML(b.address||'').replace(/'/g, "\\'")}', '${escapeHTML(b.pincode||'').replace(/'/g, "\\'")}')" title="Edit branch settings"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>
@@ -3054,6 +3072,54 @@ if (delReqQuantity) {
     if (buyPriceDisplay && window.currentDelReqBuyPrice !== undefined) {
       const qty = parseInt(delReqQuantity.value) || 0;
       buyPriceDisplay.textContent = `₹${(window.currentDelReqBuyPrice * qty).toFixed(2)}`;
+    }
+  });
+}
+
+
+window.openAddBlockModal = (branchId) => {
+  document.getElementById('addBlockBranchId').value = branchId;
+  document.getElementById('addBlockName').value = '';
+  document.getElementById('addBlockDescription').value = '';
+  openModal('addBlockModalBackdrop');
+};
+
+const addBlockForm = document.getElementById('addBlockForm');
+if (addBlockForm) {
+  addBlockForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const branchId = document.getElementById('addBlockBranchId').value;
+    const name = document.getElementById('addBlockName').value;
+    const description = document.getElementById('addBlockDescription').value;
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner" style="border-color:white;border-top-color:transparent;width:14px;height:14px"></span>';
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`/api/branches/${branchId}/blocks`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('msc_token')
+        },
+        body: JSON.stringify({ name, description })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create block');
+      
+      showToast('Block created successfully', 'success');
+      closeModal('addBlockModalBackdrop');
+      
+      // Invalidate the blocks cache and re-render
+      invalidateCache(`/branches/${branchId}/blocks`);
+      renderBranchesTable();
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
     }
   });
 }
