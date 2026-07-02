@@ -762,7 +762,6 @@ async function renderMovementTable(type) {
           </td>
           <td data-label="Item Code">${r.item_code || '-'}</td>
           <td data-label="Serial Number">${r.serial_number || '-'}</td>
-          <td data-label="Reference No.">${refCode}</td>
           <td data-label="${isIn ? 'Supplier' : 'Issued to'}">${partyName}</td>
           <td data-label="Total Price">${r.total_price ? '₹' + Number(r.total_price).toLocaleString('en-IN') : '-'}</td>
           <td data-label="Date">${date}</td>
@@ -786,7 +785,7 @@ async function renderMovementTable(type) {
       `;
     }
 
-    return `<div class="card section-panel"><div class="card-header"><div><h3>${isIn ? "Recent Receipts" : "Recent Issues"}</h3><p>${isIn ? "Latest supplies received" : "Latest supplies issued"}</p></div></div><div class="table-wrap"><table><thead><tr><th>Item name</th><th>Quantity</th><th>Item Code</th><th>Serial Number</th><th>Reference No.</th><th>${isIn ? "Supplier" : "Issued to"}</th><th>Total Price</th><th>Date</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No movements found.</td></tr>`}</tbody></table></div>${paginationHtml}</div>`;
+    return `<div class="card section-panel"><div class="card-header"><div><h3>${isIn ? "Recent Receipts" : "Recent Issues"}</h3><p>${isIn ? "Latest supplies received" : "Latest supplies issued"}</p></div></div><div class="table-wrap"><table><thead><tr><th>Item name</th><th>Quantity</th><th>Item Code</th><th>Serial Number</th><th>${isIn ? "Supplier" : "Issued to"}</th><th>Total Price</th><th>Date</th><th></th></tr></thead><tbody>${rows || `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">No movements found.</td></tr>`}</tbody></table></div>${paginationHtml}</div>`;
   } catch (err) {
     return `<div class="alert-item"><div class="alert-dot critical"></div><p>Error loading movements<span>${err.message}</span></p></div>`;
   }
