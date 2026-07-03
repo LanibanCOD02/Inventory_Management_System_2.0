@@ -2816,6 +2816,9 @@ if (btnTransferBranch && btnTransferBlock) {
 if (transferSourceBranch) {
   transferSourceBranch.addEventListener('change', async () => {
     updateDestinationBranchDropdown();
+    if (transferDestinationBranch) {
+      transferDestinationBranch.dispatchEvent(new Event('change'));
+    }
     // Load blocks for source
     if (transferMode.value === 'BLOCK') {
       try {
