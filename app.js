@@ -2819,6 +2819,19 @@ if (transferSourceBranch) {
     if (transferDestinationBranch) {
       transferDestinationBranch.dispatchEvent(new Event('change'));
     }
+    
+    if (window.allTransferItems) {
+      const itemSel = document.getElementById('transferItemSelect');
+      const currentItem = itemSel.value;
+      const selBranch = transferSourceBranch.value;
+      itemSel.innerHTML = '<option value="" disabled selected>Select an item...</option>' + 
+        window.allTransferItems.filter(i => !selBranch || i.branch_id === selBranch)
+        .map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit || ''})</option>`).join('');
+      if (currentItem && Array.from(itemSel.options).some(o => o.value === currentItem)) {
+         itemSel.value = currentItem;
+      }
+    }
+
     // Load blocks for source
     if (transferMode.value === 'BLOCK') {
       try {
@@ -2850,6 +2863,7 @@ window.openTransferModal = async (branchId, branchName) => {
       cachedFetch('/branches')
     ]);
     
+    window.allTransferItems = items;
     allTransferBranches = branches;
     
     const itemSel = document.getElementById('transferItemSelect');
