@@ -400,6 +400,30 @@
     </section>
   </div>
 
+  <!-- ─── Edit Block Modal ────────────────────────────── -->
+  <div class="modal-backdrop" id="editBlockModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="editBlockModalTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Branch Management</p><h2 id="editBlockModalTitle">Edit Block</h2></div>
+        <button class="icon-btn" type="button" onclick="document.getElementById('editBlockModalBackdrop').classList.remove('active')"><i data-lucide="x"></i></button>
+      </div>
+      <form id="editBlockForm" class="modal-form">
+        <input type="hidden" id="editBlockBranchId">
+        <input type="hidden" id="editBlockId">
+        <label>Block Name *
+          <input type="text" id="editBlockName" required placeholder="e.g. Block A, Warehouse 1...">
+        </label>
+        <label>Description <span style="font-size:12px; color:var(--text-secondary); font-weight:normal">(Optional)</span>
+          <textarea id="editBlockDescription" placeholder="Optional notes..."></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="button" class="secondary-btn" onclick="document.getElementById('editBlockModalBackdrop').classList.remove('active')">Cancel</button>
+          <button type="submit" class="primary-btn">Save Changes</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <!-- ─── Modal ──────────────────────────────────── -->
   <div class="modal-backdrop" id="modalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">

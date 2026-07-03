@@ -2536,10 +2536,15 @@ async function renderBranchesTable() {
           ${blocks.map(block => `
             <div class="category-card" style="padding:14px; display:flex; align-items:center; gap:12px;">
               <div style="width:36px; height:36px; border-radius:8px; background:var(--teal-50); color:var(--teal); display:grid; place-items:center;"><i data-lucide="layout-template" style="width:16px; height:16px"></i></div>
-              <div>
+              <div style="flex:1">
                 <h3 style="margin:0 0 2px; font-size:13px">${escapeHTML(block.name)}</h3>
                 ${block.description ? `<p style="margin:0; font-size:11px">${escapeHTML(block.description)}</p>` : ''}
               </div>
+              ${(JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'Admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').branch_id === block.branch_id) ? 
+                `<div style="display:flex; gap:4px;">
+                  <button class="icon-btn" onclick="window.openEditBlockModal('${block.id}', '${block.branch_id}', '${escapeHTML(block.name).replace(/'/g, "\\'")}', '${escapeHTML(block.description || '').replace(/'/g, "\\'")}')" title="Edit Block"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>
+                  <button class="icon-btn" onclick="window.deleteBlock('${block.id}', '${block.branch_id}')" title="Delete Block"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger)"></i></button>
+                </div>` : ''}
             </div>
           `).join('')}
         </div>
@@ -3123,3 +3128,67 @@ if (addBlockForm) {
     }
   });
 }
+
+// ─── Edit Block Logic ──────────────────────────────
+window.openEditBlockModal = (id, branchId, name, description) => {
+  document.getElementById('editBlockId').value = id;
+  document.getElementById('editBlockBranchId').value = branchId;
+  document.getElementById('editBlockName').value = name;
+  document.getElementById('editBlockDescription').value = description;
+  document.getElementById('editBlockModalBackdrop').classList.add('active');
+};
+
+const editBlockForm = document.getElementById('editBlockForm');
+if (editBlockForm) {
+  editBlockForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editBlockId').value;
+    const branchId = document.getElementById('editBlockBranchId').value;
+    const name = document.getElementById('editBlockName').value;
+    const description = document.getElementById('editBlockDescription').value;
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner" style="border-color:white;border-top-color:transparent;width:14px;height:14px"></span>';
+    submitBtn.disabled = true;
+
+    try {
+      const res = await cachedFetch(`/api/branches/${branchId}/blocks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed to update block');
+      
+      showToast('Block updated successfully', 'success');
+      document.getElementById('editBlockModalBackdrop').classList.remove('active');
+      editBlockForm.reset();
+      
+      invalidateCache(`/branches/${branchId}/blocks`);
+      renderBranchesTable(); // refresh the view
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+// ─── Delete Block Logic ────────────────────────────
+window.deleteBlock = async (id, branchId) => {
+  if (!confirm('Are you sure you want to delete this block? This cannot be undone.')) return;
+  
+  try {
+    const res = await cachedFetch(`/api/branches/${branchId}/blocks/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete block');
+    
+    showToast('Block deleted successfully', 'success');
+    invalidateCache(`/branches/${branchId}/blocks`);
+    renderBranchesTable(); // refresh the view
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};

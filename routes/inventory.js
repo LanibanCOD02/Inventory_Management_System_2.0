@@ -483,7 +483,9 @@ router.get('/bulk-import-template', authenticateToken, async (req, res) => {
         { header: 'Unit', key: 'unit', width: 15 },
         { header: 'Initial Stock', key: 'stock', width: 15 },
         { header: 'Threshold', key: 'threshold', width: 15 },
-        { header: 'Unit Price', key: 'price', width: 15 }
+        { header: 'Unit Price', key: 'price', width: 15 },
+        { header: 'Item Code', key: 'item_code', width: 20 },
+        { header: 'Serial Number', key: 'serial_number', width: 25 }
       );
       
       rowData.name = 'Sample Item';
@@ -492,6 +494,8 @@ router.get('/bulk-import-template', authenticateToken, async (req, res) => {
       rowData.stock = 100;
       rowData.threshold = 10;
       rowData.price = 50.00;
+      rowData.item_code = 'SKU-001';
+      rowData.serial_number = 'SN-123456789';
       
       worksheet.columns = cols;
       worksheet.addRow(rowData);

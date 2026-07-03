@@ -119,7 +119,7 @@ router.post('/transfer', authenticateToken, (req, res) => {
 // GET /api/branches/:id/blocks — list all blocks for a branch
 router.get('/:id/blocks', authenticateToken, (req, res) => {
   try {
-    const blocks = db.prepare('SELECT * FROM branch_blocks WHERE branch_id = ? ORDER BY name').all(req.params.id);
+    const blocks = db.prepare('SELECT * FROM branch_blocks WHERE branch_id = ? AND deleted_at IS NULL ORDER BY name').all(req.params.id);
     res.json(blocks);
   } catch(err) {
     console.error('Fetch blocks error:', err);
@@ -142,6 +142,47 @@ router.post('/:id/blocks', authenticateToken, (req, res) => {
     res.status(201).json({ id, branch_id: req.params.id, name, description, created_at });
   } catch(err) {
     console.error('Create block error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /api/branches/:branchId/blocks/:id — edit a block
+router.put('/:branchId/blocks/:id', authenticateToken, (req, res) => {
+  try {
+    if (req.user.role !== 'Admin' && req.user.role !== 'admin' && req.user.branch_id !== req.params.branchId) {
+      return res.status(403).json({ error: 'Access denied: You can only edit blocks in your own branch.' });
+    }
+    const { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: 'Block name is required' });
+    
+    const info = db.prepare('UPDATE branch_blocks SET name = ?, description = ? WHERE id = ? AND branch_id = ?').run(name, description, req.params.id, req.params.branchId);
+    
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Block not found or does not belong to this branch' });
+    }
+    res.json({ success: true, message: 'Block updated successfully' });
+  } catch(err) {
+    console.error('Edit block error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/branches/:branchId/blocks/:id — soft delete a block
+router.delete('/:branchId/blocks/:id', authenticateToken, (req, res) => {
+  try {
+    if (req.user.role !== 'Admin' && req.user.role !== 'admin' && req.user.branch_id !== req.params.branchId) {
+      return res.status(403).json({ error: 'Access denied: You can only delete blocks in your own branch.' });
+    }
+    
+    const now = new Date().toISOString();
+    const info = db.prepare('UPDATE branch_blocks SET deleted_at = ? WHERE id = ? AND branch_id = ?').run(now, req.params.id, req.params.branchId);
+    
+    if (info.changes === 0) {
+      return res.status(404).json({ error: 'Block not found or does not belong to this branch' });
+    }
+    res.json({ success: true, message: 'Block deleted successfully' });
+  } catch(err) {
+    console.error('Delete block error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
