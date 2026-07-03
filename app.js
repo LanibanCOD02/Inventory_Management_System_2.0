@@ -462,7 +462,7 @@ window.updateBlockDropdown = async (branchId, selectId) => {
   }
   
   try {
-    const blocks = await cachedFetch('/api/branches/' + branchId + '/blocks');
+    const blocks = await cachedFetch('/branches/' + branchId + '/blocks');
     if (!blocks || blocks.length === 0) {
       sel.innerHTML = '<option value="">No blocks found...</option>';
     } else {
