@@ -3123,20 +3123,44 @@ if (bulkImportForm) {
       if (!res.ok) throw new Error(data.error);
       
       if (data.requiresConfirmation) {
-        let msg = "The following structures do not exist and will be created automatically:\\n\\n";
+        let msgHtml = "<p style='margin-bottom:12px'>The following structures do not exist and will be created automatically:</p>";
         if (data.missingBranches && data.missingBranches.length > 0) {
-           msg += "Branches:\\n- " + data.missingBranches.join("\\n- ") + "\\n\\n";
+           msgHtml += "<strong style='display:block;margin-top:8px'>Branches:</strong><ul style='margin:4px 0 12px 20px'>";
+           data.missingBranches.forEach(b => msgHtml += `<li>${b}</li>`);
+           msgHtml += "</ul>";
         }
         if (data.missingBlocks && data.missingBlocks.length > 0) {
-           msg += "Blocks:\\n";
+           msgHtml += "<strong style='display:block;margin-top:8px'>Blocks:</strong><ul style='margin:4px 0 12px 20px'>";
            data.missingBlocks.forEach(b => {
-              msg += `- ${b.block} (in ${b.branch})\\n`;
+              msgHtml += `<li>${b.block} <span style="opacity:0.7;font-size:0.9em">(in ${b.branch})</span></li>`;
            });
-           msg += "\\n";
+           msgHtml += "</ul>";
         }
-        msg += "Do you want to proceed and auto-create them?";
+        msgHtml += "<p style='margin-top:16px; font-weight:600; color:var(--text-primary)'>Do you want to proceed and auto-create them?</p>";
         
-        if (confirm(msg)) {
+        const confirmed = await new Promise((resolve) => {
+           const backdrop = document.getElementById('bulkImportConfirmBackdrop');
+           document.getElementById('bulkImportConfirmMessage').innerHTML = msgHtml;
+           backdrop.classList.add('active');
+           
+           const okBtn = document.getElementById('bulkImportConfirmOk');
+           const cancelBtn = document.getElementById('bulkImportConfirmCancel');
+           
+           const handleOk = () => { close(true); };
+           const handleCancel = () => { close(false); };
+           
+           const close = (result) => {
+             backdrop.classList.remove('active');
+             okBtn.removeEventListener('click', handleOk);
+             cancelBtn.removeEventListener('click', handleCancel);
+             resolve(result);
+           };
+           
+           okBtn.addEventListener('click', handleOk);
+           cancelBtn.addEventListener('click', handleCancel);
+        });
+        
+        if (confirmed) {
            formData.append('autoCreate', 'true');
            res = await fetch('/api/inventory/bulk-import', {
              method: 'POST',

@@ -967,6 +967,19 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="bulkImportConfirmBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="bulkImportConfirmTitle" style="width:min(500px,90vw)">
+      <div class="modal-heading" style="margin-bottom:16px">
+        <div><p class="eyebrow">Action Required</p><h2 id="bulkImportConfirmTitle">Missing Structures Detected</h2></div>
+      </div>
+      <div id="bulkImportConfirmMessage" style="font-size:14px;color:var(--text-secondary);margin-bottom:24px; max-height: 40vh; overflow-y: auto; line-height: 1.6;"></div>
+      <div class="modal-actions">
+        <button class="secondary-btn" id="bulkImportConfirmCancel">Cancel Import</button>
+        <button class="primary-btn" id="bulkImportConfirmOk">Create & Proceed</button>
+      </div>
+    </section>
+  </div>
+
   <!-- Custom Info Modal for long notes -->
   <div class="modal-backdrop" id="infoModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle" style="width:min(400px,90vw)">
