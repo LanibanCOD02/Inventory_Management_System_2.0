@@ -42,7 +42,8 @@ try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_block_id TEXT"); } 
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_branch_id TEXT"); } catch(e) {}
 
 
-
+try {
+  db.exec(`
     CREATE TABLE IF NOT EXISTS inventory_item_blocks (
       id TEXT PRIMARY KEY,
       item_id TEXT NOT NULL,
@@ -54,7 +55,6 @@ try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_branch_id TEXT"); }
     );
   `);
 } catch(e) {}
-
 try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS price_history (
