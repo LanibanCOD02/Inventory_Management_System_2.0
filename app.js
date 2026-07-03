@@ -453,6 +453,27 @@ window.updateProgramDropdowns = function(branchId = null) {
   }
 };
 
+window.updateBlockDropdown = async (branchId, selectId) => {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  if (!branchId) {
+    sel.innerHTML = '<option value="">Select Block (Optional)...</option>';
+    return;
+  }
+  
+  try {
+    const blocks = await cachedFetch('/api/branches/' + branchId + '/blocks');
+    if (!blocks || blocks.length === 0) {
+      sel.innerHTML = '<option value="">No blocks found...</option>';
+    } else {
+      sel.innerHTML = '<option value="">Select Block...</option>' + blocks.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+    }
+  } catch (err) {
+    console.error('Failed to load blocks for branch ' + branchId, err);
+    sel.innerHTML = '<option value="">Error loading blocks...</option>';
+  }
+};
+
 async function loadSuppliers() {
   try {
     globalSuppliers = await cachedFetch('/suppliers');
