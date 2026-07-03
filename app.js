@@ -560,9 +560,9 @@ function renderTable() {
   const theadTr = document.getElementById('inventoryTableHeader');
   if (theadTr) {
     if (isAllBranches) {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Branch</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Branch</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
     } else {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
     }
   }
 
@@ -579,6 +579,8 @@ function renderTable() {
     return `<tr onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
       <td data-label="Item"><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>
       ${branchCol}
+      <td data-label="Item Code">${item.item_code || '-'}</td>
+      <td data-label="Serial No.">${item.serial_number || '-'}</td>
       <td data-label="Stock"><div class="stock-bar"><div class="stock-bar-track"><div class="stock-bar-fill ${barCls}" style="width:${fillPct}%"></div></div><span>${item.stock} ${item.unit}</span></div></td>
       <td data-label="Status"><span class="status ${cls}">${label}</span></td>
       <td data-label="Added On">${new Date(item.created_at).toLocaleDateString()}</td>
