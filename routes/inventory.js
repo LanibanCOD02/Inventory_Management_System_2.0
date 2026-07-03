@@ -615,13 +615,18 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
     
     const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
     const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
+    const updateItemAddStock = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = stock + ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, item_code, serial_number, total_price, to_block_id) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?, ?, ?, ?, ?)');
     const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
     
     const checkBlock = db.prepare('SELECT id FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?');
     const updateBlock = db.prepare('UPDATE inventory_item_blocks SET stock = ?, last_updated = ? WHERE item_id = ? AND block_id = ?');
+    const updateBlockAddStock = db.prepare('UPDATE inventory_item_blocks SET stock = stock + ?, last_updated = ? WHERE item_id = ? AND block_id = ?');
     const insertBlock = db.prepare('INSERT INTO inventory_item_blocks (id, item_id, block_id, stock, last_updated) VALUES (?, ?, ?, ?, ?)');
+    
+    const processedItems = new Set();
+    const processedBlocks = new Set();
     
     db.transaction(() => {
       worksheet.eachRow((row, rowNumber) => {
@@ -679,13 +684,25 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         
         const existing = checkItem.get(iName, branchId);
         if (existing) {
-          updateItem.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
+          if (processedItems.has(existing.id)) {
+            updateItemAddStock.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
+          } else {
+            updateItem.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
+            processedItems.add(existing.id);
+          }
+          
           if (blockId) {
             const bCheck = checkBlock.get(existing.id, blockId);
             if (bCheck) {
-              updateBlock.run(stock, new Date().toISOString(), existing.id, blockId);
+              if (processedBlocks.has(existing.id + '_' + blockId)) {
+                updateBlockAddStock.run(stock, new Date().toISOString(), existing.id, blockId);
+              } else {
+                updateBlock.run(stock, new Date().toISOString(), existing.id, blockId);
+                processedBlocks.add(existing.id + '_' + blockId);
+              }
             } else {
               insertBlock.run(generateUUID(), existing.id, blockId, stock, new Date().toISOString());
+              processedBlocks.add(existing.id + '_' + blockId);
             }
           }
           updated++;
@@ -693,8 +710,10 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
           const newId = generateUUID();
           const nowStr = new Date().toISOString();
           insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice, iCode || null, sNum || null);
+          processedItems.add(newId);
           if (blockId) {
             insertBlock.run(generateUUID(), newId, blockId, stock, nowStr);
+            processedBlocks.add(newId + '_' + blockId);
           }
           insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
           if (stock > 0) {
