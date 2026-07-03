@@ -510,6 +510,7 @@ router.get('/bulk-import-template', authenticateToken, async (req, res) => {
       }
       
       cols.push(
+        { header: 'Block', key: 'block', width: 20 },
         { header: 'Item Name', key: 'name', width: 30 },
         { header: 'Category', key: 'category', width: 20 },
         { header: 'Unit', key: 'unit', width: 15 },
@@ -520,6 +521,7 @@ router.get('/bulk-import-template', authenticateToken, async (req, res) => {
         { header: 'Serial Number', key: 'serial_number', width: 25 }
       );
       
+      rowData.block = 'Block A';
       rowData.name = 'Sample Item';
       rowData.category = 'Stationery';
       rowData.unit = 'pcs';
@@ -583,6 +585,7 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
       if (header === 'unit price') colMap['price'] = colNumber;
       if (header === 'item code') colMap['item_code'] = colNumber;
       if (header === 'serial number') colMap['serial_number'] = colNumber;
+      if (header === 'block') colMap['block'] = colNumber;
     });
     
     const isAdmin = req.user.role === 'Admin' || req.user.role === 'admin';
@@ -600,20 +603,32 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
       branchMap[b.name.toLowerCase()] = b.id;
     }
     
+    const blocks = db.prepare('SELECT id, branch_id, name FROM branch_blocks WHERE deleted_at IS NULL').all();
+    const blockMap = {};
+    for (const b of blocks) {
+      if (!blockMap[b.branch_id]) blockMap[b.branch_id] = {};
+      blockMap[b.branch_id][b.name.toLowerCase()] = b.id;
+    }
+    
     // If a target branch was selected from the dropdown, use it for all rows
     const targetBranchId = req.body.branch_id;
     
     const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
     const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, item_code, serial_number, total_price) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?, ?, ?, ?)');
+    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, item_code, serial_number, total_price, to_block_id) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?, ?, ?, ?, ?)');
     const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
+    
+    const checkBlock = db.prepare('SELECT id FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?');
+    const updateBlock = db.prepare('UPDATE inventory_item_blocks SET stock = ?, last_updated = ? WHERE item_id = ? AND block_id = ?');
+    const insertBlock = db.prepare('INSERT INTO inventory_item_blocks (id, item_id, block_id, stock, last_updated) VALUES (?, ?, ?, ?, ?)');
     
     db.transaction(() => {
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // skip header
         
         const bName = colMap['branch'] ? getVal(row.getCell(colMap['branch'])).trim() : '';
+        const blockName = colMap['block'] ? getVal(row.getCell(colMap['block'])).trim() : '';
         const iName = colMap['name'] ? getVal(row.getCell(colMap['name'])).trim() : '';
         const cat = colMap['category'] ? getVal(row.getCell(colMap['category'])).trim() : '';
         const iCode = colMap['item_code'] ? getVal(row.getCell(colMap['item_code'])).trim() : '';
@@ -649,6 +664,11 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
               return;
             }
           }
+          
+        let blockId = null;
+        if (blockName && blockMap[branchId] && blockMap[branchId][blockName.toLowerCase()]) {
+          blockId = blockMap[branchId][blockName.toLowerCase()];
+        }
         
         // Auth check removed because staff branches are auto-assigned above.
         
@@ -660,14 +680,25 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         const existing = checkItem.get(iName, branchId);
         if (existing) {
           updateItem.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
+          if (blockId) {
+            const bCheck = checkBlock.get(existing.id, blockId);
+            if (bCheck) {
+              updateBlock.run(stock, new Date().toISOString(), existing.id, blockId);
+            } else {
+              insertBlock.run(generateUUID(), existing.id, blockId, stock, new Date().toISOString());
+            }
+          }
           updated++;
         } else {
           const newId = generateUUID();
           const nowStr = new Date().toISOString();
           insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice, iCode || null, sNum || null);
-            insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
+          if (blockId) {
+            insertBlock.run(generateUUID(), newId, blockId, stock, nowStr);
+          }
+          insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
           if (stock > 0) {
-            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr, iCode || null, sNum || null, stock * unitPrice);
+            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr, iCode || null, sNum || null, stock * unitPrice, blockId);
           }
           added++;
         }
