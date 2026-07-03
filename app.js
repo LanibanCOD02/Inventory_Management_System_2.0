@@ -2786,6 +2786,9 @@ function setTransferMode(mode) {
     
     updateDestinationBranchDropdown();
   }
+  
+  if (transferSourceBranch) transferSourceBranch.dispatchEvent(new Event('change'));
+  if (transferDestinationBranch) transferDestinationBranch.dispatchEvent(new Event('change'));
 }
 
 function updateDestinationBranchDropdown() {
