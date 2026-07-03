@@ -3110,17 +3110,45 @@ if (bulkImportForm) {
     bulkImportSubmitBtn.disabled = true;
     
     try {
-      const formData = new FormData();
+      let formData = new FormData();
       formData.append('file', bulkImportFileInput.files[0]);
       
-      const res = await fetch('/api/inventory/bulk-import', {
+      let res = await fetch('/api/inventory/bulk-import', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
         body: formData
       });
       
-      const data = await res.json();
+      let data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      
+      if (data.requiresConfirmation) {
+        let msg = "The following structures do not exist and will be created automatically:\\n\\n";
+        if (data.missingBranches && data.missingBranches.length > 0) {
+           msg += "Branches:\\n- " + data.missingBranches.join("\\n- ") + "\\n\\n";
+        }
+        if (data.missingBlocks && data.missingBlocks.length > 0) {
+           msg += "Blocks:\\n";
+           data.missingBlocks.forEach(b => {
+              msg += `- ${b.block} (in ${b.branch})\\n`;
+           });
+           msg += "\\n";
+        }
+        msg += "Do you want to proceed and auto-create them?";
+        
+        if (confirm(msg)) {
+           formData.append('autoCreate', 'true');
+           res = await fetch('/api/inventory/bulk-import', {
+             method: 'POST',
+             headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+             body: formData
+           });
+           data = await res.json();
+           if (!res.ok) throw new Error(data.error);
+        } else {
+           throw new Error("Import cancelled. Please update your Excel file to match existing branches/blocks.");
+        }
+      }
       
       // Show results
       bulkAddedCount.textContent = data.added || 0;

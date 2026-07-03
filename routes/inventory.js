@@ -628,6 +628,66 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
     const processedItems = new Set();
     const processedBlocks = new Set();
     
+    const autoCreate = req.body.autoCreate === 'true';
+    const missingBranches = new Set();
+    const missingBlocks = new Map(); // branchName -> Set of blockNames
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+      
+      const bName = colMap['branch'] ? getVal(row.getCell(colMap['branch'])).trim() : '';
+      const blockName = colMap['block'] ? getVal(row.getCell(colMap['block'])).trim() : '';
+      
+      let branchId = targetBranchId;
+      if (req.user.role !== 'Admin' && req.user.role !== 'admin') {
+        branchId = req.user.branch_id;
+      } else if (!branchId) {
+        if (bName && !branchMap[bName.toLowerCase()]) {
+          missingBranches.add(bName);
+        } else if (bName) {
+          branchId = branchMap[bName.toLowerCase()];
+        }
+      }
+      
+      if (blockName) {
+        let branchIsMissing = !branchId && bName && !branchMap[bName.toLowerCase()];
+        let blockIsMissing = false;
+        
+        if (branchIsMissing) {
+          blockIsMissing = true;
+        } else if (branchId) {
+           if (!blockMap[branchId] || !blockMap[branchId][blockName.toLowerCase()]) {
+             blockIsMissing = true;
+           }
+        }
+        
+        if (blockIsMissing) {
+           let resolvedBranchName = bName;
+           if (req.user.role !== 'Admin' && req.user.role !== 'admin') {
+             resolvedBranchName = 'Your Branch';
+           }
+           if (!resolvedBranchName) resolvedBranchName = 'Selected Branch';
+           
+           if (!missingBlocks.has(resolvedBranchName)) missingBlocks.set(resolvedBranchName, new Set());
+           missingBlocks.get(resolvedBranchName).add(blockName);
+        }
+      }
+    });
+
+    if (!autoCreate && (missingBranches.size > 0 || missingBlocks.size > 0)) {
+      const formattedMissingBlocks = [];
+      for (const [branch, blocks] of missingBlocks.entries()) {
+         for (const block of blocks) {
+           formattedMissingBlocks.push({ branch, block });
+         }
+      }
+      return res.status(200).json({
+        requiresConfirmation: true,
+        missingBranches: Array.from(missingBranches),
+        missingBlocks: formattedMissingBlocks
+      });
+    }
+    
     db.transaction(() => {
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return; // skip header
@@ -656,23 +716,40 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         
         let branchId = targetBranchId;
           
-          if (req.user.role !== 'Admin' && req.user.role !== 'admin') {
-            branchId = req.user.branch_id;
-          } else if (!branchId) {
-            if (!bName) {
-              errors.push(`Row ${rowNumber}: Missing Branch Name`);
-              return;
-            }
-            branchId = branchMap[bName.toLowerCase()];
-            if (!branchId) {
-              errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
-              return;
-            }
+        if (req.user.role !== 'Admin' && req.user.role !== 'admin') {
+          branchId = req.user.branch_id;
+        } else if (!branchId) {
+          if (!bName) {
+            errors.push(`Row ${rowNumber}: Missing Branch Name`);
+            return;
           }
+          branchId = branchMap[bName.toLowerCase()];
+          if (!branchId) {
+             if (autoCreate) {
+               branchId = generateUUID();
+               const nowStr = new Date().toISOString();
+               db.prepare('INSERT INTO branches (id, name, location, address, pincode, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+                 .run(branchId, bName, 'Auto-created via Bulk Import', '-', '000000', nowStr);
+               branchMap[bName.toLowerCase()] = branchId;
+             } else {
+               errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
+               return;
+             }
+          }
+        }
           
         let blockId = null;
-        if (blockName && blockMap[branchId] && blockMap[branchId][blockName.toLowerCase()]) {
-          blockId = blockMap[branchId][blockName.toLowerCase()];
+        if (blockName) {
+           if (blockMap[branchId] && blockMap[branchId][blockName.toLowerCase()]) {
+             blockId = blockMap[branchId][blockName.toLowerCase()];
+           } else if (autoCreate) {
+             blockId = generateUUID();
+             const nowStr = new Date().toISOString();
+             db.prepare('INSERT INTO branch_blocks (id, branch_id, name, created_at) VALUES (?, ?, ?, ?)')
+               .run(blockId, branchId, blockName, nowStr);
+             if (!blockMap[branchId]) blockMap[branchId] = {};
+             blockMap[branchId][blockName.toLowerCase()] = blockId;
+           }
         }
         
         // Auth check removed because staff branches are auto-assigned above.
