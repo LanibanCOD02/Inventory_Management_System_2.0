@@ -1912,7 +1912,29 @@ if (movementModal) {
     const filteredInventory = branchId ? inventory.filter(i => String(i.branch_id) === String(branchId)) : [];
     
     select.innerHTML = '<option value="">Select an item...</option>' + 
-      filteredInventory.map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
+      filteredInventory.map(i => {
+        let text = i.name;
+        if (i.item_code) text += ` [Code: ${i.item_code}]`;
+        if (i.serial_number) text += ` [SN: ${i.serial_number}]`;
+        text += ` (Stock: ${i.stock} ${i.unit})`;
+        return `<option value="${i.id}">${text}</option>`;
+      }).join('');
+  }
+
+  // Auto-populate item code and serial number when item is selected
+  const movementItemSelect = document.getElementById("movementItemSelect");
+  if (movementItemSelect) {
+    movementItemSelect.addEventListener("change", (e) => {
+      const selectedItem = inventory.find(i => i.id === e.target.value);
+      if (selectedItem) {
+        if (document.getElementById("movementItemCode")) {
+          document.getElementById("movementItemCode").value = selectedItem.item_code || "";
+        }
+        if (document.getElementById("movementSerialNumber")) {
+          document.getElementById("movementSerialNumber").value = selectedItem.serial_number || "";
+        }
+      }
+    });
   }
 
   const addMovementBranch = document.getElementById('addMovementBranch');
