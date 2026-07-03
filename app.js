@@ -3081,7 +3081,7 @@ window.openAddBlockModal = (branchId) => {
   document.getElementById('addBlockBranchId').value = branchId;
   document.getElementById('addBlockName').value = '';
   document.getElementById('addBlockDescription').value = '';
-  openModal('addBlockModalBackdrop');
+  document.getElementById('addBlockModalBackdrop').classList.add('active');
 };
 
 const addBlockForm = document.getElementById('addBlockForm');
