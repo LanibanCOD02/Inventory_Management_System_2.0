@@ -963,8 +963,8 @@ async function switchPage(page) {
     dashboard.hidden = true;
     sectionView.hidden = true;
     if(sectionUsers) sectionUsers.hidden = false;
+    if(sectionUsers) sectionUsers.hidden = false;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
-    if(document.getElementById('sectionTransfers')) document.getElementById('sectionTransfers').hidden = true;
     pageHeading.textContent = "User Management";
     loadUsers();
   } else if (page === "requests") {
@@ -972,22 +972,13 @@ async function switchPage(page) {
     sectionView.hidden = true;
     if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = false;
-    if(document.getElementById('sectionTransfers')) document.getElementById('sectionTransfers').hidden = true;
-    pageHeading.textContent = "Deletion Requests";
+    pageHeading.textContent = "Requests";
     loadRequests();
-  } else if (page === "transfers") {
-    dashboard.hidden = true;
-    sectionView.hidden = true;
-    if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
-    if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
-    if(document.getElementById('sectionTransfers')) document.getElementById('sectionTransfers').hidden = false;
-    pageHeading.textContent = "Transfer Requests";
-    loadTransfers();
+    if(typeof loadTransfers === 'function') loadTransfers();
   } else {
     dashboard.hidden = true;
     if(sectionUsers) sectionUsers.hidden = true; if(sectionBranches) sectionBranches.hidden = true;
     if(document.getElementById('sectionRequests')) document.getElementById('sectionRequests').hidden = true;
-    if(document.getElementById('sectionTransfers')) document.getElementById('sectionTransfers').hidden = true;
     sectionView.hidden = false;
     const s = sectionData[page];
     pageHeading.textContent = s.title;
@@ -2936,8 +2927,8 @@ if(transferStockForm) {
       invalidateCache('/movements');
       await loadInventory();
       // Load transfers if page is active
-      if (document.getElementById('sectionTransfers').style.display !== 'none') {
-        loadTransfers();
+      if (document.getElementById('sectionRequests') && !document.getElementById('sectionRequests').hidden) {
+        if(typeof loadTransfers === 'function') loadTransfers();
       }
     } catch(err) {
       showToast(err.message, 'error');

@@ -91,7 +91,6 @@
         <button class="nav-item" data-page="priceHistory"><i data-lucide="trending-up"></i><span>Price History</span></button>
         <button class="nav-item admin-only" data-page="users"><i data-lucide="users"></i><span>Users</span></button>
         <button class="nav-item admin-only" data-page="branches"><i data-lucide="map"></i><span>Branches</span></button>
-        <button class="nav-item" data-page="transfers"><i data-lucide="arrow-right-left"></i><span>Transfer Requests</span></button>
         <button class="nav-item" data-page="requests">
           <i data-lucide="git-pull-request"></i><span>Requests</span>
           <span id="adminPendingRequestsBadge" class="admin-only" style="display:none; margin-left:auto; background:var(--amber); color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px;">0</span>
@@ -312,62 +311,61 @@
       </section>
 
       <!-- Deletion Requests Section -->
-      <!-- ─── Transfer Requests View ────────────────────────── -->
-      <section class="section-transfers" id="sectionTransfers" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
-        <div class="page-header" style="margin-bottom: 24px;">
-          <div>
-            <h2 style="font-size: 24px; font-weight: 700; color: var(--text);">Transfer Requests</h2>
-            <p style="color: var(--muted); margin-top: 4px;">Manage pending stock transfers</p>
-          </div>
-        </div>
-        <div class="card section-panel">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Item</th>
-                  <th>From</th>
-                  <th>To</th>
-                  <th>Quantity</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="transfersTableBody">
-                <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--muted);">Loading requests...</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
+      <!-- ─── Requests View (Combined) ────────────────────────── -->
       <section class="section-requests" id="sectionRequests" hidden style="padding: 24px; animation: fadeIn 0.3s ease;">
         <div class="view-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
           <div>
-            <h1 class="view-title">Deletion Requests</h1>
-            <p class="view-subtitle">Manage inventory deletion requests.</p>
+            <h1 class="view-title">Requests</h1>
+            <p class="view-subtitle">Manage inventory deletion and transfer requests.</p>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width:15%">Item</th>
-                  <th style="width:12%">Requested By</th>
-                  <th style="width:20%">Branch</th>
-                  <th style="width:6%">Qty</th>
-                  <th style="width:22%">Reason</th>
-                  <th style="width:10%">Status</th>
-                  <th style="width:10%">Date</th>
-                  <th style="width:5%; text-align:right;">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="requestsTableBody">
-                <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
-              </tbody>
-            </table>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; align-items: start;">
+          <!-- Deletion Requests Column -->
+          <div class="card">
+            <h2 style="padding: 16px 24px; font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--border);">Deletion Requests</h2>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width:15%">Item</th>
+                    <th style="width:12%">Requested By</th>
+                    <th style="width:20%">Branch</th>
+                    <th style="width:6%">Qty</th>
+                    <th style="width:22%">Reason</th>
+                    <th style="width:10%">Status</th>
+                    <th style="width:10%">Date</th>
+                    <th style="width:5%; text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="requestsTableBody">
+                  <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-secondary)">Loading requests...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Transfer Requests Column -->
+          <div class="card">
+            <h2 style="padding: 16px 24px; font-size: 16px; font-weight: 600; border-bottom: 1px solid var(--border);">Transfer Requests</h2>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th style="text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="transfersTableBody">
+                  <tr><td colspan="7" style="text-align:center; padding:32px; color:var(--muted);">Loading requests...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
