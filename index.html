@@ -382,7 +382,7 @@
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="addBlockModalTitle">
       <div class="modal-heading">
         <div><p class="eyebrow">Branch Management</p><h2 id="addBlockModalTitle">Add New Block</h2></div>
-        <button class="icon-btn" onclick="closeModal('addBlockModalBackdrop')"><i data-lucide="x"></i></button>
+        <button class="icon-btn" type="button" onclick="document.getElementById('addBlockModalBackdrop').classList.remove('active')"><i data-lucide="x"></i></button>
       </div>
       <form id="addBlockForm" class="modal-form">
         <input type="hidden" id="addBlockBranchId">
@@ -393,7 +393,7 @@
           <textarea id="addBlockDescription" placeholder="Optional notes..."></textarea>
         </label>
         <div class="modal-actions">
-          <button type="button" class="secondary-btn" onclick="closeModal('addBlockModalBackdrop')">Cancel</button>
+          <button type="button" class="secondary-btn" onclick="document.getElementById('addBlockModalBackdrop').classList.remove('active')">Cancel</button>
           <button type="submit" class="primary-btn">Create Block</button>
         </div>
       </form>
