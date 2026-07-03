@@ -123,7 +123,7 @@
         </div>
         <div class="top-actions">
           <button class="secondary-btn" id="bulkImportBtn" aria-label="Bulk Import"><i data-lucide="file-up"></i><span class="desktop-only">Import</span></button>
-          <button class="secondary-btn admin-only" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
+          <button class="secondary-btn" id="transferStockBtn" aria-label="Transfer Stock"><i data-lucide="arrow-left-right"></i><span class="desktop-only">Transfer</span></button>
           <label class="search-box">
             <i data-lucide="search"></i>
             <span class="sr-only">Search inventory</span>
@@ -436,6 +436,12 @@
           <label style="font:500 13px 'Inter',sans-serif;color:var(--text)">Branch</label>
           <select name="branch_id" id="addItemBranch" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font:400 14px 'Inter',sans-serif;background:var(--white)">
             <option value="" disabled selected>Select Branch</option>
+          </select>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 16px;">
+          <label style="font:500 13px 'Inter',sans-serif;color:var(--text)">Block <span style="font-size:12px; color:var(--text-secondary); font-weight:normal">(Optional)</span></label>
+          <select name="block_id" id="addItemBlock" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font:400 14px 'Inter',sans-serif;background:var(--white)">
+            <option value="" selected>None / General Stock</option>
           </select>
         </div>
         <label>Item name<input required name="name" placeholder="e.g. First aid kit"></label>
@@ -859,6 +865,13 @@
           <label style="font:500 13px 'Inter',sans-serif;color:var(--text)">Branch</label>
           <select name="branch_id" id="addMovementBranch" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font:400 14px 'Inter',sans-serif;background:var(--white)">
             <option value="" disabled selected>Select Branch</option>
+          </select>
+        </div>
+        
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 16px;">
+          <label style="font:500 13px 'Inter',sans-serif;color:var(--text)">Block <span style="font-size:12px; color:var(--text-secondary); font-weight:normal">(Optional)</span></label>
+          <select name="block_id" id="addMovementBlock" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);font:400 14px 'Inter',sans-serif;background:var(--white)">
+            <option value="" selected>None / General Stock</option>
           </select>
         </div>
         

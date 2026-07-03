@@ -63,13 +63,21 @@ router.get('/', authenticateToken, async (req, res) => {
 // POST /api/movements
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id, recipient_name, product_photo_url, invoice_pdf_url, total_price, item_code, serial_number } = req.body;
+    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id, recipient_name, product_photo_url, invoice_pdf_url, total_price, item_code, serial_number, block_id } = req.body;
     
     const qty = Number(quantity);
     if (!qty || qty <= 0) return res.status(400).json({ error: 'Quantity must be positive' });
     if (type === 'INWARD' && !party_name) return res.status(400).json({ error: 'Party name (Supplier) is required for INWARD movements' });
 
     const resolvedBranchId = getBranchId(req.user, branch_id);
+    
+    // Verify block belongs to branch if provided
+    if (block_id && resolvedBranchId) {
+      const block = db.prepare('SELECT id FROM branch_blocks WHERE id = ? AND branch_id = ?').get(block_id, resolvedBranchId);
+      if (!block) {
+        return res.status(400).json({ error: 'Selected block does not belong to the selected branch.' });
+      }
+    }
 
     const movement_type = (type || '').toUpperCase() === 'INWARD' || (type || '').toUpperCase() === 'IN' ? 'IN' : 'OUT';
 
@@ -79,17 +87,50 @@ router.post('/', authenticateToken, async (req, res) => {
       if (!item) throw new Error('Item not found');
 
       if (movement_type === 'OUT' && item.stock < qty) {
-         throw new Error('Insufficient stock');
+         throw new Error('Insufficient total branch stock');
+      }
+      
+      // Block stock check and update
+      if (block_id) {
+        const blockStockRow = db.prepare('SELECT stock FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?').get(inventory_id, block_id);
+        const blockStock = blockStockRow ? blockStockRow.stock : 0;
+        
+        if (movement_type === 'OUT') {
+          if (blockStock < qty) {
+            throw new Error('Insufficient stock in the selected block');
+          }
+          db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?').run(qty, inventory_id, block_id);
+        } else {
+          db.prepare(`
+            INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+          `).run(generateUUID(), inventory_id, block_id, qty);
+        }
       }
 
       // Insert movement
       const refCode = reference_code || `${movement_type}-${Math.floor(Math.random() * 9000) + 1000}`;
       const moveId = generateUUID();
       
+      let insertCols = 'id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, recipient_name, total_price, item_code, serial_number';
+      let insertVals = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
+      let insertParams = [moveId, refCode, inventory_id, movement_type, qty, party_name || null, req.user.id, resolvedBranchId || null, new Date().toISOString(), recipient_name || null, total_price || null, item_code || null, serial_number || null];
+      
+      if (block_id) {
+        if (movement_type === 'IN') {
+          insertCols += ', to_block_id';
+        } else {
+          insertCols += ', from_block_id';
+        }
+        insertVals += ', ?';
+        insertParams.push(block_id);
+      }
+      
       db.prepare(`
-        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, recipient_name, total_price, item_code, serial_number) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(moveId, refCode, inventory_id, movement_type, qty, party_name || null, req.user.id, resolvedBranchId || null, new Date().toISOString(), recipient_name || null, total_price || null, item_code || null, serial_number || null);
+        INSERT INTO inventory_movements (${insertCols}) 
+        VALUES (${insertVals})
+      `).run(...insertParams);
 
       // Adjust stock and file URLs if INWARD
       let updateSql = 'UPDATE inventory_items SET stock = stock + ?';

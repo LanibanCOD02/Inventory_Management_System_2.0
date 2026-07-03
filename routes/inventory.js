@@ -66,9 +66,17 @@ router.get('/alerts', authenticateToken, async (req, res) => {
 // Add new item
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, branch_id, default_supplier, program, item_code, serial_number } = req.body;
+    const { name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, branch_id, default_supplier, program, item_code, serial_number, block_id } = req.body;
 
     const resolvedBranchId = getBranchId(req.user, branch_id);
+    
+    // Verify block belongs to branch if provided
+    if (block_id && resolvedBranchId) {
+      const block = db.prepare('SELECT id FROM branch_blocks WHERE id = ? AND branch_id = ?').get(block_id, resolvedBranchId);
+      if (!block) {
+        return res.status(400).json({ error: 'Selected block does not belong to the selected branch.' });
+      }
+    }
 
     // Manual uniqueness check per branch
     let existQuerySql = `SELECT id, deleted_at FROM inventory_items WHERE name = ?`;
@@ -102,9 +110,9 @@ router.post('/', authenticateToken, async (req, res) => {
       // Insert new
       itemId = generateUUID();
       db.prepare(`
-        INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, branch_id, default_supplier, program, created_at, item_code, serial_number) 
+        INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, created_at, default_supplier, program, branch_id, item_code, serial_number) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, resolvedBranchId || null, default_supplier || null, program || null, new Date().toISOString(), item_code || null, serial_number || null);
+      `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, new Date().toISOString(), default_supplier || null, program || null, resolvedBranchId || null, item_code || null, serial_number || null);
     }
 
     const insertedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(itemId);
@@ -115,8 +123,16 @@ router.post('/', authenticateToken, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(generateUUID(), itemId, resolvedBranchId || null, null, itemUnitPrice, itemStock, itemStock * itemUnitPrice, req.user.id, new Date().toISOString());
 
-    // If initial stock > 0, auto-create an INWARD movement
+    // If initial stock > 0, auto-create an INWARD movement and update block stock
     if (insertedItem.stock > 0) {
+      if (block_id) {
+        db.prepare(`
+          INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+        `).run(generateUUID(), insertedItem.id, block_id, insertedItem.stock);
+      }
+      
       const refCode = `IN-${Math.floor(Math.random() * 9000) + 1000}`;
       let partyName = 'Initial Stock Entry';
       
@@ -132,9 +148,9 @@ router.post('/', authenticateToken, async (req, res) => {
       }
 
       db.prepare(`
-        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, item_code, serial_number) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString(), item_code || null, serial_number || null);
+        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, item_code, serial_number, to_block_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString(), item_code || null, serial_number || null, block_id || null);
     }
 
     res.status(201).json(insertedItem);
@@ -229,13 +245,26 @@ router.get('/:id/price-history', authenticateToken, (req, res) => {
     const params = [req.params.id];
     if (req.user.role !== 'Admin') {
       query += ' AND branch_id = ?';
-      params.push(req.user.branch_id);
-    }
-    query += ' ORDER BY created_at ASC';
     res.json(db.prepare(query).all(...params));
   } catch (error) {
     console.error('Price history error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/inventory/:id/blocks - get block stock distribution for an item
+router.get('/:id/blocks', authenticateToken, (req, res) => {
+  try {
+    const query = `
+      SELECT ib.block_id, ib.stock, b.name as block_name
+      FROM inventory_item_blocks ib
+      JOIN branch_blocks b ON ib.block_id = b.id
+      WHERE ib.item_id = ? AND ib.stock > 0
+      ORDER BY b.name ASC
+    `;
+    res.json(db.prepare(query).all(req.params.id));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

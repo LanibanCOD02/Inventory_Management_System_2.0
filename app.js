@@ -296,6 +296,7 @@ async function loadBranches() {
       addItemBranch.addEventListener('change', (e) => {
         window.updateSupplierDropdowns(e.target.value);
         window.updateProgramDropdowns(e.target.value);
+        window.updateBlockDropdown(e.target.value, 'addItemBlock');
         if (document.getElementById('addItemSupplierInput')) document.getElementById('addItemSupplierInput').value = '';
         if (document.getElementById('addItemProgramInput')) document.getElementById('addItemProgramInput').value = '';
       });
@@ -1039,8 +1040,13 @@ function openModal() {
   }
   
   const sel = document.getElementById('addItemBranch');
-  window.updateSupplierDropdowns(sel?.value);
-  window.updateProgramDropdowns(sel?.value);
+  const userStr = localStorage.getItem('msc_user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const branchIdToUse = sel?.value || (user ? user.branch_id : null) || globalSelectedBranch;
+  
+  window.updateSupplierDropdowns(branchIdToUse);
+  window.updateProgramDropdowns(branchIdToUse);
+  window.updateBlockDropdown(branchIdToUse, 'addItemBlock');
   
   modal.classList.add("active"); 
   document.querySelector('input[name="name"]')?.focus(); 
@@ -1057,7 +1063,7 @@ function closeModal() {
 }
 
 // ─── Item Detail View ────────────────────────────
-function openItemDetail(id) {
+async function openItemDetail(id) {
   const item = inventory.find(i => i.id === id);
   if (!item) return;
   
@@ -1078,6 +1084,40 @@ function openItemDetail(id) {
   }
   document.getElementById("detailStock").textContent = `${item.stock} ${item.unit}`;
   document.getElementById("detailThreshold").textContent = `${item.threshold} ${item.unit}`;
+  
+  // Fetch block stocks dynamically
+  try {
+    const blocksData = await cachedFetch(`/inventory/${item.id}/blocks`);
+    const blockStockContainer = document.getElementById("detailBlockStockContainer");
+    if (!blockStockContainer) {
+      // Create container if it doesn't exist
+      const p = document.createElement('p');
+      p.id = "detailBlockStockContainer";
+      p.style.fontSize = "14px";
+      p.style.color = "var(--text-secondary)";
+      p.style.marginTop = "8px";
+      p.style.background = "var(--bg)";
+      p.style.padding = "8px";
+      p.style.borderRadius = "var(--radius)";
+      document.getElementById("detailStock").parentNode.appendChild(p);
+    }
+    
+    if (blocksData && blocksData.length > 0) {
+      let html = `<strong style="color:var(--text);display:block;margin-bottom:4px;">Stock by Block:</strong>`;
+      blocksData.forEach(b => {
+        html += `<span style="display:inline-block; margin-right:12px;"><i data-lucide="package" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>${escapeHTML(b.block_name)}: ${b.stock} ${item.unit}</span>`;
+      });
+      document.getElementById("detailBlockStockContainer").innerHTML = html;
+      document.getElementById("detailBlockStockContainer").style.display = "block";
+      if (window.lucide) window.lucide.createIcons();
+    } else {
+      if (document.getElementById("detailBlockStockContainer")) {
+        document.getElementById("detailBlockStockContainer").style.display = "none";
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load block stocks', err);
+  }
   
   if (item.item_code) {
     document.getElementById("detailItemCodeP").style.display = "block";
@@ -1870,6 +1910,7 @@ if (movementModal) {
       const branchId = addMovementBranch.value;
       window.updateSupplierDropdowns(branchId);
       window.updateProgramDropdowns(branchId);
+      window.updateBlockDropdown(branchId, 'addMovementBlock');
       if (document.getElementById('movementSupplierSelect')) document.getElementById('movementSupplierSelect').value = '';
       if (document.getElementById('movementProgramSelect')) document.getElementById('movementProgramSelect').value = '';
     });
@@ -1923,6 +1964,7 @@ if (movementModal) {
     const branchId = bSel ? bSel.value : null;
     window.updateSupplierDropdowns(branchId);
     window.updateProgramDropdowns(branchId);
+    window.updateBlockDropdown(branchId, 'addMovementBlock');
 
     movementModal.classList.add("active");
   };
@@ -2789,10 +2831,23 @@ window.openTransferModal = async (branchId, branchName) => {
       
     transferSourceBranch.innerHTML = '<option value="" disabled selected>Select Source...</option>' + branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
     
+    const userStr = localStorage.getItem('msc_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const isStaff = user && user.role === 'Staff';
+    const userBranchId = user ? user.branch_id : null;
+    
     if (branchId) {
       transferSourceBranch.value = branchId;
+    } else if (isStaff && userBranchId) {
+      transferSourceBranch.value = userBranchId;
     } else if (globalSelectedBranch) {
       transferSourceBranch.value = globalSelectedBranch;
+    }
+    
+    if (isStaff) {
+      transferSourceBranch.disabled = true;
+    } else {
+      transferSourceBranch.disabled = false;
     }
     
     updateDestinationBranchDropdown();

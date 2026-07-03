@@ -43,6 +43,18 @@ try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_branch_id TEXT"); }
 
 
 
+    CREATE TABLE IF NOT EXISTS inventory_item_blocks (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL,
+      block_id TEXT NOT NULL,
+      stock INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(item_id, block_id),
+      FOREIGN KEY (item_id) REFERENCES inventory_items(id),
+      FOREIGN KEY (block_id) REFERENCES branch_blocks(id)
+    );
+  `);
+} catch(e) {}
+
 try {
   db.exec(`
     CREATE TABLE IF NOT EXISTS price_history (
