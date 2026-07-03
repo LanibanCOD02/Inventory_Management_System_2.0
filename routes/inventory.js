@@ -621,9 +621,9 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
     const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
     
     const checkBlock = db.prepare('SELECT id FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?');
-    const updateBlock = db.prepare('UPDATE inventory_item_blocks SET stock = ?, last_updated = ? WHERE item_id = ? AND block_id = ?');
-    const updateBlockAddStock = db.prepare('UPDATE inventory_item_blocks SET stock = stock + ?, last_updated = ? WHERE item_id = ? AND block_id = ?');
-    const insertBlock = db.prepare('INSERT INTO inventory_item_blocks (id, item_id, block_id, stock, last_updated) VALUES (?, ?, ?, ?, ?)');
+    const updateBlock = db.prepare('UPDATE inventory_item_blocks SET stock = ? WHERE item_id = ? AND block_id = ?');
+    const updateBlockAddStock = db.prepare('UPDATE inventory_item_blocks SET stock = stock + ? WHERE item_id = ? AND block_id = ?');
+    const insertBlock = db.prepare('INSERT INTO inventory_item_blocks (id, item_id, block_id, stock) VALUES (?, ?, ?, ?)');
     
     const processedItems = new Set();
     const processedBlocks = new Set();
@@ -695,13 +695,13 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
             const bCheck = checkBlock.get(existing.id, blockId);
             if (bCheck) {
               if (processedBlocks.has(existing.id + '_' + blockId)) {
-                updateBlockAddStock.run(stock, new Date().toISOString(), existing.id, blockId);
+                updateBlockAddStock.run(stock, existing.id, blockId);
               } else {
-                updateBlock.run(stock, new Date().toISOString(), existing.id, blockId);
+                updateBlock.run(stock, existing.id, blockId);
                 processedBlocks.add(existing.id + '_' + blockId);
               }
             } else {
-              insertBlock.run(generateUUID(), existing.id, blockId, stock, new Date().toISOString());
+              insertBlock.run(generateUUID(), existing.id, blockId, stock);
               processedBlocks.add(existing.id + '_' + blockId);
             }
           }
@@ -712,7 +712,7 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
           insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice, iCode || null, sNum || null);
           processedItems.add(newId);
           if (blockId) {
-            insertBlock.run(generateUUID(), newId, blockId, stock, nowStr);
+            insertBlock.run(generateUUID(), newId, blockId, stock);
             processedBlocks.add(newId + '_' + blockId);
           }
           insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
