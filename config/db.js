@@ -40,6 +40,7 @@ try { db.exec("ALTER TABLE branch_blocks ADD COLUMN deleted_at TEXT"); } catch(e
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN from_block_id TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_block_id TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN to_branch_id TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE inventory_movements ADD COLUMN notes TEXT"); } catch(e) {}
 
 
 try {
