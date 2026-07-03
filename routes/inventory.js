@@ -245,6 +245,9 @@ router.get('/:id/price-history', authenticateToken, (req, res) => {
     const params = [req.params.id];
     if (req.user.role !== 'Admin') {
       query += ' AND branch_id = ?';
+      params.push(req.user.branch_id);
+    }
+    query += ' ORDER BY created_at ASC';
     res.json(db.prepare(query).all(...params));
   } catch (error) {
     console.error('Price history error:', error);
