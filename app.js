@@ -560,9 +560,9 @@ function renderTable() {
   const theadTr = document.getElementById('inventoryTableHeader');
   if (theadTr) {
     if (isAllBranches) {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Branch</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Location</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
     } else {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
+      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Location</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
     }
   }
 
@@ -574,7 +574,13 @@ function renderTable() {
       ? `<img class="item-thumb" src="${item.product_photo_url}" alt="${item.name}" loading="lazy" style="object-fit:cover">`
       : `<div class="item-thumb" style="background:var(--teal-50);display:grid;place-items:center"><i data-lucide="${getCategoryIcon(item.category)}" style="width:16px;height:16px;color:var(--teal-600)"></i></div>`;
     
-    const branchCol = isAllBranches ? `<td data-label="Branch"><span style="font-size:13px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px;">${item.branch_name || 'All'}</span></td>` : '';
+    const branchName = item.branch_name || 'All';
+    const blockName = item.block_names || 'General';
+    const locHtml = isAllBranches
+      ? `<span style="font-size:12px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px; margin-bottom: 2px; display:inline-block">${branchName}</span><br><span style="font-size:11px; color:var(--muted); background:var(--bg); padding:1px 4px; border-radius:3px;">${blockName}</span>`
+      : `<span style="font-size:12px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px;">${blockName}</span>`;
+    
+    const branchCol = `<td data-label="Location">${locHtml}</td>`;
     
     return `<tr onclick="openItemDetail('${item.id}')" style="cursor: pointer;">
       <td data-label="Item"><div class="item-name-cell">${imgHtml}<div class="item-info"><strong>${item.name}</strong><span>${item.category}</span></div></div></td>

@@ -23,10 +23,13 @@ router.get('/', authenticateToken, async (req, res) => {
     const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
     
     const items = db.prepare(`
-      SELECT i.id, i.name, i.category, i.stock, i.unit, i.threshold, i.unit_price, i.product_photo_url, i.created_at, i.default_supplier, i.program, i.item_code, i.serial_number, i.branch_id, b.name as branch_name 
+      SELECT i.id, i.name, i.category, i.stock, i.unit, i.threshold, i.unit_price, i.product_photo_url, i.created_at, i.default_supplier, i.program, i.item_code, i.serial_number, i.branch_id, b.name as branch_name, GROUP_CONCAT(bb.name, ', ') as block_names
       FROM inventory_items i
       LEFT JOIN branches b ON i.branch_id = b.id
+      LEFT JOIN inventory_item_blocks iib ON i.id = iib.item_id
+      LEFT JOIN branch_blocks bb ON iib.block_id = bb.id
       WHERE i.deleted_at IS NULL AND ${condition.replace(/branch_id/g, 'i.branch_id')} 
+      GROUP BY i.id
       ORDER BY i.created_at DESC 
       LIMIT ? OFFSET ?
     `).all(...params, limit, offset);
