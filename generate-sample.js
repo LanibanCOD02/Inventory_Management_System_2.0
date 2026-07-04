@@ -149,8 +149,8 @@ async function createSample(filename) {
 }
 
 async function main() {
-  await createSample('sample-bulk-import-test.xlsx');
-  await createSample('test.xlsx');
+  await createSample('sample-bulk-import-test-v2.xlsx');
+  await createSample('test-v2.xlsx');
 }
 
 main();

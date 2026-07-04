@@ -556,14 +556,10 @@ function renderTable() {
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
-  const isAllBranches = currentUser && currentUser.role === 'Admin' && (!document.getElementById('globalBranchSelector') || !document.getElementById('globalBranchSelector').value);
+  const isAdmin = currentUser && currentUser.role === 'Admin';
   const theadTr = document.getElementById('inventoryTableHeader');
   if (theadTr) {
-    if (isAllBranches) {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Location</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
-    } else {
-      theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Location</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
-    }
+    theadTr.innerHTML = '<th scope="col">Item</th><th scope="col">Location</th><th scope="col">Item Code</th><th scope="col">Serial No.</th><th scope="col">Stock Level</th><th scope="col">Status</th><th scope="col">Last Updated</th>';
   }
 
   const mappedRows = paginated.map(item => {
@@ -576,7 +572,7 @@ function renderTable() {
     
     const branchName = item.branch_name || 'All';
     const blockName = item.block_names || 'General';
-    const locHtml = isAllBranches
+    const locHtml = isAdmin
       ? `<span style="font-size:12px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px; margin-bottom: 2px; display:inline-block">${branchName}</span><br><span style="font-size:11px; color:var(--muted); background:var(--bg); padding:1px 4px; border-radius:3px;">${blockName}</span>`
       : `<span style="font-size:12px; color:var(--text-secondary); background:var(--bg-alt); padding:2px 6px; border-radius:4px;">${blockName}</span>`;
     
@@ -1597,7 +1593,8 @@ if(document.getElementById("addItemForm")) {
         program: document.getElementById('addItemProgramInput')?.value || null,
         product_photo_url: uploadedUrls.productPhotoUrl || null,
         bill_image_url: uploadedUrls.billImageUrl || null,
-        invoice_pdf_url: uploadedUrls.invoicePdfUrl || null
+        invoice_pdf_url: uploadedUrls.invoicePdfUrl || null,
+        block_id: d.get("block_id")
       };
 
       await apiFetch('/inventory', {
