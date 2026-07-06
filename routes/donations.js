@@ -19,7 +19,7 @@ router.get('/', authenticateToken, async (req, res) => {
       FROM donations d
       LEFT JOIN branches b ON d.branch_id = b.id
       LEFT JOIN users u ON d.created_by = u.id
-      WHERE d.deleted_at IS NULL AND d.${condition.replace(/branch_id/g, 'branch_id')}
+      WHERE d.deleted_at IS NULL AND ${condition.replace(/branch_id/g, 'd.branch_id')}
       ORDER BY d.created_at DESC
     `).all(...params);
     res.json(rows);
