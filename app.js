@@ -2137,6 +2137,27 @@ if (movementModal) {
     });
   }
 
+  window.processDonation = function(donationId, type) {
+    if (type === 'in-kind') {
+      window.currentInKindDonationId = donationId;
+      if (typeof window.openMovementModal === 'function') {
+        window.openMovementModal('IN');
+      }
+    } else if (type === 'monetary') {
+      if (confirm('Are you sure you want to add these funds to the asset accounts?')) {
+        apiFetch(`/donations/${donationId}/process`, { method: 'PUT' })
+          .then(() => {
+            invalidateCache('/donations');
+            invalidateCache('/dashboard/metrics');
+            if (typeof loadData === 'function' && typeof currentPage !== 'undefined') {
+              loadData(currentPage);
+            }
+          })
+          .catch(e => alert('Failed to process donation: ' + (e.message || 'Error occurred')));
+      }
+    }
+  };
+
   window.openMovementModal = async (type) => {
     await loadInventory(); // Ensure inventory list is fully up-to-date
     document.getElementById("addMovementForm").reset();
@@ -2190,8 +2211,8 @@ if (movementModal) {
     movementModal.classList.add("active");
   };
 
-  if(document.getElementById("closeMovementModal")) document.getElementById("closeMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
-  if(document.getElementById("cancelMovementModal")) document.getElementById("cancelMovementModal").addEventListener("click", () => movementModal.classList.remove("active"));
+  if(document.getElementById("closeMovementModal")) document.getElementById("closeMovementModal").addEventListener("click", () => { movementModal.classList.remove("active"); window.currentInKindDonationId = null; });
+  if(document.getElementById("cancelMovementModal")) document.getElementById("cancelMovementModal").addEventListener("click", () => { movementModal.classList.remove("active"); window.currentInKindDonationId = null; });
   // // movementModal.addEventListener("click", e => { if (e.target === movementModal) movementModal.classList.remove("active"); });
 
   if(document.getElementById("addMovementForm")) {
@@ -2238,7 +2259,7 @@ if (movementModal) {
           })
         });
         
-        if (window.currentInKindDonationId && d.get('type') === 'INWARD') {
+        if (window.currentInKindDonationId && (d.get('type') === 'INWARD' || d.get('type') === 'IN')) {
           try {
             await apiFetch(`/donations/${window.currentInKindDonationId}/process`, { method: 'PUT' });
             window.currentInKindDonationId = null;
