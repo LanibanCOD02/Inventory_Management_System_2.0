@@ -292,6 +292,9 @@ async function loadBranches() {
     if(editUserBranch) editUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     if(addMovementBranch) addMovementBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     
+    const addDonationBranch = document.getElementById('addDonationBranch');
+    if(addDonationBranch) addDonationBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+    
     if (addItemBranch) {
       addItemBranch.addEventListener('change', (e) => {
         window.updateSupplierDropdowns(e.target.value);
@@ -1838,7 +1841,7 @@ if (document.getElementById("addDonationModalBackdrop")) {
         amount: document.getElementById("addDonationAmount").value,
         address: document.getElementById("addDonationAddress").value,
         notes: document.getElementById("addDonationNotes").value,
-        branch_id: globalSelectedBranch || undefined
+        branch_id: document.getElementById("addDonationBranch")?.value || globalSelectedBranch || undefined
       };
       
       await apiFetch(`/donations`, {
