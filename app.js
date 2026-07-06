@@ -1833,6 +1833,17 @@ if (document.getElementById("addDonationModalBackdrop")) {
         ? `${document.getElementById("addDonationItemQuantity").value} ${document.getElementById("addDonationItemName").value}`
         : '';
         
+      const branchSelect = document.getElementById("addDonationBranch");
+      const branch_id = branchSelect?.value || globalSelectedBranch || undefined;
+      
+      // If branch selector is visible but empty, require selection
+      if (branchSelect && branchSelect.offsetParent !== null && !branchSelect.value && !globalSelectedBranch) {
+        alert("Please select a branch for this donation.");
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+        return;
+      }
+        
       const payload = {
         donation_type: type,
         item_details: item_details,
@@ -1841,7 +1852,7 @@ if (document.getElementById("addDonationModalBackdrop")) {
         amount: document.getElementById("addDonationAmount").value,
         address: document.getElementById("addDonationAddress").value,
         notes: document.getElementById("addDonationNotes").value,
-        branch_id: document.getElementById("addDonationBranch")?.value || globalSelectedBranch || undefined
+        branch_id: branch_id
       };
       
       await apiFetch(`/donations`, {
