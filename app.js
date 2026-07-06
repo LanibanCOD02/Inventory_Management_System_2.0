@@ -907,6 +907,7 @@ const sectionData = {
   programs: { title: "Programs", subtitle: "Monitor supply allocation across care and rehabilitation services.", action: `<button class="primary-btn section-add-entity" data-type="programs"><i data-lucide="plus"></i>Add program</button>`, content: null },
   suppliers: { title: "Suppliers", subtitle: "Keep vendor contacts and supply categories organized.", action: `<button class="primary-btn section-add-entity" data-type="suppliers"><i data-lucide="plus"></i>Add supplier</button>`, content: null },
   donations: { title: "Donations", subtitle: "Track monetary donations to the trust.", action: `<button class="primary-btn section-add-donation"><i data-lucide="plus"></i>Add Donation</button>`, content: null },
+  groceries: { title: "Groceries", subtitle: "Manage food and provisions inventory separately.", action: `<button class="primary-btn section-add-grocery"><i data-lucide="plus"></i>Add Grocery</button>`, content: null },
   reports: {
       title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
       content: async () => `<div class="report-grid">
@@ -1025,6 +1026,25 @@ async function switchPage(page) {
         dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Monetary Donations</h3><p>Financial contributions received by the trust</p></div></div><div class="table-wrap"><table><thead><tr><th>Donor Name</th><th>Amount</th><th>Phone</th><th>Address</th><th>Date</th></tr></thead><tbody>
           ${data.map(d => `<tr><td>${d.donor_name}</td><td style="font-weight:600;color:var(--teal-600)">₹${d.amount}</td><td>${d.phone || '-'}</td><td>${d.address || '-'}</td><td>${new Date(d.created_at).toLocaleDateString()}</td></tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No donations found in database.</td></tr>'}
         </tbody></table></div></div>`;
+      } else if (page === 'groceries') {
+        let invData = [];
+        try {
+          const res = await apiFetch('/inventory');
+          invData = res || [];
+        } catch(e) {}
+        const data = invData.filter(i => (i.category || '').toLowerCase() === 'groceries' || (i.category || '').toLowerCase() === 'grocery');
+        dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Groceries Balance</h3><p>Manage remaining stock for food and provisions</p></div></div><div class="table-wrap"><table><thead><tr><th>Item Name</th><th>Category</th><th>Current Balance</th><th>Unit Price</th><th>Branch</th></tr></thead><tbody>
+          ${data.map(i => {
+            let stockStyle = i.stock <= (i.threshold || 10) ? 'color:var(--danger);font-weight:600;' : 'color:var(--teal-600);font-weight:600;';
+            return `<tr>
+              <td><strong>${i.name}</strong></td>
+              <td><span class="badge" style="background:var(--gray-100);color:var(--gray-700)">${i.category || 'General'}</span></td>
+              <td style="${stockStyle}">${i.stock} ${i.unit || ''}</td>
+              <td>₹${i.unit_price || 0}</td>
+              <td><span class="badge" style="background:var(--teal-light);color:var(--teal-600)">${i.branch_name || 'All'}</span></td>
+            </tr>`;
+          }).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No grocery items found.</td></tr>'}
+        </tbody></table></div></div>`;
       } else {
         dynamicContent = await s.content();
       }
@@ -1040,6 +1060,10 @@ async function switchPage(page) {
     sectionView.querySelector(".section-add-item")?.addEventListener("click", openModal);
     sectionView.querySelector(".section-add-entity")?.addEventListener("click", (e) => {
       window.openAddEntityModal(e.currentTarget.dataset.type);
+    });
+    sectionView.querySelector(".section-add-grocery")?.addEventListener("click", () => {
+      openModal("Groceries");
+      document.getElementById("modalBackdrop").classList.add("active");
     });
     sectionView.querySelector(".section-add-donation")?.addEventListener("click", () => {
       document.getElementById("addDonationForm").reset();
@@ -1063,11 +1087,15 @@ async function switchPage(page) {
 // ─── Toast (Redeclaration removed) ────────────────
 
 // ─── Modal ───────────────────────────────────────
-function openModal() {
+function openModal(defaultCategory = '') {
   document.getElementById("addItemForm").reset();
   if (globalSelectedBranch) {
     const sel = document.getElementById('addItemBranch');
     if (sel) sel.value = globalSelectedBranch;
+  }
+  if (defaultCategory) {
+    const catSel = document.getElementById('addItemCategory');
+    if (catSel) catSel.value = defaultCategory;
   }
   
   const sel = document.getElementById('addItemBranch');
