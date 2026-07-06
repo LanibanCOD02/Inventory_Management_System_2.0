@@ -1063,7 +1063,7 @@ async function switchPage(page) {
               if (isMonetary) {
                 actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'monetary')" style="height:28px;padding:0 10px;font-size:11px;">Add to Assets</button>`;
               } else {
-                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'in-kind')" style="height:28px;padding:0 10px;font-size:11px;background-color:var(--blue-600);">Add to Stock</button>`;
+                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'in-kind')" style="height:28px;padding:0 10px;font-size:11px;background-color:#2563eb;">Add to Stock</button>`;
               }
             }
             return `<tr>
