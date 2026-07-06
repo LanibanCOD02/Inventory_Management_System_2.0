@@ -1036,21 +1036,15 @@ async function switchPage(page) {
         });
 
         const statsHtml = `
-          <div class="stats-grid" style="margin-bottom: 24px;">
-            <div class="stat-card">
-              <div class="stat-icon" style="background:var(--teal-50);color:var(--teal-600)"><i data-lucide="coins"></i></div>
-              <div class="stat-content">
-                <p class="stat-label">Total Monetary Funds</p>
-                <h3 class="stat-value">₹${totalMonetary.toLocaleString()}</h3>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon" style="background:var(--blue-50);color:var(--blue-600)"><i data-lucide="package"></i></div>
-              <div class="stat-content">
-                <p class="stat-label">Total Estimated In-Kind</p>
-                <h3 class="stat-value">₹${totalInKind.toLocaleString()}</h3>
-              </div>
-            </div>
+          <div class="metrics-row" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <article class="metric-card">
+              <div class="metric-icon teal"><i data-lucide="coins"></i></div>
+              <div><p>Total Monetary Funds</p><h3>₹${totalMonetary.toLocaleString()}</h3></div>
+            </article>
+            <article class="metric-card">
+              <div class="metric-icon teal" style="background-color:var(--blue-50);color:var(--blue-600)"><i data-lucide="package"></i></div>
+              <div><p>Total Estimated In-Kind</p><h3>₹${totalInKind.toLocaleString()}</h3></div>
+            </article>
           </div>
         `;
 
