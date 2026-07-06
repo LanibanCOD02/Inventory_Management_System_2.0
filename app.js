@@ -1114,6 +1114,7 @@ async function switchPage(page) {
     });
     sectionView.querySelector(".section-add-donation")?.addEventListener("click", () => {
       document.getElementById("addDonationForm").reset();
+      window.toggleDonationFields();
       document.getElementById("addDonationModalBackdrop").classList.add("active");
     });
     
@@ -1778,6 +1779,32 @@ if (document.getElementById("addEntityModalBackdrop")) {
 }
 
 // ─── Add Donation Logic ────────────────────────────
+window.toggleDonationFields = function() {
+  const type = document.getElementById("addDonationType").value;
+  const itemGroup = document.getElementById("addDonationItemDetailsGroup");
+  const itemInput = document.getElementById("addDonationItemDetails");
+  const donorReq = document.getElementById("donorNameReq");
+  const amountLabel = document.getElementById("amountLabel");
+  const donorInput = document.getElementById("addDonationDonorName");
+  const amountInput = document.getElementById("addDonationAmount");
+  
+  if (type === "in-kind") {
+    itemGroup.style.display = "block";
+    itemInput.required = true;
+    donorReq.style.display = "none";
+    donorInput.required = false;
+    amountLabel.innerHTML = 'Estimated Value (₹)';
+    amountInput.required = false;
+  } else {
+    itemGroup.style.display = "none";
+    itemInput.required = false;
+    donorReq.style.display = "inline";
+    donorInput.required = true;
+    amountLabel.innerHTML = 'Amount (₹)<span id="amountReq" class="required">&nbsp;*</span>';
+    amountInput.required = true;
+  }
+};
+
 if (document.getElementById("addDonationModalBackdrop")) {
   const modal = document.getElementById("addDonationModalBackdrop");
   document.getElementById("closeAddDonationModal").addEventListener("click", () => modal.classList.remove("active"));
@@ -1793,6 +1820,8 @@ if (document.getElementById("addDonationModalBackdrop")) {
     
     try {
       const payload = {
+        donation_type: document.getElementById("addDonationType").value,
+        item_details: document.getElementById("addDonationItemDetails").value,
         donor_name: document.getElementById("addDonationDonorName").value,
         phone: document.getElementById("addDonationPhone").value,
         amount: document.getElementById("addDonationAmount").value,
