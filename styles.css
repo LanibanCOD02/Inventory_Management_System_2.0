@@ -226,7 +226,7 @@ tbody tr:hover{background:var(--teal-50)}
 /* ─── Modal ───────────────────────────────────────── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.4);backdrop-filter:blur(4px);z-index:50;display:none;place-items:center}
 .modal-backdrop.active{display:grid}
-.modal{background:var(--white);border-radius:16px;width:min(440px,90vw);padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:modal-enter .25s var(--ease)}
+.modal{background:var(--white);border-radius:16px;width:min(440px,90vw);padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:modal-enter .25s var(--ease);max-height:90vh;overflow-y:auto}
 .modal-heading{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
 .modal-heading h2{font:700 18px 'Outfit',sans-serif;color:var(--text);margin:0}
 .eyebrow{font:600 11px 'Inter',sans-serif;color:var(--teal);text-transform:uppercase;letter-spacing:.5px;margin:0 0 4px}
