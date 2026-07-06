@@ -14,8 +14,15 @@ router.get('/metrics', authenticateToken, async (req, res) => {
       const valueData = db.prepare(`SELECT stock, unit_price FROM inventory_items WHERE deleted_at IS NULL AND ${condition}`).all(...params);
       inventoryValue = valueData.reduce((sum, i) => sum + ((i.stock || 0) * (i.unit_price || 0)), 0);
       
-      const donationData = db.prepare(`SELECT amount FROM donations WHERE deleted_at IS NULL AND ${condition}`).all(...params);
-      totalDonations = donationData.reduce((sum, d) => sum + (d.amount || 0), 0);
+      const donationRow = db.prepare(`
+      SELECT SUM(amount) as total 
+      FROM donations 
+      WHERE deleted_at IS NULL 
+        AND donation_type = 'monetary' 
+        AND processed = 1
+        AND ${condition}
+    `).get(...params);
+      totalDonations = donationRow.total || 0;
     } catch (err) {
       console.warn("Could not fetch metrics:", err.message);
     }

@@ -1023,8 +1023,61 @@ async function switchPage(page) {
         </tbody></table></div></div>`;
       } else if (page === 'donations') {
         const data = await cachedFetch('/donations');
-        dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Monetary Donations</h3><p>Financial contributions received by the trust</p></div></div><div class="table-wrap"><table><thead><tr><th>Donor Name</th><th>Amount</th><th>Phone</th><th>Address</th><th>Date</th></tr></thead><tbody>
-          ${data.map(d => `<tr><td>${d.donor_name}</td><td style="font-weight:600;color:var(--teal-600)">₹${d.amount}</td><td>${d.phone || '-'}</td><td>${d.address || '-'}</td><td>${new Date(d.created_at).toLocaleDateString()}</td></tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No donations found in database.</td></tr>'}
+        
+        let totalMonetary = 0;
+        let totalInKind = 0;
+        
+        data.forEach(d => {
+          if (d.donation_type === 'in-kind') {
+            totalInKind += (d.amount || 0);
+          } else {
+            totalMonetary += (d.amount || 0);
+          }
+        });
+
+        const statsHtml = `
+          <div class="stats-grid" style="margin-bottom: 24px;">
+            <div class="stat-card">
+              <div class="stat-icon" style="background:var(--teal-50);color:var(--teal-600)"><i data-lucide="coins"></i></div>
+              <div class="stat-content">
+                <p class="stat-label">Total Monetary Funds</p>
+                <h3 class="stat-value">₹${totalMonetary.toLocaleString()}</h3>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon" style="background:var(--blue-50);color:var(--blue-600)"><i data-lucide="package"></i></div>
+              <div class="stat-content">
+                <p class="stat-label">Total Estimated In-Kind</p>
+                <h3 class="stat-value">₹${totalInKind.toLocaleString()}</h3>
+              </div>
+            </div>
+          </div>
+        `;
+
+        dynamicContent = statsHtml + `<div class="card section-panel"><div class="card-header"><div><h3>Contributions Ledger</h3><p>Financial funds and physical goods received by the trust</p></div></div><div class="table-wrap"><table><thead><tr><th>Donor Name</th><th>Type</th><th>Item Details</th><th>Value</th><th>Date</th><th>Action</th></tr></thead><tbody>
+          ${data.map(d => {
+            const isMonetary = d.donation_type !== 'in-kind';
+            let actionHtml = '';
+            if (d.processed) {
+              actionHtml = isMonetary 
+                ? '<span class="status-badge status-active">Funds Added</span>' 
+                : '<span class="status-badge status-active">Stock Added</span>';
+            } else {
+              if (isMonetary) {
+                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'monetary')" style="height:28px;padding:0 10px;font-size:11px;">Add to Assets</button>`;
+              } else {
+                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'in-kind')" style="height:28px;padding:0 10px;font-size:11px;background-color:var(--blue-600);">Add to Stock</button>`;
+              }
+            }
+            return `<tr>
+              <td>${d.donor_name}</td>
+              <td><span class="status-badge ${isMonetary ? 'status-active' : 'status-pending'}">${isMonetary ? 'Monetary' : 'In-Kind'}</span></td>
+              <td>${d.item_details || '-'}</td>
+              <td style="font-weight:600;color:var(--gray-900)">${d.amount ? '₹'+d.amount : '-'}</td>
+              <td>${new Date(d.created_at).toLocaleDateString()}</td>
+              <td style="text-align:right">${actionHtml}</td>
+            </tr>`;
+          }).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No contributions found in database.</td></tr>'}
         </tbody></table></div></div>`;
       } else if (page === 'groceries') {
         let invData = [];
@@ -2147,6 +2200,16 @@ if (movementModal) {
             invoice_pdf_url: uploadedUrls.invoicePdfUrl
           })
         });
+        
+        if (window.currentInKindDonationId && d.get('type') === 'INWARD') {
+          try {
+            await apiFetch(`/donations/${window.currentInKindDonationId}/process`, { method: 'PUT' });
+            window.currentInKindDonationId = null;
+            invalidateCache('/donations');
+            invalidateCache('/dashboard/metrics');
+          } catch(e) {}
+        }
+
         invalidateCache('/inventory');
         invalidateCache('/movements');
         showToast("✓ Stock movement recorded");

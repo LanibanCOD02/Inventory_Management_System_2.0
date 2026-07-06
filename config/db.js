@@ -105,7 +105,7 @@ try {
       donor_name TEXT NOT NULL,
       phone TEXT,
       address TEXT,
-      amount REAL NOT NULL,
+      amount REAL,
       notes TEXT,
       branch_id TEXT NOT NULL,
       created_by TEXT,
@@ -114,8 +114,10 @@ try {
       FOREIGN KEY (branch_id) REFERENCES branches(id)
     );
   `);
-} catch (e) {
-  console.error("Failed to create donations table:", e);
-}
+} catch (e) {}
+
+try { db.exec("ALTER TABLE donations ADD COLUMN donation_type TEXT DEFAULT 'monetary'"); } catch(e) {}
+try { db.exec("ALTER TABLE donations ADD COLUMN item_details TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE donations ADD COLUMN processed INTEGER DEFAULT 0"); } catch(e) {}
 
 module.exports = db;

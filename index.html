@@ -603,13 +603,24 @@
   <div class="modal-backdrop" id="addDonationModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="addDonationModalTitle">
       <header class="modal-header">
-        <div><p class="eyebrow">Finance</p><h2 id="addDonationModalTitle">Add Monetary Donation</h2></div>
+        <div><p class="eyebrow">Finance & Operations</p><h2 id="addDonationModalTitle">Add Contribution</h2></div>
         <button class="icon-btn" id="closeAddDonationModal" aria-label="Close modal"><i data-lucide="x"></i></button>
       </header>
       <div class="modal-body">
         <form id="addDonationForm" class="form-grid">
           <div class="form-group full-width">
-            <label for="addDonationDonorName">Donor Name <span class="required">*</span></label>
+            <label for="addDonationType">Contribution Type <span class="required">*</span></label>
+            <select id="addDonationType" required onchange="window.toggleDonationFields()">
+              <option value="monetary">Monetary Fund (Cash/Transfer)</option>
+              <option value="in-kind">In-Kind Goods (Products/Supplies)</option>
+            </select>
+          </div>
+          <div class="form-group full-width" id="addDonationItemDetailsGroup" style="display:none;">
+            <label for="addDonationItemDetails">Item Details <span class="required">*</span></label>
+            <input type="text" id="addDonationItemDetails" placeholder="e.g. 50 bags of Rice">
+          </div>
+          <div class="form-group full-width">
+            <label for="addDonationDonorName">Donor Name <span class="required" id="donorNameReq">*</span></label>
             <input type="text" id="addDonationDonorName" required placeholder="e.g. John Doe">
           </div>
           <div class="form-group">
@@ -617,7 +628,7 @@
             <input type="text" id="addDonationPhone" placeholder="e.g. +91 9876543210">
           </div>
           <div class="form-group">
-            <label for="addDonationAmount">Amount <span class="required">*</span></label>
+            <label for="addDonationAmount">Estimated Value (₹) <span class="required" id="amountReq">*</span></label>
             <input type="number" id="addDonationAmount" required min="1" step="0.01" placeholder="e.g. 1000">
           </div>
           <div class="form-group full-width">
