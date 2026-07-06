@@ -1781,23 +1781,29 @@ if (document.getElementById("addEntityModalBackdrop")) {
 // ─── Add Donation Logic ────────────────────────────
 window.toggleDonationFields = function() {
   const type = document.getElementById("addDonationType").value;
-  const itemGroup = document.getElementById("addDonationItemDetailsGroup");
-  const itemInput = document.getElementById("addDonationItemDetails");
+  const nameGroup = document.getElementById("addDonationItemNameGroup");
+  const qtyGroup = document.getElementById("addDonationItemQuantityGroup");
+  const nameInput = document.getElementById("addDonationItemName");
+  const qtyInput = document.getElementById("addDonationItemQuantity");
   const donorReq = document.getElementById("donorNameReq");
   const amountLabel = document.getElementById("amountLabel");
   const donorInput = document.getElementById("addDonationDonorName");
   const amountInput = document.getElementById("addDonationAmount");
   
   if (type === "in-kind") {
-    itemGroup.style.display = "block";
-    itemInput.required = true;
+    nameGroup.style.display = "block";
+    qtyGroup.style.display = "block";
+    nameInput.required = true;
+    qtyInput.required = true;
     donorReq.style.display = "none";
     donorInput.required = false;
     amountLabel.innerHTML = 'Estimated Value (₹)';
     amountInput.required = false;
   } else {
-    itemGroup.style.display = "none";
-    itemInput.required = false;
+    nameGroup.style.display = "none";
+    qtyGroup.style.display = "none";
+    nameInput.required = false;
+    qtyInput.required = false;
     donorReq.style.display = "inline";
     donorInput.required = true;
     amountLabel.innerHTML = 'Amount (₹)<span id="amountReq" class="required">&nbsp;*</span>';
@@ -1819,9 +1825,14 @@ if (document.getElementById("addDonationModalBackdrop")) {
     submitBtn.disabled = true;
     
     try {
+      const type = document.getElementById("addDonationType").value;
+      const item_details = type === 'in-kind' 
+        ? `${document.getElementById("addDonationItemQuantity").value} ${document.getElementById("addDonationItemName").value}`
+        : '';
+        
       const payload = {
-        donation_type: document.getElementById("addDonationType").value,
-        item_details: document.getElementById("addDonationItemDetails").value,
+        donation_type: type,
+        item_details: item_details,
         donor_name: document.getElementById("addDonationDonorName").value,
         phone: document.getElementById("addDonationPhone").value,
         amount: document.getElementById("addDonationAmount").value,
