@@ -98,5 +98,24 @@ try {
 } catch (e) {
   console.error("Failed to create transfer_requests table:", e);
 }
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS donations (
+      id TEXT PRIMARY KEY,
+      donor_name TEXT NOT NULL,
+      phone TEXT,
+      address TEXT,
+      amount REAL NOT NULL,
+      notes TEXT,
+      branch_id TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL,
+      deleted_at TEXT,
+      FOREIGN KEY (branch_id) REFERENCES branches(id)
+    );
+  `);
+} catch (e) {
+  console.error("Failed to create donations table:", e);
+}
 
 module.exports = db;

@@ -364,17 +364,22 @@ async function loadInventory() {
     countUp(document.getElementById("totalItems"), inventory.length, 1000);
     countUp(document.getElementById("availableStock"), inventory.reduce((sum, i) => sum + i.stock, 0), 1000);
     
-    // Load real inventory value from backend
+    // Load real inventory and donations value from backend
     try {
       const metrics = await apiFetch('/dashboard/metrics');
       const valEl = document.getElementById('invValue');
-      if (valEl && metrics.inventoryValue !== undefined) {
-        valEl.textContent = new Intl.NumberFormat('en-IN', {
-          style: 'currency', currency: 'INR', maximumFractionDigits: 0
-        }).format(metrics.inventoryValue);
-      }
+      const donEl = document.getElementById('totalDonationsValue');
+      
+      const invVal = metrics.inventoryValue || 0;
+      const donVal = metrics.totalDonations || 0;
+      const totalAssets = invVal + donVal;
+      
+      const formatCurrency = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
+      
+      if (valEl) valEl.textContent = formatCurrency(totalAssets);
+      if (donEl) donEl.textContent = formatCurrency(donVal);
     } catch(err) {
-      console.error('Failed to load inventory value:', err);
+      console.error('Failed to load dashboard financial metrics:', err);
     }
     
     if (typeof initCharts === 'function') initCharts();
@@ -901,6 +906,7 @@ const sectionData = {
   categories: { title: "Categories", subtitle: "Understand how supplies are grouped across the trust.", action: `<button class="primary-btn section-add-entity" data-type="categories"><i data-lucide="plus"></i>Add category</button>`, content: null },
   programs: { title: "Programs", subtitle: "Monitor supply allocation across care and rehabilitation services.", action: `<button class="primary-btn section-add-entity" data-type="programs"><i data-lucide="plus"></i>Add program</button>`, content: null },
   suppliers: { title: "Suppliers", subtitle: "Keep vendor contacts and supply categories organized.", action: `<button class="primary-btn section-add-entity" data-type="suppliers"><i data-lucide="plus"></i>Add supplier</button>`, content: null },
+  donations: { title: "Donations", subtitle: "Track monetary donations to the trust.", action: `<button class="primary-btn section-add-donation"><i data-lucide="plus"></i>Add Donation</button>`, content: null },
   reports: {
       title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
       content: async () => `<div class="report-grid">
@@ -1012,7 +1018,12 @@ async function switchPage(page) {
       } else if (page === 'suppliers') {
         const data = await cachedFetch('/suppliers');
         dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Approved Suppliers</h3><p>Active suppliers supporting trust operations</p></div></div><div class="table-wrap"><table><thead><tr><th>Supplier name</th><th>Description</th><th>Added on</th><th></th></tr></thead><tbody>
-          ${data.map(s => `<tr><td>${s.name}</td><td>${s.description || '-'}</td><td>${new Date(s.created_at).toLocaleDateString()}</td><td style="text-align:right"><button class="secondary-btn admin-only" onclick="deleteSupplier('${s.id}')" style="color:var(--danger);border-color:var(--danger);height:28px;padding:0 10px;font-size:11px;">Delete</button></td></tr>`).join("") || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No suppliers found in database.</td></tr>'}
+          ${data.map(s => `<tr><td>${s.name}</td><td>${s.description || '-'}</td><td>${new Date(s.created_at).toLocaleDateString()}</td><td style="text-align:right"><button class="secondary-btn" onclick="editEntity('suppliers', '${s.id}', '${(s.name || '').replace(/'/g, "\\'")}', '${(s.description || '').replace(/'/g, "\\'")}')" style="margin-right:8px;height:28px;padding:0 10px;font-size:11px;">Edit</button><button class="secondary-btn" onclick="deleteSupplier('${s.id}')" style="color:var(--danger);border-color:var(--danger);height:28px;padding:0 10px;font-size:11px;">Delete</button></td></tr>`).join("") || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No suppliers found in database.</td></tr>'}
+        </tbody></table></div></div>`;
+      } else if (page === 'donations') {
+        const data = await cachedFetch('/donations');
+        dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Monetary Donations</h3><p>Financial contributions received by the trust</p></div></div><div class="table-wrap"><table><thead><tr><th>Donor Name</th><th>Amount</th><th>Phone</th><th>Address</th><th>Date</th></tr></thead><tbody>
+          ${data.map(d => `<tr><td>${d.donor_name}</td><td style="font-weight:600;color:var(--teal-600)">₹${d.amount}</td><td>${d.phone || '-'}</td><td>${d.address || '-'}</td><td>${new Date(d.created_at).toLocaleDateString()}</td></tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No donations found in database.</td></tr>'}
         </tbody></table></div></div>`;
       } else {
         dynamicContent = await s.content();
@@ -1029,6 +1040,10 @@ async function switchPage(page) {
     sectionView.querySelector(".section-add-item")?.addEventListener("click", openModal);
     sectionView.querySelector(".section-add-entity")?.addEventListener("click", (e) => {
       window.openAddEntityModal(e.currentTarget.dataset.type);
+    });
+    sectionView.querySelector(".section-add-donation")?.addEventListener("click", () => {
+      document.getElementById("addDonationForm").reset();
+      document.getElementById("addDonationModalBackdrop").classList.add("active");
     });
     
     // placeholder removed
@@ -1686,6 +1701,55 @@ if (document.getElementById("addEntityModalBackdrop")) {
     }
   });
 }
+
+// ─── Add Donation Logic ────────────────────────────
+if (document.getElementById("addDonationModalBackdrop")) {
+  const modal = document.getElementById("addDonationModalBackdrop");
+  document.getElementById("closeAddDonationModal").addEventListener("click", () => modal.classList.remove("active"));
+  document.getElementById("cancelAddDonationModal").addEventListener("click", () => modal.classList.remove("active"));
+  
+  document.getElementById("addDonationForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const submitBtn = document.getElementById("addDonationSubmitBtn");
+    const originalText = submitBtn.textContent;
+    
+    submitBtn.innerHTML = '<span class="spinner"></span> Saving...';
+    submitBtn.disabled = true;
+    
+    try {
+      const payload = {
+        donor_name: document.getElementById("addDonationDonorName").value,
+        phone: document.getElementById("addDonationPhone").value,
+        amount: document.getElementById("addDonationAmount").value,
+        address: document.getElementById("addDonationAddress").value,
+        notes: document.getElementById("addDonationNotes").value,
+        branch_id: globalSelectedBranch || undefined
+      };
+      
+      await apiFetch(`/donations`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
+      showToast(`✓ Donation added successfully`);
+      invalidateCache(`/donations`);
+      invalidateCache(`/dashboard/metrics`);
+      
+      // Refresh current page if needed
+      const activePage = document.querySelector(".nav-item.active")?.dataset.page;
+      if (activePage === "donations") switchPage("donations");
+      else if (activePage === "dashboard") switchPage("dashboard");
+      
+      modal.classList.remove("active");
+    } catch (err) {
+      alert("Error adding donation: " + err.message);
+    } finally {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
+  });
+}
+
 
 // ─── Edit Entity Logic ─────────────────────────────
 window.editEntity = (type, id, name, description) => {

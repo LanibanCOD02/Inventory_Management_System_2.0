@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSC Trust Inventory Management System - User Manual</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #047857; /* Emerald 700 */
+            --primary-light: #10b981; /* Emerald 500 */
+            --primary-dark: #064e3b; /* Emerald 900 */
+            --bg-page: #f8fafc; /* Slate 50 */
+            --bg-surface: #ffffff;
+            --text-main: #1e293b; /* Slate 800 */
+            --text-muted: #64748b; /* Slate 500 */
+            --border: #e2e8f0; /* Slate 200 */
+            --accent: #f59e0b; /* Amber 500 */
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-page);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Cover Page */
+        .cover {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color: white;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+            page-break-after: always;
+        }
+
+        .cover-logo {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            margin-bottom: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+        }
+
+        .cover h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+            z-index: 10;
+        }
+
+        .cover h2 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            opacity: 0.9;
+            margin-bottom: 48px;
+            z-index: 10;
+        }
+
+        .version-badge {
+            background: var(--accent);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+            z-index: 10;
+            margin-bottom: 60px;
+        }
+
+        /* Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--bg-surface);
+            padding: 80px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Table of Contents */
+        .toc {
+            margin-bottom: 80px;
+            padding: 40px;
+            background: var(--bg-page);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+        }
+
+        .toc h2 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--primary-light);
+        }
+
+        .toc-list {
+            list-style: none;
+            columns: 2;
+            column-gap: 40px;
+        }
+
+        .toc-list li {
+            margin-bottom: 16px;
+        }
+
+        .toc-list a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1.05rem;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .toc-list a::before {
+            content: '→';
+            color: var(--primary-light);
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 80px;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: var(--primary-light);
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+            border-radius: var(--radius-md);
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+            flex-shrink: 0;
+        }
+
+        .section h2 {
+            font-size: 2.25rem;
+            color: var(--primary-dark);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .section h3 {
+            font-size: 1.5rem;
+            color: var(--text-main);
+            margin: 32px 0 16px 0;
+            font-weight: 600;
+        }
+
+        .section p {
+            margin-bottom: 16px;
+            font-size: 1.05rem;
+            color: var(--text-muted);
+        }
+
+        /* Callouts / Alerts */
+        .alert {
+            display: flex;
+            gap: 16px;
+            padding: 24px;
+            border-radius: var(--radius-md);
+            margin: 24px 0;
+            border-left: 4px solid;
+            page-break-inside: avoid;
+        }
+
+        .alert-info { background: #eff6ff; border-color: #3b82f6; }
+        .alert-warning { background: #fffbeb; border-color: #f59e0b; }
+        .alert-icon { font-size: 24px; }
+        .alert-content h4 { margin-bottom: 8px; color: var(--text-main); font-size: 1.1rem; }
+
+        /* Steps */
+        .step-list {
+            list-style: none;
+            counter-reset: steps;
+            margin: 32px 0;
+        }
+
+        .step-list li {
+            position: relative;
+            padding-left: 60px;
+            margin-bottom: 24px;
+            font-size: 1.05rem;
+            color: var(--text-muted);
+        }
+
+        .step-list li::before {
+            counter-increment: steps;
+            content: counter(steps);
+            position: absolute;
+            left: 0;
+            top: -2px;
+            width: 36px;
+            height: 36px;
+            background: var(--bg-page);
+            border: 2px solid var(--primary-light);
+            color: var(--primary-dark);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        /* Images */
+        .image-wrapper {
+            margin: 40px 0;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+        
+        .image-wrapper img {
+            max-width: 100%;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+
+        .image-caption {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Print Optimization */
+        @media print {
+            body { background: white; }
+            .container { padding: 0; box-shadow: none; max-width: 100%; }
+            .cover { padding: 0; justify-content: center; }
+            .toc-list { columns: 1; }
+            .alert { border: 1px solid #ccc; border-left: 4px solid; break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cover">
+        <div class="cover-logo">📦</div>
+        <div class="version-badge">Version 2.0</div>
+        <h1>MSC Trust Inventory System</h1>
+        <h2>User Manual & Operating Instructions</h2>
+    </div>
+
+    <div class="container">
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ul class="toc-list">
+                <li><a href="#sec-overview">1. Product Description & Intended Use</a></li>
+                <li><a href="#sec-safety">2. Safety & Security Guidelines</a></li>
+                <li><a href="#sec-ui">3. Main Dashboard Elements</a></li>
+                <li><a href="#sec-operate">4. Operating Instructions</a></li>
+                <li><a href="#sec-maintenance">5. Maintenance & Troubleshooting</a></li>
+                <li><a href="#sec-support">6. Contact & Support</a></li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec-overview">
+            <div class="section-header"><div class="section-number">1</div><h2>Product Description & Intended Use</h2></div>
+            <p>The <strong>MSC Trust Inventory Management System (v2.0)</strong> is a web-based software application designed exclusively for the MSC Chellamuthu Trust & Research Foundation.</p>
+            <h3>Intended Use</h3>
+            <p>This software is intended to track, manage, and audit physical inventory items across various branches and specific blocks (e.g., rooms or wards). It allows staff to record inward and outward stock movements, perform transfers, and request item deletions, while allowing administrators to maintain global oversight.</p>
+        </div>
+
+        <div class="section" id="sec-safety">
+            <div class="section-header"><div class="section-number">2</div><h2>Safety & Security Guidelines</h2></div>
+            <p>To ensure data integrity and prevent unauthorized access, all users must adhere to the following guidelines:</p>
+            <div class="alert alert-warning">
+                <div class="alert-icon">🔒</div>
+                <div class="alert-content">
+                    <h4>Account Security</h4>
+                    <p>Never share your login credentials. Actions performed in the system are audited and tied to your user account. Do not leave the application open on unattended, unlocked computers.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="sec-ui">
+            <div class="section-header"><div class="section-number">3</div><h2>Main Dashboard Elements</h2></div>
+            <p>Upon successfully logging in, you will be presented with the Main Dashboard. This is your primary interface for all inventory operations.</p>
+            
+            <div class="image-wrapper">
+                <img src="file:///C:/Users/lanib/OneDrive/Documents/MSC TRUST PROJECT/New folder/msc-trust-inventory/real_dashboard.png" alt="Main Dashboard UI">
+                <p class="image-caption">Figure 3.1: The Main Dashboard Interface.</p>
+            </div>
+            
+            <h3>Key Interface Elements</h3>
+            <ul class="step-list">
+                <li><strong>Sidebar Navigation:</strong> Located on the left, allows access to Dashboard, Requests, Categories, Programs, and Admin Settings.</li>
+                <li><strong>Summary Cards:</strong> At the top, displaying Total Items, Available Stock, and Low Stock Alerts.</li>
+                <li><strong>Inventory Table:</strong> The central grid showing Item Names, <strong>Location (Branch/Block)</strong>, Item Code, Serial No., and current Stock Levels.</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sec-operate">
+            <div class="section-header"><div class="section-number">4</div><h2>Operating Instructions</h2></div>
+            
+            <h3>Recording Stock Inward</h3>
+            <p>When new supplies arrive at your branch, they must be recorded into the system to maintain accurate stock levels.</p>
+            
+            <ol class="step-list">
+                <li>Navigate to the Dashboard and click the <strong>Stock Inward</strong> button at the top right.</li>
+                <li>In the modal window, use the <strong>Select an Item</strong> dropdown to choose the product.</li>
+                <li>The system will automatically populate the <strong>Item Code</strong> and <strong>Serial No.</strong> if they exist.</li>
+                <li>Enter the quantity received and any relevant reference notes.</li>
+                <li>Click the save button to finalize the entry.</li>
+            </ol>
+
+            <div class="image-wrapper">
+                <img src="file:///C:/Users/lanib/OneDrive/Documents/MSC TRUST PROJECT/New folder/msc-trust-inventory/real_inward.png" alt="Stock Inward Modal">
+                <p class="image-caption">Figure 4.1: The Stock Inward recording interface.</p>
+            </div>
+
+            <h3>Performing Stock Transfers</h3>
+            <p>Items can be moved between Blocks within your Branch, or sent to an entirely different Branch.</p>
+            <ol class="step-list">
+                <li>Click the <strong>Transfer Stock</strong> button.</li>
+                <li>Select the origin branch and item.</li>
+                <li>Select the destination branch and the specific destination block.</li>
+                <li>Confirm the transfer. <em>Note: Transfers to a different branch require Admin approval via the Requests panel.</em></li>
+            </ol>
+        </div>
+
+        <div class="section" id="sec-maintenance">
+            <div class="section-header"><div class="section-number">5</div><h2>Maintenance & Troubleshooting</h2></div>
+            
+            <h3>Troubleshooting Common Issues</h3>
+            <p><strong>Problem:</strong> I cannot see inventory for other branches.</p>
+            <p><strong>Solution:</strong> Standard Staff accounts are restricted to viewing only their assigned branch. If you require multi-branch access, please contact an Administrator to update your role permissions.</p>
+
+            <p><strong>Problem:</strong> The "Select an Item" dropdown in the Stock Inward modal is empty.</p>
+            <p><strong>Solution:</strong> Ensure that items have been created in the system and assigned to your branch first using the "Add Item" function.</p>
+
+            <h3>System Maintenance</h3>
+            <p>The system is maintained on centralized servers. No manual software updates or data backups are required by end-users. All data is automatically synchronized and backed up securely.</p>
+        </div>
+
+        <div class="section" id="sec-support">
+            <div class="section-header"><div class="section-number">6</div><h2>Contact & Support</h2></div>
+            <p>For technical assistance, password resets, or training inquiries, please contact the IT Support Helpdesk:</p>
+            <p><strong>Email:</strong> support@msctrust.org</p>
+            <p><strong>Phone:</strong> +91 (XXX) XXX-XXXX</p>
+            <p><strong>Hours:</strong> Monday - Friday, 9:00 AM - 5:00 PM IST</p>
+        </div>
+
+    </div>
+</body>
+</html>

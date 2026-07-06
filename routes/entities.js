@@ -114,8 +114,8 @@ function createCrudRoutes(router, resourceName, tableName) {
     }
   });
 
-  // DELETE soft-delete (Admin only)
-  router.delete(`${basePath}/:id`, authenticateToken, requireAdmin, async (req, res) => {
+  // DELETE soft-delete (Allowed for both roles)
+  router.delete(`${basePath}/:id`, authenticateToken, async (req, res) => {
     try {
       const { id } = req.params;
       const deleted_at = new Date().toISOString();

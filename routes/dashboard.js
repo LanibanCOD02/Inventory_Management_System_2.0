@@ -9,14 +9,18 @@ router.get('/metrics', authenticateToken, async (req, res) => {
     const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
     
     let inventoryValue = 0;
+    let totalDonations = 0;
     try {
       const valueData = db.prepare(`SELECT stock, unit_price FROM inventory_items WHERE deleted_at IS NULL AND ${condition}`).all(...params);
       inventoryValue = valueData.reduce((sum, i) => sum + ((i.stock || 0) * (i.unit_price || 0)), 0);
+      
+      const donationData = db.prepare(`SELECT amount FROM donations WHERE deleted_at IS NULL AND ${condition}`).all(...params);
+      totalDonations = donationData.reduce((sum, d) => sum + (d.amount || 0), 0);
     } catch (err) {
-      console.warn("Could not fetch metrics (ensure unit_price column exists):", err.message);
+      console.warn("Could not fetch metrics:", err.message);
     }
     
-    res.json({ inventoryValue });
+    res.json({ inventoryValue, totalDonations });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

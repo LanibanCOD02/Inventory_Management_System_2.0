@@ -45,6 +45,7 @@ const reportsRoutes = require('./routes/reports');
 const movementsRoutes = require('./routes/movements');
 const branchesRoutes = require('./routes/branches');
 const transfersRoutes = require('./routes/transfers');
+const donationsRoutes = require('./routes/donations');
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
@@ -56,6 +57,7 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/movements', movementsRoutes);
 app.use('/api/branches', branchesRoutes);
 app.use('/api/transfers', transfersRoutes);
+app.use('/api/donations', donationsRoutes);
 
 // Serve Static Frontend Files
 app.use(express.static(__dirname));
