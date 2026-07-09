@@ -916,7 +916,8 @@ const sectionData = {
       content: async () => `<div class="report-grid">
         <article class="report-card" onclick="generateReport('inventory')"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
         <article class="report-card" onclick="generateReport('low_stock')"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
-        <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Monthly inward and outward records</p></div></article>
+        <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Inward and outward records</p></div></article>
+        <article class="report-card" onclick="generateReport('comprehensive')"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
         <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
       </div>`
     },
@@ -2466,45 +2467,53 @@ function downloadCSV(filename, rows) {
 }
 
 window.generateReport = async (type) => {
-  showToast("Generating report...");
   const token = localStorage.getItem('msc_token');
   if (!token) return showToast('Error: You are not logged in.');
 
-  try {
-    if (type === 'inventory') {
-      window.open(`/api/reports/inventory-summary?token=${token}`, '_blank');
-      showToast("✓ Report generated");
-    } else if (type === 'low_stock') {
-      window.open(`/api/reports/low-stock?token=${token}`, '_blank');
-      showToast("✓ Report generated");
-    } else if (type === 'movements') {
-      const modal = document.getElementById('movementReportModalBackdrop');
-      if (modal) modal.classList.add('active');
-    } else if (type === 'backup') {
-      window.open(`/api/reports/backup-zip?token=${token}`, '_blank');
-      showToast("✓ Backup initiated");
-    }
-  } catch (err) {
-    showToast("Error generating report: " + err.message);
+  if (type === 'backup') {
+    showToast("Generating backup...");
+    window.open(`/api/reports/backup-zip?token=${token}`, '_blank');
+    showToast("✓ Backup initiated");
+  } else {
+    document.getElementById('currentReportType').value = type;
+    const modal = document.getElementById('dateRangeReportModalBackdrop');
+    
+    // Set default dates (start of month to today)
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
+    
+    if (modal) modal.classList.add('active');
   }
 };
 
-const closeMovementReportModal = document.getElementById('closeMovementReportModal');
-const cancelMovementReportModal = document.getElementById('cancelMovementReportModal');
-const movementReportModalBackdrop = document.getElementById('movementReportModalBackdrop');
-const movementReportForm = document.getElementById('movementReportForm');
+const closeDateRangeReportModal = document.getElementById('closeDateRangeReportModal');
+const cancelDateRangeReportModal = document.getElementById('cancelDateRangeReportModal');
+const dateRangeReportModalBackdrop = document.getElementById('dateRangeReportModalBackdrop');
+const dateRangeReportForm = document.getElementById('dateRangeReportForm');
 
-if (closeMovementReportModal) closeMovementReportModal.addEventListener('click', () => movementReportModalBackdrop.classList.remove('active'));
-if (cancelMovementReportModal) cancelMovementReportModal.addEventListener('click', () => movementReportModalBackdrop.classList.remove('active'));
+if (closeDateRangeReportModal) closeDateRangeReportModal.addEventListener('click', () => dateRangeReportModalBackdrop.classList.remove('active'));
+if (cancelDateRangeReportModal) cancelDateRangeReportModal.addEventListener('click', () => dateRangeReportModalBackdrop.classList.remove('active'));
 
-if (movementReportForm) {
-  movementReportForm.addEventListener('submit', (e) => {
+if (dateRangeReportForm) {
+  dateRangeReportForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const month = document.getElementById('movementReportMonth').value;
-    const year = document.getElementById('movementReportYear').value;
+    showToast("Generating report...");
+    const type = document.getElementById('currentReportType').value;
+    const startDate = document.getElementById('reportStartDate').value;
+    const endDate = document.getElementById('reportEndDate').value;
     const token = localStorage.getItem('msc_token');
-    window.open(`/api/reports/movements?month=${month}&year=${year}&token=${token}`, '_blank');
-    movementReportModalBackdrop.classList.remove('active');
+    
+    let endpoint = '';
+    if (type === 'inventory') endpoint = 'inventory-summary';
+    else if (type === 'low_stock') endpoint = 'low-stock';
+    else if (type === 'movements') endpoint = 'movements';
+    else if (type === 'comprehensive') endpoint = 'comprehensive';
+    
+    window.open(`/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`, '_blank');
+    dateRangeReportModalBackdrop.classList.remove('active');
     showToast("✓ Report generated");
   });
 }
