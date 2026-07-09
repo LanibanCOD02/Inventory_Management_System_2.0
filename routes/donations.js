@@ -33,17 +33,11 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const { donor_name, phone, address, amount, notes, branch_id, donation_type, item_details } = req.body;
     
-    // Type validation
-    const type = donation_type === 'in-kind' ? 'in-kind' : 'monetary';
+    // Force in-kind
+    const type = 'in-kind';
     
-    if (type === 'monetary') {
-      if (amount === undefined || amount === null || isNaN(amount) || amount <= 0) {
-        return res.status(400).json({ error: 'A valid Amount is required for Monetary Funds' });
-      }
-    } else {
-      if (!item_details || !item_details.trim()) {
-        return res.status(400).json({ error: 'Item Details are required for In-Kind Goods' });
-      }
+    if (!item_details || !item_details.trim()) {
+      return res.status(400).json({ error: 'Item Details are required for In-Kind Goods' });
     }
 
     const resolvedBranchId = getBranchId(req.user, branch_id);

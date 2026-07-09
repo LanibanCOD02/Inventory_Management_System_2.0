@@ -454,7 +454,8 @@
         </div>
         <div class="form-row">
           <label>Quantity<input required name="stock" type="number" min="0" value="0"></label>
-          <label>Unit<select name="unit"><option>Units</option><option>Boxes</option><option>Bags</option><option>Packs</option><option>Bottles</option><option>Rolls</option></select></label>
+          <label>Unit<input type="text" required name="unit" list="unitOptions"></label>
+          <datalist id="unitOptions"><option value="Units"></option><option value="Boxes"></option><option value="Bags"></option><option value="Packs"></option><option value="Bottles"></option><option value="Rolls"></option></datalist>
         </div>
         <label>Minimum stock level<input required name="threshold" type="number" min="0" value="10"></label>
         <label>Unit price (₹)<input required name="unit_price" type="number" min="0" step="0.01" value="0"></label>
@@ -604,38 +605,32 @@
       </div>
       <div class="modal-body">
         <form id="addDonationForm" class="form-grid">
-          <div class="form-group full-width">
-            <label for="addDonationType">Contribution Type&nbsp;<span class="required">*</span></label>
-            <select id="addDonationType" required onchange="window.toggleDonationFields()">
-              <option value="monetary">Monetary Fund (Cash/Transfer)</option>
-              <option value="in-kind">In-Kind Goods (Products/Supplies)</option>
-            </select>
-          </div>
+          <input type="hidden" id="addDonationType" value="in-kind">
           <div class="form-group full-width admin-only" id="donationBranchContainer" style="display:none;">
             <label for="addDonationBranch">Branch&nbsp;<span class="required">*</span></label>
             <select id="addDonationBranch">
               <option value="" disabled selected>Select Branch</option>
             </select>
           </div>
-          <div class="form-group" id="addDonationItemNameGroup" style="display:none;">
+          <div class="form-group" id="addDonationItemNameGroup">
             <label for="addDonationItemName">Item Name&nbsp;<span class="required">*</span></label>
-            <input type="text" id="addDonationItemName" placeholder="e.g. Rice">
+            <input type="text" id="addDonationItemName" placeholder="e.g. Rice" required>
           </div>
-          <div class="form-group" id="addDonationItemQuantityGroup" style="display:none;">
+          <div class="form-group" id="addDonationItemQuantityGroup">
             <label for="addDonationItemQuantity">Quantity&nbsp;<span class="required">*</span></label>
-            <input type="text" id="addDonationItemQuantity" placeholder="e.g. 50 bags">
+            <input type="text" id="addDonationItemQuantity" placeholder="e.g. 50 bags" required>
           </div>
           <div class="form-group full-width">
-            <label for="addDonationDonorName">Donor Name<span id="donorNameReq" class="required">&nbsp;*</span></label>
-            <input type="text" id="addDonationDonorName" required placeholder="e.g. John Doe">
+            <label for="addDonationDonorName">Donor Name</label>
+            <input type="text" id="addDonationDonorName" placeholder="e.g. John Doe">
           </div>
           <div class="form-group">
             <label for="addDonationPhone">Phone Number</label>
             <input type="text" id="addDonationPhone" placeholder="e.g. +91 9876543210">
           </div>
           <div class="form-group">
-            <label for="addDonationAmount" id="amountLabel">Amount (₹)<span id="amountReq" class="required">&nbsp;*</span></label>
-            <input type="number" id="addDonationAmount" required min="1" step="0.01" placeholder="e.g. 1000">
+            <label for="addDonationAmount" id="amountLabel">Estimated Value (₹)</label>
+            <input type="number" id="addDonationAmount" min="0" step="0.01" placeholder="e.g. 1000">
           </div>
           <div class="form-group full-width">
             <label for="addDonationAddress">Address</label>
@@ -681,7 +676,7 @@
               <option>Farming &amp; Dairy</option>
             </select></label>
             <div class="form-row">
-              <label>Unit<select name="unit" id="editUnit"><option>Units</option><option>Boxes</option><option>Bags</option><option>Packs</option><option>Bottles</option><option>Rolls</option></select></label>
+              <label>Unit<input type="text" required name="unit" id="editUnit" list="unitOptions"></label>
               <label>Minimum stock level<input required name="threshold" id="editThreshold" type="number" min="0"></label>
               <label>Unit price (₹)<input required name="unit_price" id="editUnitPrice" type="number" min="0" step="0.01"></label>
             </div>

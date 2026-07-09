@@ -909,7 +909,7 @@ const sectionData = {
   categories: { title: "Categories", subtitle: "Understand how supplies are grouped across the trust.", action: `<button class="primary-btn section-add-entity" data-type="categories"><i data-lucide="plus"></i>Add category</button>`, content: null },
   programs: { title: "Programs", subtitle: "Monitor supply allocation across care and rehabilitation services.", action: `<button class="primary-btn section-add-entity" data-type="programs"><i data-lucide="plus"></i>Add program</button>`, content: null },
   suppliers: { title: "Suppliers", subtitle: "Keep vendor contacts and supply categories organized.", action: `<button class="primary-btn section-add-entity" data-type="suppliers"><i data-lucide="plus"></i>Add supplier</button>`, content: null },
-  donations: { title: "Donations", subtitle: "Track monetary donations to the trust.", action: `<button class="primary-btn section-add-donation"><i data-lucide="plus"></i>Add Donation</button>`, content: null },
+  donations: { title: "Donations", subtitle: "Track in-kind donations to the trust.", action: `<button class="primary-btn section-add-donation"><i data-lucide="plus"></i>Add Donation</button>`, content: null },
   groceries: { title: "Groceries", subtitle: "Manage food and provisions inventory separately.", action: `<button class="primary-btn section-add-grocery"><i data-lucide="plus"></i>Add Grocery</button>`, content: null },
   reports: {
       title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
@@ -1027,23 +1027,16 @@ async function switchPage(page) {
       } else if (page === 'donations') {
         const data = await cachedFetch('/donations');
         
-        let totalMonetary = 0;
         let totalInKind = 0;
         
         data.forEach(d => {
           if (d.donation_type === 'in-kind') {
             totalInKind += (d.amount || 0);
-          } else {
-            totalMonetary += (d.amount || 0);
           }
         });
 
         const statsHtml = `
           <div class="metrics-row" style="margin-bottom: 24px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <article class="metric-card">
-              <div class="metric-icon teal"><i data-lucide="coins"></i></div>
-              <div><p>Total Monetary Funds</p><h3>₹${totalMonetary.toLocaleString()}</h3></div>
-            </article>
             <article class="metric-card">
               <div class="metric-icon teal" style="background-color:var(--blue-50);color:var(--blue-600)"><i data-lucide="package"></i></div>
               <div><p>Total Estimated In-Kind</p><h3>₹${totalInKind.toLocaleString()}</h3></div>
@@ -1053,22 +1046,15 @@ async function switchPage(page) {
 
         dynamicContent = statsHtml + `<div class="card section-panel"><div class="card-header"><div><h3>Contributions Ledger</h3><p>Financial funds and physical goods received by the trust</p></div></div><div class="table-wrap"><table><thead><tr><th>Donor Name</th><th>Type</th><th>Item Details</th><th>Value</th><th>Date</th><th>Action</th></tr></thead><tbody>
           ${data.map(d => {
-            const isMonetary = d.donation_type !== 'in-kind';
             let actionHtml = '';
             if (d.processed) {
-              actionHtml = isMonetary 
-                ? '<span class="status-badge status-active">Funds Added</span>' 
-                : '<span class="status-badge status-active">Stock Added</span>';
+              actionHtml = '<span class="status-badge status-active">Stock Added</span>';
             } else {
-              if (isMonetary) {
-                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'monetary')" style="height:28px;padding:0 10px;font-size:11px;">Add to Assets</button>`;
-              } else {
-                actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'in-kind')" style="height:28px;padding:0 10px;font-size:11px;background-color:#2563eb;">Add to Stock</button>`;
-              }
+              actionHtml = `<button class="primary-btn" onclick="processDonation('${d.id}', 'in-kind')" style="height:28px;padding:0 10px;font-size:11px;background-color:#2563eb;">Add to Stock</button>`;
             }
             return `<tr>
               <td>${d.donor_name}</td>
-              <td><span class="status-badge ${isMonetary ? 'status-active' : 'status-pending'}">${isMonetary ? 'Monetary' : 'In-Kind'}</span></td>
+              <td><span class="status-badge status-pending">In-Kind</span></td>
               <td>${d.item_details || '-'}</td>
               <td style="font-weight:600;color:var(--gray-900)">${d.amount ? '₹'+d.amount : '-'}</td>
               <td>${new Date(d.created_at).toLocaleDateString()}</td>
@@ -1117,7 +1103,7 @@ async function switchPage(page) {
     });
     sectionView.querySelector(".section-add-donation")?.addEventListener("click", () => {
       document.getElementById("addDonationForm").reset();
-      window.toggleDonationFields();
+      document.getElementById("addDonationForm").reset();
       document.getElementById("addDonationModalBackdrop").classList.add("active");
     });
     
@@ -1782,37 +1768,7 @@ if (document.getElementById("addEntityModalBackdrop")) {
 }
 
 // ─── Add Donation Logic ────────────────────────────
-window.toggleDonationFields = function() {
-  const type = document.getElementById("addDonationType").value;
-  const nameGroup = document.getElementById("addDonationItemNameGroup");
-  const qtyGroup = document.getElementById("addDonationItemQuantityGroup");
-  const nameInput = document.getElementById("addDonationItemName");
-  const qtyInput = document.getElementById("addDonationItemQuantity");
-  const donorReq = document.getElementById("donorNameReq");
-  const amountLabel = document.getElementById("amountLabel");
-  const donorInput = document.getElementById("addDonationDonorName");
-  const amountInput = document.getElementById("addDonationAmount");
-  
-  if (type === "in-kind") {
-    nameGroup.style.display = "block";
-    qtyGroup.style.display = "block";
-    nameInput.required = true;
-    qtyInput.required = true;
-    donorReq.style.display = "none";
-    donorInput.required = false;
-    amountLabel.innerHTML = 'Estimated Value (₹)';
-    amountInput.required = false;
-  } else {
-    nameGroup.style.display = "none";
-    qtyGroup.style.display = "none";
-    nameInput.required = false;
-    qtyInput.required = false;
-    donorReq.style.display = "inline";
-    donorInput.required = true;
-    amountLabel.innerHTML = 'Amount (₹)<span id="amountReq" class="required">&nbsp;*</span>';
-    amountInput.required = true;
-  }
-};
+
 
 if (document.getElementById("addDonationModalBackdrop")) {
   const modal = document.getElementById("addDonationModalBackdrop");
@@ -2153,18 +2109,6 @@ if (movementModal) {
       window.currentInKindDonationId = donationId;
       if (typeof window.openMovementModal === 'function') {
         window.openMovementModal('IN');
-      }
-    } else if (type === 'monetary') {
-      if (confirm('Are you sure you want to add these funds to the asset accounts?')) {
-        apiFetch(`/donations/${donationId}/process`, { method: 'PUT' })
-          .then(() => {
-            invalidateCache('/donations');
-            invalidateCache('/dashboard/metrics');
-            if (typeof loadData === 'function' && typeof currentPage !== 'undefined') {
-              loadData(currentPage);
-            }
-          })
-          .catch(e => alert('Failed to process donation: ' + (e.message || 'Error occurred')));
       }
     }
   };
