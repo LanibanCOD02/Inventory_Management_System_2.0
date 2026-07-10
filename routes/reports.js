@@ -600,7 +600,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     userSheet.columns = [{ header: 'Username', key: 'name', width: 25 }, { header: 'Role', key: 'role', width: 20 }, { header: 'Branch', key: 'branch', width: 25 }];
     userSheet.getRow(1).font = { bold: true };
     const userCond = req.user.role === 'Admin' ? '1=1' : condition.replace(/branch_id/g, 'u.branch_id');
-    db.prepare(`SELECT u.*, b.name as branch_name FROM users u LEFT JOIN branches b ON u.branch_id = b.id WHERE u.deleted_at IS NULL AND ${userCond}`).all(...params).forEach(u => userSheet.addRow({ name: u.username, role: u.role, branch: u.branch_name || 'All' }));
+    db.prepare(`SELECT u.*, b.name as branch_name FROM users u LEFT JOIN branches b ON u.branch_id = b.id WHERE ${userCond}`).all(...params).forEach(u => userSheet.addRow({ name: u.username, role: u.role, branch: u.branch_name || 'All' }));
 
     // Sheet 9: System Activity
     const actSheet = workbook.addWorksheet('System Activity');
