@@ -454,8 +454,7 @@
         </div>
         <div class="form-row">
           <label>Quantity<input required name="stock" type="number" min="0" value="0"></label>
-          <label>Unit<input type="text" required name="unit" list="unitOptions"></label>
-          <datalist id="unitOptions"><option value="Units"></option><option value="Boxes"></option><option value="Bags"></option><option value="Packs"></option><option value="Bottles"></option><option value="Rolls"></option></datalist>
+          <label>Unit<input type="text" required name="unit" placeholder="e.g. Kg, Box, Pack"></label>
         </div>
         <label>Minimum stock level<input required name="threshold" type="number" min="0" value="10"></label>
         <label>Unit price (₹)<input required name="unit_price" type="number" min="0" step="0.01" value="0"></label>
@@ -672,7 +671,7 @@
               <option>Farming &amp; Dairy</option>
             </select></label>
             <div class="form-row">
-              <label>Unit<input type="text" required name="unit" id="editUnit" list="unitOptions"></label>
+              <label>Unit<input type="text" required name="unit" id="editUnit"></label>
               <label>Minimum stock level<input required name="threshold" id="editThreshold" type="number" min="0"></label>
               <label>Unit price (₹)<input required name="unit_price" id="editUnitPrice" type="number" min="0" step="0.01"></label>
             </div>
