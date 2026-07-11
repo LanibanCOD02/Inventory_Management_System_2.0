@@ -285,7 +285,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="Master_Ledger.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="Inventory_Movement_History.xlsx"');
     await workbook.xlsx.write(res);
     res.end();
   } catch(err) {
