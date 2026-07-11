@@ -120,4 +120,16 @@ try { db.exec("ALTER TABLE donations ADD COLUMN donation_type TEXT DEFAULT 'mone
 try { db.exec("ALTER TABLE donations ADD COLUMN item_details TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE donations ADD COLUMN processed INTEGER DEFAULT 0"); } catch(e) {}
 
+// Seed required default categories if they don't exist
+try {
+  const existingCategory = db.prepare("SELECT id FROM categories WHERE name = 'Groceries'").get();
+  if (!existingCategory) {
+    db.prepare("INSERT INTO categories (id, name, created_at) VALUES (?, ?, ?)").run(
+      'cat-groceries-uuid', 'Groceries', new Date().toISOString()
+    );
+  }
+} catch (e) {
+  console.error("Failed to seed default Groceries category:", e);
+}
+
 module.exports = db;
