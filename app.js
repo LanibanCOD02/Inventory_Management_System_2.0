@@ -933,23 +933,17 @@ const sectionData = {
         <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
           <div><h3 style="color: var(--text)">Advanced Report Builder</h3><p style="color: var(--text-secondary)">Set your filters below, then click any report card above to generate it.</p></div>
         </div>
-        <form id="inlineReportForm" style="display:flex; flex-direction:column; gap:16px; padding: 20px;">
-          <div class="form-row">
-            <label>Start Date<input type="date" id="reportStartDate"></label>
-            <label>End Date<input type="date" id="reportEndDate"></label>
-          </div>
-          <div class="form-row">
-            <label class="admin-only">Branch<select id="reportBranch"><option value="">All Branches</option></select></label>
-            <label>Block / Location<select id="reportBlock"><option value="">All Blocks</option></select></label>
-          </div>
-          <div class="form-row">
-            <label>Category<select id="reportCategory">
-              <option value="">All Categories</option><option>Groceries</option><option>Medical Supply</option><option>Stationary & Edu</option><option>Farming & Dairy</option><option>Other</option>
-            </select></label>
-            <label>Program / Scheme<select id="reportProgram">
-              <option value="">All Programs</option><option>Community Kitchen</option><option>Mental Health Care</option><option>Rehabilitation</option><option>Mobile Medical Unit</option>
-            </select></label>
-          </div>
+        <form id="inlineReportForm">
+          <label>Start Date<input type="date" id="reportStartDate"></label>
+          <label>End Date<input type="date" id="reportEndDate"></label>
+          <label class="admin-only">Branch<select id="reportBranch"><option value="">All Branches</option></select></label>
+          <label>Block / Location<select id="reportBlock"><option value="">All Blocks</option></select></label>
+          <label>Category<select id="reportCategory">
+            <option value="">All Categories</option><option>Groceries</option><option>Medical Supply</option><option>Stationary & Edu</option><option>Farming & Dairy</option><option>Other</option>
+          </select></label>
+          <label>Program / Scheme<select id="reportProgram">
+            <option value="">All Programs</option><option>Community Kitchen</option><option>Mental Health Care</option><option>Rehabilitation</option><option>Mobile Medical Unit</option>
+          </select></label>
           <label>Action Type<select id="reportActionType">
             <option value="">All Actions (Ledger)</option><option value="INWARD">Stock Inwards</option><option value="OUTWARD">Stock Outwards</option><option value="TRANSFER">Branch Transfers</option><option value="DONATION">In-Kind Donations</option>
           </select></label>
