@@ -928,6 +928,33 @@ const sectionData = {
         <article class="report-card" onclick="generateReport('groceries')"><i data-lucide="shopping-basket"></i><div><h3>Groceries Ledger</h3><p>Ledger strictly for Groceries</p></div></article>
         <article class="report-card" onclick="generateReport('comprehensive')"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
         <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
+      </div>
+      
+      <div class="card section-panel" style="margin-top: 32px;">
+        <div class="card-header">
+          <div><h3>Advanced Report Builder</h3><p>Set your filters below, then click any report card above to generate it.</p></div>
+        </div>
+        <form id="inlineReportForm" style="display:flex; flex-direction:column; gap:16px; padding: 20px;">
+          <div class="form-row">
+            <label>Start Date<input type="date" id="reportStartDate"></label>
+            <label>End Date<input type="date" id="reportEndDate"></label>
+          </div>
+          <div class="form-row">
+            <label class="admin-only">Branch<select id="reportBranch"><option value="">All Branches</option></select></label>
+            <label>Block / Location<select id="reportBlock"><option value="">All Blocks</option></select></label>
+          </div>
+          <div class="form-row">
+            <label>Category<select id="reportCategory">
+              <option value="">All Categories</option><option>Groceries</option><option>Medical Supply</option><option>Stationary & Edu</option><option>Farming & Dairy</option><option>Other</option>
+            </select></label>
+            <label>Program / Scheme<select id="reportProgram">
+              <option value="">All Programs</option><option>Community Kitchen</option><option>Mental Health Care</option><option>Rehabilitation</option><option>Mobile Medical Unit</option>
+            </select></label>
+          </div>
+          <label>Action Type<select id="reportActionType">
+            <option value="">All Actions (Ledger)</option><option value="INWARD">Stock Inwards</option><option value="OUTWARD">Stock Outwards</option><option value="TRANSFER">Branch Transfers</option><option value="DONATION">In-Kind Donations</option>
+          </select></label>
+        </form>
       </div>`
     },
     priceHistory: {
@@ -2483,66 +2510,62 @@ window.generateReport = async (type) => {
     showToast("Generating backup...");
     window.open(`/api/reports/backup-zip?token=${token}`, '_blank');
     showToast("✓ Backup initiated");
-  } else {
-    document.getElementById('currentReportType').value = type;
-    const modal = document.getElementById('dateRangeReportModalBackdrop');
-    
-    // Set default dates (start of month to today)
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
-    document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
-    
-    if (modal) modal.classList.add('active');
+    return;
   }
+  
+  const startDate = document.getElementById('reportStartDate')?.value;
+  const endDate = document.getElementById('reportEndDate')?.value;
+  
+  if (!startDate || !endDate) {
+    return showToast('Error: Please select a Start Date and End Date in the Advanced Report Builder.');
+  }
+
+  showToast("Generating report...");
+  const branch = document.getElementById('reportBranch')?.value || '';
+  const block = document.getElementById('reportBlock')?.value || '';
+  let category = document.getElementById('reportCategory')?.value || '';
+  const program = document.getElementById('reportProgram')?.value || '';
+  const actionType = document.getElementById('reportActionType')?.value || '';
+
+  let endpoint = '';
+  if (type === 'inventory') endpoint = 'inventory-summary';
+  else if (type === 'low_stock') endpoint = 'low-stock';
+  else if (type === 'movements') endpoint = 'movements';
+  else if (type === 'comprehensive') endpoint = 'comprehensive';
+  else if (type === 'groceries') {
+    endpoint = 'comprehensive';
+    category = 'Groceries';
+  }
+  
+  let url = `/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`;
+  if (branch) url += `&branch_id=${encodeURIComponent(branch)}`;
+  if (block) url += `&block_id=${encodeURIComponent(block)}`;
+  if (category) url += `&category=${encodeURIComponent(category)}`;
+  if (program) url += `&program=${encodeURIComponent(program)}`;
+  if (actionType) url += `&action_type=${encodeURIComponent(actionType)}`;
+
+  window.open(url, '_blank');
+  showToast("✓ Report generated");
 };
 
-const closeDateRangeReportModal = document.getElementById('closeDateRangeReportModal');
-const cancelDateRangeReportModal = document.getElementById('cancelDateRangeReportModal');
-const dateRangeReportModalBackdrop = document.getElementById('dateRangeReportModalBackdrop');
-const dateRangeReportForm = document.getElementById('dateRangeReportForm');
-
-if (closeDateRangeReportModal) closeDateRangeReportModal.addEventListener('click', () => dateRangeReportModalBackdrop.classList.remove('active'));
-if (cancelDateRangeReportModal) cancelDateRangeReportModal.addEventListener('click', () => dateRangeReportModalBackdrop.classList.remove('active'));
-
-if (dateRangeReportForm) {
-  dateRangeReportForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    showToast("Generating report...");
-    const type = document.getElementById('currentReportType').value;
-    const startDate = document.getElementById('reportStartDate').value;
-    const endDate = document.getElementById('reportEndDate').value;
-    const token = localStorage.getItem('msc_token');
-    
-    const branch = document.getElementById('reportBranch')?.value || '';
-    const block = document.getElementById('reportBlock')?.value || '';
-    let category = document.getElementById('reportCategory')?.value || '';
-    const program = document.getElementById('reportProgram')?.value || '';
-    const actionType = document.getElementById('reportActionType')?.value || '';
-
-    let endpoint = '';
-    if (type === 'inventory') endpoint = 'inventory-summary';
-    else if (type === 'low_stock') endpoint = 'low-stock';
-    else if (type === 'movements') endpoint = 'movements';
-    else if (type === 'comprehensive') endpoint = 'comprehensive';
-    else if (type === 'groceries') {
-      endpoint = 'comprehensive';
-      category = 'Groceries';
+// Initialize report dates whenever we switch to reports page
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    if (e.target.dataset.page === 'reports') {
+      setTimeout(() => {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const sd = document.getElementById('reportStartDate');
+        const ed = document.getElementById('reportEndDate');
+        if (sd && !sd.value) sd.value = firstDay.toISOString().split('T')[0];
+        if (ed && !ed.value) ed.value = today.toISOString().split('T')[0];
+        
+        // Populate branches
+        if (typeof loadBranches === 'function') loadBranches();
+      }, 100);
     }
-    
-    let url = `/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`;
-    if (branch) url += `&branch_id=${encodeURIComponent(branch)}`;
-    if (block) url += `&block_id=${encodeURIComponent(block)}`;
-    if (category) url += `&category=${encodeURIComponent(category)}`;
-    if (program) url += `&program=${encodeURIComponent(program)}`;
-    if (actionType) url += `&action_type=${encodeURIComponent(actionType)}`;
-
-    window.open(url, '_blank');
-    dateRangeReportModalBackdrop.classList.remove('active');
-    showToast("✓ Report generated");
   });
-}
+});
 
 // Role select branch required logic
 const addUserRole = document.getElementById("addUserRole");

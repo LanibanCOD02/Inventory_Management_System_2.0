@@ -499,65 +499,6 @@
     </section>
   </div>
 
-  <!-- ─── Report Date Range Picker ─────────── -->
-  <div class="modal-backdrop" id="dateRangeReportModalBackdrop">
-    <section class="modal" style="width:min(360px,90vw)" role="dialog" aria-modal="true" aria-labelledby="dateRangeReportTitle">
-      <div class="modal-heading">
-        <div><p class="eyebrow">Reports</p><h2 id="dateRangeReportTitle">Select Date Range</h2></div>
-        <button class="icon-btn" id="closeDateRangeReportModal" aria-label="Close modal"><i data-lucide="x"></i></button>
-      </div>
-      <form id="dateRangeReportForm" style="display:flex; flex-direction:column; gap:16px; margin-top:20px;">
-        <input type="hidden" id="currentReportType" value="">
-        <div class="form-row">
-          <label>Start Date
-            <input type="date" required id="reportStartDate">
-          </label>
-          <label>End Date
-            <input type="date" required id="reportEndDate">
-          </label>
-        </div>
-        
-        <div class="form-row">
-          <label class="admin-only">Branch
-            <select id="reportBranch">
-              <option value="">All Branches</option>
-              <!-- Populated dynamically if admin -->
-            </select>
-          </label>
-          <label>Block / Location
-            <select id="reportBlock">
-              <option value="">All Blocks</option>
-              <!-- Populated dynamically based on branch -->
-            </select>
-          </label>
-        </div>
-
-        <div class="form-row">
-          <label>Category
-            <select id="reportCategory">
-              <option value="">All Categories</option>
-              <option>Groceries</option>
-              <option>Medical Supply</option>
-              <option>Stationary & Edu</option>
-              <option>Farming & Dairy</option>
-              <option>Other</option>
-            </select>
-          </label>
-          <label>Program / Scheme
-            <select id="reportProgram">
-              <option value="">All Programs</option>
-              <option value="Community Kitchen">Community Kitchen</option>
-              <option value="Mental Health Care">Mental Health Care</option>
-              <option value="Rehabilitation">Rehabilitation</option>
-              <option value="Mobile Medical Unit">Mobile Medical Unit</option>
-            </select>
-          </label>
-        </div>
-
-        <label>Action Type
-          <select id="reportActionType">
-            <option value="">All Actions (Ledger)</option>
-            <option value="INWARD">Stock Inwards</option>
             <option value="OUTWARD">Stock Outwards</option>
             <option value="TRANSFER">Branch Transfers</option>
             <option value="DONATION">In-Kind Donations</option>
