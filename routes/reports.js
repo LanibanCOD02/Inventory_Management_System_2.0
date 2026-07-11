@@ -338,6 +338,25 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
     const branchMap = getBranchMap();
 
+    const category = req.query.category || '';
+    const program = req.query.program || '';
+    const action_type = req.query.action_type || '';
+    const block_id = req.query.block_id || '';
+
+    let extraCatProg = '';
+    const itemParams = [...params];
+    if (category) { extraCatProg += ' AND category = ?'; itemParams.push(category); }
+    if (program) { extraCatProg += ' AND program = ?'; itemParams.push(program); }
+
+    let extraCatProgMov = '';
+    const movParams = [startDate, endDate, ...params];
+    if (category) { extraCatProgMov += ' AND i.category = ?'; movParams.push(category); }
+    if (program) { extraCatProgMov += ' AND i.program = ?'; movParams.push(program); }
+
+    let extraMov = '';
+    if (action_type) { extraMov += ' AND m.movement_type = ?'; movParams.push(action_type); }
+    if (block_id) { extraMov += ' AND (m.from_block_id = ? OR m.to_block_id = ?)'; movParams.push(block_id, block_id); }
+
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'MSC Trust Inventory System';
 
@@ -356,7 +375,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       { header: 'Date Added', key: 'created_at', width: 20 }
     ];
     invSheet.getRow(1).font = { bold: true };
-    const items = db.prepare(`SELECT * FROM inventory_items WHERE deleted_at IS NULL AND ${condition} ORDER BY name ASC`).all(...params);
+    const items = db.prepare(`SELECT * FROM inventory_items WHERE deleted_at IS NULL AND ${condition} ${extraCatProg} ORDER BY name ASC`).all(...itemParams);
     items.forEach(i => invSheet.addRow({
       branch: branchMap[i.branch_id] || 'Global',
       name: i.name, category: i.category || '-', unit: i.unit || '-',
@@ -418,10 +437,10 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       LEFT JOIN users u ON m.created_by = u.id
       WHERE m.created_at >= ? AND m.created_at <= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
       AND ${condition.replace(/branch_id/g, 'm.branch_id')}
-      ${extraCatProg}
+      ${extraCatProgMov}
       ${extraMov}
       ORDER BY m.created_at ASC
-    `).all(startDate, endDate, ...params);
+    `).all(...movParams);
     
     let sno = 1;
     movements.forEach(m => {
