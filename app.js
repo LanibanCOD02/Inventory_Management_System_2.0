@@ -929,10 +929,9 @@ const sectionData = {
         <article class="report-card" onclick="generateReport('comprehensive')"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
         <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
       </div>
-      
-      <div id="advancedReportBuilderCard" class="card section-panel" style="margin-top: 32px;">
-        <div class="card-header">
-          <div><h3>Advanced Report Builder</h3><p>Set your filters below, then click any report card above to generate it.</p></div>
+      <div class="card" style="margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+        <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+          <div><h3 style="color: var(--text)">Advanced Report Builder</h3><p style="color: var(--text-secondary)">Set your filters below, then click any report card above to generate it.</p></div>
         </div>
         <form id="inlineReportForm" style="display:flex; flex-direction:column; gap:16px; padding: 20px;">
           <div class="form-row">
