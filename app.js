@@ -931,7 +931,7 @@ const sectionData = {
       </div>
       <div class="card" style="margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
         <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-          <div><h3 style="color: var(--text)">Advanced Report Builder</h3><p style="color: var(--text-secondary)">Set your filters below, then click any report card above to generate it.</p></div>
+          <div><h3 style="color: var(--text)">Report Filters</h3><p style="color: var(--text-secondary)">Specify parameters to refine the generated report data.</p></div>
         </div>
         <form id="inlineReportForm">
           <label>Start Date<input type="date" id="reportStartDate"></label>
@@ -2510,7 +2510,7 @@ window.generateReport = async (type) => {
   const endDate = document.getElementById('reportEndDate')?.value;
   
   if (!startDate || !endDate) {
-    return showToast('Error: Please select a Start Date and End Date in the Advanced Report Builder.');
+    return showToast('Error: Please select a Start Date and End Date in the Report Filters.');
   }
 
   showToast("Generating report...");
