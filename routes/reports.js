@@ -572,7 +572,8 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     db.prepare(`SELECT dr.*, i.name as item_name, b.name as branch_name, u.username FROM deletion_requests dr JOIN inventory_items i ON dr.item_id = i.id JOIN branches b ON dr.branch_id = b.id LEFT JOIN users u ON dr.requested_by = u.id WHERE dr.requested_at >= ? AND dr.requested_at <= ? AND ${condition.replace(/branch_id/g, 'dr.branch_id')}`).all(startDate, endDate, ...params).forEach(r => actSheet.addRow({ date: r.requested_at ? r.requested_at.split(' ')[0] : '-', type: `Deletion Request (${r.reason})`, item: r.item_name, branch: r.branch_name || 'Global', details: `Status: ${r.status}. Qty: ${r.quantity || 'All'}. Notes: ${r.reason_details || '-'}`, user: r.username || '-' }));
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Comprehensive_Export_${qStart}_to_${qEnd}.xlsx"`);
+    const safeCategoryName = req.query.category ? req.query.category.replace(/[^a-zA-Z0-9]/g, '_') + '_Ledger' : 'Comprehensive_Export';
+    res.setHeader('Content-Disposition', `attachment; filename="${safeCategoryName}_${qStart}_to_${qEnd}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch(err) {
