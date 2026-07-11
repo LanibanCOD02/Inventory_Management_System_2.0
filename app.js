@@ -930,7 +930,7 @@ const sectionData = {
         <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
       </div>
       
-      <div class="card section-panel" style="margin-top: 32px;">
+      <div id="advancedReportBuilderCard" class="card section-panel" style="margin-top: 32px;">
         <div class="card-header">
           <div><h3>Advanced Report Builder</h3><p>Set your filters below, then click any report card above to generate it.</p></div>
         </div>
