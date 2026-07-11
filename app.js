@@ -1107,7 +1107,7 @@ async function switchPage(page) {
               <td><span class="badge" style="background:var(--gray-100);color:var(--gray-700)">${i.category || 'General'}</span></td>
               <td style="${stockStyle}">${i.stock} ${i.unit || ''}</td>
               <td>₹${i.unit_price || 0}</td>
-              <td><span class="badge" style="background:var(--teal-light);color:var(--teal-600)">${i.branch_name || 'All'}</span></td>
+              <td>${i.branch_name || 'All'}</td>
             </tr>`;
           }).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No grocery items found.</td></tr>'}
         </tbody></table></div></div>`;
