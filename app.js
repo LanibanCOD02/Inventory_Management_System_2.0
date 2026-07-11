@@ -282,7 +282,9 @@ async function loadBranches() {
     const addUserBranch = document.getElementById('addUserBranch');
     const editUserBranch = document.getElementById('editUserBranch');
     const addMovementBranch = document.getElementById('addMovementBranch');
-    
+    const reportBranch = document.getElementById('reportBranch');
+    const addDonationBranch = document.getElementById('addDonationBranch');
+
     const optionsHTML = branches.map(b => `<option value="${b.id}">${getShortBranchName(b.name)}</option>`).join('');
     
     if(globalSelect) globalSelect.innerHTML = '<option value="">All Branches</option>' + optionsHTML;
@@ -291,9 +293,15 @@ async function loadBranches() {
     if(addUserBranch) addUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     if(editUserBranch) editUserBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
     if(addMovementBranch) addMovementBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
-    
-    const addDonationBranch = document.getElementById('addDonationBranch');
+    if(reportBranch) reportBranch.innerHTML = '<option value="">All Branches</option>' + optionsHTML;
     if(addDonationBranch) addDonationBranch.innerHTML = '<option value="" disabled selected>Select Branch</option>' + optionsHTML;
+
+    // Attach block loading to report branch
+    if (reportBranch) {
+      reportBranch.addEventListener('change', (e) => {
+        if (window.updateBlockDropdown) window.updateBlockDropdown(e.target.value, 'reportBlock');
+      });
+    }
     
     if (addItemBranch) {
       addItemBranch.addEventListener('change', (e) => {
@@ -916,7 +924,8 @@ const sectionData = {
       content: async () => `<div class="report-grid">
         <article class="report-card" onclick="generateReport('inventory')"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
         <article class="report-card" onclick="generateReport('low_stock')"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
-        <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Inward and outward records</p></div></article>
+        <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Master Transaction Ledger</p></div></article>
+        <article class="report-card" onclick="generateReport('groceries')"><i data-lucide="shopping-basket"></i><div><h3>Groceries Ledger</h3><p>Ledger strictly for Groceries</p></div></article>
         <article class="report-card" onclick="generateReport('comprehensive')"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
         <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
       </div>`
@@ -2506,13 +2515,30 @@ if (dateRangeReportForm) {
     const endDate = document.getElementById('reportEndDate').value;
     const token = localStorage.getItem('msc_token');
     
+    const branch = document.getElementById('reportBranch')?.value || '';
+    const block = document.getElementById('reportBlock')?.value || '';
+    let category = document.getElementById('reportCategory')?.value || '';
+    const program = document.getElementById('reportProgram')?.value || '';
+    const actionType = document.getElementById('reportActionType')?.value || '';
+
     let endpoint = '';
     if (type === 'inventory') endpoint = 'inventory-summary';
     else if (type === 'low_stock') endpoint = 'low-stock';
     else if (type === 'movements') endpoint = 'movements';
     else if (type === 'comprehensive') endpoint = 'comprehensive';
+    else if (type === 'groceries') {
+      endpoint = 'comprehensive';
+      category = 'Groceries';
+    }
     
-    window.open(`/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`, '_blank');
+    let url = `/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`;
+    if (branch) url += `&branch_id=${encodeURIComponent(branch)}`;
+    if (block) url += `&block_id=${encodeURIComponent(block)}`;
+    if (category) url += `&category=${encodeURIComponent(category)}`;
+    if (program) url += `&program=${encodeURIComponent(program)}`;
+    if (actionType) url += `&action_type=${encodeURIComponent(actionType)}`;
+
+    window.open(url, '_blank');
     dateRangeReportModalBackdrop.classList.remove('active');
     showToast("✓ Report generated");
   });
