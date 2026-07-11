@@ -1716,11 +1716,11 @@ if(document.getElementById("addItemForm")) {
       showToast("✓ Item added successfully");
       closeModal();
       
-      // Refresh inventory if we are on dashboard or inventory page
+      // Refresh inventory if we are on dashboard, inventory, groceries, etc
       const activePage = document.querySelector(".nav-item.active")?.dataset.page;
-      if (activePage === 'dashboard' || activePage === 'inventory') {
+      if (activePage) {
         loadInventory();
-        if(activePage === 'inventory') switchPage('inventory');
+        switchPage(activePage);
       }
 
     } catch (err) {
