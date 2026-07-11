@@ -19,6 +19,11 @@ function getBranchMap() {
 router.get('/inventory-summary', authenticateToken, async (req, res) => {
   try {
     const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
+    const category = req.query.category || '';
+    const program = req.query.program || '';
+    let extraCatProg = '';
+    if (category) { extraCatProg += ' AND i.category = ?'; params.push(category); }
+    if (program) { extraCatProg += ' AND i.program = ?'; params.push(program); }
     const items = db.prepare(`SELECT * FROM inventory_items i WHERE deleted_at IS NULL AND ${condition.replace(/branch_id/g, 'i.branch_id')} ${extraCatProg} ORDER BY i.name ASC`).all(...params);
     const branchMap = getBranchMap();
 
