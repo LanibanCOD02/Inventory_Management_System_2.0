@@ -211,7 +211,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     allItems.forEach(i => stockMap[i.id] = i.stock);
     
     const movsAfterStart = db.prepare(`
-      SELECT item_id, movement_type, quantity, from_branch_id, to_branch_id
+      SELECT item_id, movement_type, quantity, branch_id, to_branch_id
       FROM inventory_movements 
       WHERE created_at >= ? AND (voided IS NULL OR voided = 0) AND reference_code NOT LIKE 'VOID-%'
     `).all(startDate);
@@ -393,7 +393,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     allItems.forEach(i => stockMap[i.id] = i.stock);
     
     const movsAfterStart = db.prepare(`
-      SELECT item_id, movement_type, quantity, from_branch_id, to_branch_id
+      SELECT item_id, movement_type, quantity, branch_id, to_branch_id
       FROM inventory_movements 
       WHERE created_at >= ? AND (voided IS NULL OR voided = 0) AND reference_code NOT LIKE 'VOID-%'
     `).all(startDate);
