@@ -42,9 +42,9 @@ img{display:block;max-width:100%}
   overflow-y:auto;
   z-index:20;
 }
-.brand{position:relative;display:flex;justify-content:center;align-items:center;padding:14px 12px;margin:8px 12px 24px;background:#f8fafc;border-radius:16px;box-shadow:inset 4px 4px 8px rgba(0,0,0,0.04), inset -4px -4px 8px #ffffff}
-.brand::after{content:"";position:absolute;bottom:-16px;left:10%;width:80%;height:2px;background:linear-gradient(90deg, var(--teal), #f59e0b, var(--teal));background-size:200% 100%;animation:gradientPan 3s ease infinite;border-radius:2px}
-.brand-logo{max-width:100%;height:auto;max-height:56px;object-fit:contain;mix-blend-mode:multiply;filter:contrast(1.05)}
+.brand{position:relative;display:flex;justify-content:center;align-items:center;padding:12px 8px 20px;margin-bottom:8px;background:transparent}
+.brand::after{content:"";position:absolute;bottom:0;left:10%;width:80%;height:2px;background:linear-gradient(90deg, var(--teal), #f59e0b, var(--teal));background-size:200% 100%;animation:gradientPan 3s ease infinite;border-radius:2px}
+.brand-logo{max-width:100%;height:auto;max-height:56px;object-fit:contain}
 @keyframes gradientPan{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 .nav-list{display:flex;flex-direction:column;gap:2px;padding:0 4px}
 .nav-item{
