@@ -931,7 +931,7 @@ const sectionData = {
       </div>
       <div class="card" style="margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
         <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-          <div><h3 style="color: var(--text)">Report Filters</h3><p style="color: var(--text-secondary)">Specify parameters to refine the generated report data.</p></div>
+          <div><h3 style="color: var(--text)">Report Filters</h3><p style="color: var(--text-secondary)">Specify parameters below, then <strong>click any report card above</strong> to generate and download it.</p></div>
         </div>
         <form id="inlineReportForm">
           <label>Start Date<input type="date" id="reportStartDate"></label>
