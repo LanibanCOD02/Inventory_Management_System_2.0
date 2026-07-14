@@ -947,15 +947,8 @@ const sectionData = {
           <label>Action Type<select id="reportActionType">
             <option value="">All Actions (Ledger)</option><option value="INWARD">Stock Inwards</option><option value="OUTWARD">Stock Outwards</option><option value="TRANSFER">Branch Transfers</option><option value="DONATION">In-Kind Donations</option>
           </select></label>
-          <div style="display: flex; gap: 12px; align-items: flex-end; margin-top: 8px;">
-            <label style="flex: 1; margin: 0;">Report Type<select id="reportTypeDropdown">
-              <option value="inventory">Inventory summary</option>
-              <option value="low_stock">Low stock report</option>
-              <option value="movements">Movement history</option>
-              <option value="groceries">Groceries Ledger</option>
-              <option value="comprehensive" selected>Comprehensive Export</option>
-            </select></label>
-            <button type="button" class="btn btn-primary" onclick="generateReport(document.getElementById('reportTypeDropdown').value)" style="height: 42px; padding: 0 24px;">
+          <div style="display: flex; align-items: flex-end; height: 100%;">
+            <button type="button" class="primary-btn" onclick="generateReport('comprehensive')" style="width: 100%; height: 38px; justify-content: center; gap: 8px;">
               <i data-lucide="download"></i> Download Report
             </button>
           </div>
