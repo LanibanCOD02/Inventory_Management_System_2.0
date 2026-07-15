@@ -26,69 +26,199 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     if (program) { extraCatProg += ' AND i.program = ?'; params.push(program); }
     const items = db.prepare(`SELECT * FROM inventory_items i WHERE deleted_at IS NULL AND ${condition.replace(/branch_id/g, 'i.branch_id')} ${extraCatProg} ORDER BY i.name ASC`).all(...params);
     const branchMap = getBranchMap();
+    const blockMap = {};
+    db.prepare('SELECT id, name FROM branch_blocks').all().forEach(b => blockMap[b.id] = b.name);
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'MSC Trust Inventory System';
     
-    // Group items by branch
-    const branchGroups = {};
-    let trustWideTotal = 0;
+    const sheet = workbook.addWorksheet('Inventory Summary', { views: [{ state: 'frozen', ySplit: 4 }] });
+
+    const qBranchId = req.query.branch_id;
+    let headerBranchName = 'All Branches';
+    if (qBranchId && branchMap[qBranchId]) {
+      headerBranchName = branchMap[qBranchId];
+    } else if (req.user.role !== 'Admin') {
+      headerBranchName = branchMap[req.user.branch_id] || 'Your Branch';
+    }
+
+    const qEndDate = req.query.endDate || new Date().toISOString().split('T')[0];
+    const generatedDate = new Date().toLocaleString();
+
+    // Row 1
+    sheet.mergeCells('A1:N1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+    titleCell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 14 };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getRow(1).height = 36;
+
+    // Row 2
+    sheet.mergeCells('A2:N2');
+    const subTitleCell = sheet.getCell('A2');
+    subTitleCell.value = `INVENTORY SUMMARY REPORT | Branch: ${headerBranchName} | As of: ${qEndDate} | Generated: ${generatedDate}`;
+    subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    subTitleCell.font = { color: { argb: 'FF1E293B' }, size: 10 }; // dark text
+    subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getRow(2).height = 24;
+
+    // Row 3 (Spacer)
+    sheet.getRow(3).height = 8;
+
+    // Row 4 (Headers)
+    sheet.getRow(4).values = [
+      'S.No', 'Item Name', 'Item Code', 'Category', 'Branch', 'Location/Block', 
+      'Current Stock', 'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 
+      'Status', 'Minimum Required', 'Shortage', 'Last Updated'
+    ];
     
-    items.forEach(item => {
-      const bId = item.branch_id || 'trust_wide';
-      if (!branchGroups[bId]) branchGroups[bId] = [];
-      branchGroups[bId].push(item);
-      trustWideTotal += item.stock;
+    sheet.getRow(4).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    
+    sheet.autoFilter = 'A4:N4';
+
+    sheet.columns = [
+      { key: 'sno' },
+      { key: 'name' },
+      { key: 'code' },
+      { key: 'category' },
+      { key: 'branch' },
+      { key: 'block' },
+      { key: 'stock' },
+      { key: 'unit' },
+      { key: 'price' },
+      { key: 'value' },
+      { key: 'status' },
+      { key: 'min' },
+      { key: 'shortage' },
+      { key: 'updated' }
+    ];
+
+    if (items.length === 0) {
+      sheet.mergeCells('A5:N5');
+      const emptyCell = sheet.getCell('A5');
+      emptyCell.value = 'No inventory items found for the selected filters.';
+      emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    } else {
+      let sumStock = 0;
+      let sumValue = 0;
+      
+      items.forEach((i, index) => {
+        const branchName = i.branch_id === 'trust_wide' ? 'Global Unassigned' : (branchMap[i.branch_id] || 'Global');
+        const blockName = blockMap[i.block_id] || '-';
+        
+        const stock = i.stock || 0;
+        const threshold = i.threshold || 0;
+        const price = i.unit_price || 0;
+        const totalValue = stock * price;
+        
+        sumStock += stock;
+        sumValue += totalValue;
+        
+        let status = 'In Stock';
+        let shortage = '';
+        if (stock === 0) {
+          status = 'Out of Stock';
+          shortage = threshold;
+        } else if (stock <= threshold) {
+          status = 'Low Stock';
+          shortage = threshold - stock;
+        }
+
+        const row = sheet.addRow({
+          sno: index + 1,
+          name: i.name || '-',
+          code: i.item_code || '-',
+          category: i.category || '-',
+          branch: branchName,
+          block: blockName,
+          stock: stock,
+          unit: i.unit || '-',
+          price: price,
+          value: totalValue,
+          status: status,
+          min: threshold,
+          shortage: shortage,
+          updated: i.updated_at ? i.updated_at.replace('T', ' ').substring(0, 19) : (i.created_at ? i.created_at.replace('T', ' ').substring(0, 19) : '-')
+        });
+        
+        // Alignment
+        row.eachCell((cell, colNumber) => {
+          if (colNumber === 7 || colNumber === 9 || colNumber === 10 || colNumber === 12 || colNumber === 13) {
+            cell.alignment = { horizontal: 'right' };
+          } else {
+            cell.alignment = { horizontal: 'left' };
+          }
+        });
+        
+        // Formatting
+        row.getCell('stock').font = { bold: true };
+        row.getCell('price').numFmt = '#,##0.00';
+        row.getCell('value').numFmt = '#,##0.00';
+        
+        // Coloring logic
+        if (status === 'Out of Stock') {
+          row.eachCell((cell) => {
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+             if (cell.col === 11) cell.font = { color: { argb: 'FFEF4444' } }; // column K (11) is status
+          });
+        } else if (status === 'Low Stock') {
+          row.eachCell((cell) => {
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+             if (cell.col === 11) cell.font = { color: { argb: 'FFF59E0B' } };
+          });
+        } else {
+          // In stock - alternating
+          row.getCell('status').font = { color: { argb: 'FF10B981' } };
+          if ((index + 1) % 2 === 0) {
+            row.eachCell((cell) => {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            });
+          }
+        }
+      });
+      
+      // Blank spacer
+      sheet.addRow([]);
+      
+      // Totals Row
+      const totalsRow = sheet.addRow({
+        sno: 'TOTALS',
+        stock: sumStock,
+        value: sumValue
+      });
+      totalsRow.font = { bold: true };
+      totalsRow.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+      });
+      totalsRow.getCell('stock').alignment = { horizontal: 'right' };
+      totalsRow.getCell('value').alignment = { horizontal: 'right' };
+      totalsRow.getCell('value').numFmt = '#,##0.00';
+    }
+
+    // Auto-size columns (min 12, max 45)
+    sheet.columns.forEach((column) => {
+      let maxLength = 12;
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.row > 3 && cell.value !== undefined && cell.value !== null) {
+          const length = cell.value.toString().length;
+          if (length > maxLength) {
+            maxLength = length;
+          }
+        }
+      });
+      column.width = Math.min(45, maxLength + 2);
     });
 
-    const isAllBranches = req.user.role === 'Admin' && (!req.query.branch_id || req.query.branch_id === '');
+    let fileNameBranch = headerBranchName.replace(/\s+/g, '_');
+    const safeDate = qEndDate.replace(/[^a-zA-Z0-9-]/g, '');
     
-    if (isAllBranches) {
-      const summarySheet = workbook.addWorksheet('Trust-Wide Summary');
-      summarySheet.columns = [
-        { header: 'Metric', key: 'metric', width: 30 },
-        { header: 'Value', key: 'value', width: 20 }
-      ];
-      summarySheet.getRow(1).font = { bold: true };
-      summarySheet.addRow({ metric: 'Total Unique Items', value: items.length });
-      summarySheet.addRow({ metric: 'Total Combined Stock', value: trustWideTotal });
-    }
-
-    if (Object.keys(branchGroups).length === 0) {
-      const sheet = workbook.addWorksheet('Inventory Summary');
-      sheet.addRow(['No items found.']);
-    } else {
-      for (const bId of Object.keys(branchGroups)) {
-        const branchName = bId === 'trust_wide' ? 'Global Unassigned' : (branchMap[bId] || 'Unknown Branch');
-        const safeSheetName = branchName.replace(/[\[\]\/*\?:\\\\]/g, '').substring(0, 31);
-        
-        const sheet = workbook.addWorksheet(safeSheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
-        sheet.columns = [
-          { header: 'Item Name', key: 'name', width: 30 },
-          { header: 'Category', key: 'category', width: 20 },
-          { header: 'Unit', key: 'unit', width: 15 },
-          { header: 'Current Stock', key: 'stock', width: 15 },
-          { header: 'Threshold', key: 'threshold', width: 15 },
-          { header: 'Unit Price (₹)', key: 'price', width: 15 },
-          { header: 'Date Added', key: 'created_at', width: 20 }
-        ];
-        sheet.getRow(1).font = { bold: true };
-        
-        branchGroups[bId].forEach(i => {
-          sheet.addRow({
-            name: i.name,
-            category: i.category || '-',
-            unit: i.unit || '-',
-            stock: i.stock,
-            threshold: i.threshold,
-            price: i.unit_price || 0,
-            created_at: i.created_at ? i.created_at.split('T')[0] : '-'
-          });
-        });
-      }
-    }
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Inventory_Summary_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="MSC_Inventory_Summary_${fileNameBranch}_${safeDate}.xlsx"`);
     
     await workbook.xlsx.write(res);
     res.end();
