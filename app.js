@@ -2651,8 +2651,8 @@ window.initReportFilters = async () => {
 
     const [branches, categories, programs] = await Promise.all([
       cachedFetch('/branches'),
-      cachedFetch('/inventory/categories'),
-      cachedFetch('/inventory/programs')
+      cachedFetch('/categories'),
+      cachedFetch('/programs')
     ]);
     
     // Populate Categories
