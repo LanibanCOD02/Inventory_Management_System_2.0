@@ -836,11 +836,6 @@
 
       <form id="transferStockForm" style="display:flex; flex-direction:column; gap:16px;">
         <input type="hidden" name="transfer_mode" id="transferMode" value="BRANCH">
-        <label>Item
-          <select required name="item_id" id="transferItemSelect">
-            <option value="">Select an item...</option>
-          </select>
-        </label>
         <div class="form-row">
           <label>Source Branch
             <select required name="from_branch_id" id="transferSourceBranch">
@@ -853,6 +848,11 @@
             </select>
           </label>
         </div>
+        <label>Item
+          <select required name="item_id" id="transferItemSelect">
+            <option value="">Select an item...</option>
+          </select>
+        </label>
         <div class="form-row">
           <label>Destination Branch
             <select required name="to_branch_id" id="transferDestinationBranch">
