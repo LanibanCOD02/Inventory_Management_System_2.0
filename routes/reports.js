@@ -177,8 +177,15 @@ router.get('/movements', authenticateToken, async (req, res) => {
     if (category) { extraCatProg += ' AND i.category = ?'; params.push(category); }
     if (program) { extraCatProg += ' AND i.program = ?'; params.push(program); }
     
+    let voidCondition = "AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'";
     let extraMov = '';
-    if (action_type) { extraMov += ' AND m.movement_type = ?'; params.push(action_type); }
+    if (action_type) {
+      if (action_type === 'VOID') {
+        voidCondition = "AND (m.voided = 1 OR m.reference_code LIKE 'VOID-%')";
+      } else {
+        extraMov += ' AND m.movement_type = ?'; params.push(action_type);
+      }
+    }
     if (block_id) { extraMov += ' AND (m.from_block_id = ? OR m.to_block_id = ?)'; params.push(block_id, block_id); }
 
     const workbook = new ExcelJS.Workbook();
@@ -234,7 +241,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
       JOIN inventory_items i ON m.item_id = i.id
       LEFT JOIN branches b ON m.branch_id = b.id
       LEFT JOIN users u ON m.created_by = u.id
-      WHERE m.created_at >= ? AND m.created_at <= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
+      WHERE m.created_at >= ? AND m.created_at <= ? ${voidCondition}
       AND ${condition.replace(/branch_id/g, 'm.branch_id')}
       ${extraCatProg}
       ${extraMov}
@@ -353,8 +360,17 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     if (category) { extraCatProgMov += ' AND i.category = ?'; movParams.push(category); }
     if (program) { extraCatProgMov += ' AND i.program = ?'; movParams.push(program); }
 
+    let voidCondition = "AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'";
     let extraMov = '';
-    if (action_type) { extraMov += ' AND m.movement_type = ?'; movParams.push(action_type); }
+    if (action_type) {
+      if (action_type === 'VOID') {
+        voidCondition = "AND (m.voided = 1 OR m.reference_code LIKE 'VOID-%')";
+      } else if (action_type === 'DELETED' || action_type === 'PRICE_UPDATE' || action_type === 'OPENING') {
+        extraMov += ' AND 1 = 0'; // Force 0 results for movements ledger if non-movement action type selected
+      } else {
+        extraMov += ' AND m.movement_type = ?'; movParams.push(action_type);
+      }
+    }
     if (block_id) { extraMov += ' AND (m.from_block_id = ? OR m.to_block_id = ?)'; movParams.push(block_id, block_id); }
 
     const workbook = new ExcelJS.Workbook();
@@ -435,7 +451,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       JOIN inventory_items i ON m.item_id = i.id
       LEFT JOIN branches b ON m.branch_id = b.id
       LEFT JOIN users u ON m.created_by = u.id
-      WHERE m.created_at >= ? AND m.created_at <= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
+      WHERE m.created_at >= ? AND m.created_at <= ? ${voidCondition}
       AND ${condition.replace(/branch_id/g, 'm.branch_id')}
       ${extraCatProgMov}
       ${extraMov}
@@ -566,10 +582,14 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     actSheet.getRow(1).font = { bold: true };
     
     // Price changes
-    db.prepare(`SELECT ph.*, i.name as item_name, b.name as branch_name, u.username FROM price_history ph JOIN inventory_items i ON ph.item_id = i.id LEFT JOIN branches b ON ph.branch_id = b.id LEFT JOIN users u ON ph.changed_by = u.id WHERE ph.created_at >= ? AND ph.created_at <= ? AND ${condition.replace(/branch_id/g, 'ph.branch_id')}`).all(startDate, endDate, ...params).forEach(p => actSheet.addRow({ date: p.created_at ? p.created_at.split('T')[0] : '-', type: 'Price Change', item: p.item_name, branch: p.branch_name || 'Global', details: `Old: ₹${p.old_unit_price || 0} -> New: ₹${p.new_unit_price}`, user: p.username || '-' }));
+    if (!action_type || action_type === 'PRICE_UPDATE') {
+      db.prepare(`SELECT ph.*, i.name as item_name, b.name as branch_name, u.username FROM price_history ph JOIN inventory_items i ON ph.item_id = i.id LEFT JOIN branches b ON ph.branch_id = b.id LEFT JOIN users u ON ph.changed_by = u.id WHERE ph.created_at >= ? AND ph.created_at <= ? AND ${condition.replace(/branch_id/g, 'ph.branch_id')}`).all(startDate, endDate, ...params).forEach(p => actSheet.addRow({ date: p.created_at ? p.created_at.split('T')[0] : '-', type: 'Price Change', item: p.item_name, branch: p.branch_name || 'Global', details: `Old: ₹${p.old_unit_price || 0} -> New: ₹${p.new_unit_price}`, user: p.username || '-' }));
+    }
     
     // Resales/Deletions
-    db.prepare(`SELECT dr.*, i.name as item_name, b.name as branch_name, u.username FROM deletion_requests dr JOIN inventory_items i ON dr.item_id = i.id JOIN branches b ON dr.branch_id = b.id LEFT JOIN users u ON dr.requested_by = u.id WHERE dr.requested_at >= ? AND dr.requested_at <= ? AND ${condition.replace(/branch_id/g, 'dr.branch_id')}`).all(startDate, endDate, ...params).forEach(r => actSheet.addRow({ date: r.requested_at ? r.requested_at.split(' ')[0] : '-', type: `Deletion Request (${r.reason})`, item: r.item_name, branch: r.branch_name || 'Global', details: `Status: ${r.status}. Qty: ${r.quantity || 'All'}. Notes: ${r.reason_details || '-'}`, user: r.username || '-' }));
+    if (!action_type || action_type === 'DELETED') {
+      db.prepare(`SELECT dr.*, i.name as item_name, b.name as branch_name, u.username FROM deletion_requests dr JOIN inventory_items i ON dr.item_id = i.id JOIN branches b ON dr.branch_id = b.id LEFT JOIN users u ON dr.requested_by = u.id WHERE dr.requested_at >= ? AND dr.requested_at <= ? AND ${condition.replace(/branch_id/g, 'dr.branch_id')}`).all(startDate, endDate, ...params).forEach(r => actSheet.addRow({ date: r.requested_at ? r.requested_at.split(' ')[0] : '-', type: `Deletion Request (${r.reason})`, item: r.item_name, branch: r.branch_name || 'Global', details: `Status: ${r.status}. Qty: ${r.quantity || 'All'}. Notes: ${r.reason_details || '-'}`, user: r.username || '-' }));
+    }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     const safeCategoryName = req.query.category ? req.query.category.replace(/[^a-zA-Z0-9]/g, '_') + '_Ledger' : 'Comprehensive_Export';

@@ -344,6 +344,7 @@ form input:focus,form select:focus{border-color:var(--teal-light);box-shadow:0 0
 .report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .report-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:22px;cursor:pointer;transition:all .2s;display:flex;gap:14px}
 .report-card:hover{border-color:var(--teal-light);box-shadow:var(--shadow)}
+.report-card.active{border-color:var(--teal);box-shadow:var(--shadow-sm), 0 0 0 2px rgba(20,184,166,0.1);background:#fdfdfd;transform:translateY(-1px)}
 .report-card>svg{width:24px;height:24px;color:var(--teal);flex-shrink:0}
 .report-card h3{font:600 13px 'Inter',sans-serif;color:var(--text);margin:0 0 4px}
 .report-card p{font-size:12px;color:var(--muted);margin:0}

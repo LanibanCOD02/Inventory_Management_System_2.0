@@ -922,34 +922,35 @@ const sectionData = {
   reports: {
       title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
       content: async () => `<div class="report-grid">
-        <article class="report-card" onclick="generateReport('inventory')"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
-        <article class="report-card" onclick="generateReport('low_stock')"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
-        <article class="report-card" onclick="generateReport('movements')"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Master Transaction Ledger</p></div></article>
-        <article class="report-card" onclick="generateReport('groceries')"><i data-lucide="shopping-basket"></i><div><h3>Groceries Ledger</h3><p>Ledger strictly for Groceries</p></div></article>
-        <article class="report-card" onclick="generateReport('comprehensive')"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
-        <article class="report-card" onclick="generateReport('backup')"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
+        <article class="report-card" onclick="selectReportCard('inventory', this)"><i data-lucide="clipboard-list"></i><div><h3>Inventory summary</h3><p>Current quantities and stock status</p></div></article>
+        <article class="report-card" onclick="selectReportCard('low_stock', this)"><i data-lucide="triangle-alert"></i><div><h3>Low stock report</h3><p>Items that need replenishment</p></div></article>
+        <article class="report-card" onclick="selectReportCard('movements', this)"><i data-lucide="arrow-left-right"></i><div><h3>Movement history</h3><p>Master Transaction Ledger</p></div></article>
+        <article class="report-card" onclick="selectReportCard('groceries', this)"><i data-lucide="shopping-basket"></i><div><h3>Groceries Ledger</h3><p>Ledger strictly for Groceries</p></div></article>
+        <article class="report-card active" onclick="selectReportCard('comprehensive', this)" id="defaultReportCard"><i data-lucide="file-spreadsheet"></i><div><h3>Comprehensive Export</h3><p>All system data across all modules</p></div></article>
+        <article class="report-card" onclick="selectReportCard('backup', this)"><i data-lucide="database-backup"></i><div><h3>Backup Data</h3><p>Save database and files to local zip</p></div></article>
       </div>
       <div class="card" style="margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
         <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 16px;">
-          <div><h3 style="color: var(--text)">Report Filters</h3><p style="color: var(--text-secondary)">Specify parameters below, then <strong>click any report card above</strong> to generate and download it.</p></div>
+          <div><h3 style="color: var(--text)">Report Filters</h3><p style="color: var(--text-secondary)">Specify parameters below, then <strong>click Download Report</strong> to generate it.</p></div>
         </div>
         <form id="inlineReportForm">
           <label>Start Date<input type="date" id="reportStartDate"></label>
           <label>End Date<input type="date" id="reportEndDate"></label>
-          <label class="admin-only">Branch<select id="reportBranch"><option value="">All Branches</option></select></label>
-          <label>Block / Location<select id="reportBlock"><option value="">All Blocks</option></select></label>
-          <label>Category<select id="reportCategory">
-            <option value="">All Categories</option><option>Groceries</option><option>Medical Supply</option><option>Stationary & Edu</option><option>Farming & Dairy</option><option>Other</option>
-          </select></label>
-          <label>Program / Scheme<select id="reportProgram">
-            <option value="">All Programs</option><option>Community Kitchen</option><option>Mental Health Care</option><option>Rehabilitation</option><option>Mobile Medical Unit</option>
-          </select></label>
-          <label>Action Type<select id="reportActionType">
-            <option value="">All Actions (Ledger)</option><option value="INWARD">Stock Inwards</option><option value="OUTWARD">Stock Outwards</option><option value="TRANSFER">Branch Transfers</option><option value="DONATION">In-Kind Donations</option>
+          <label id="reportBranchLabel">Branch<select id="reportBranch"><option value="">All Branches</option></select></label>
+          <label>Block / Location<select id="reportBlock" disabled><option value="">All Locations</option></select></label>
+          <label>Category<select id="reportCategory"><option value="">All Categories</option></select></label>
+          <label>Program / Scheme<select id="reportProgram"><option value="">All Programs</option></select></label>
+          <label id="reportActionLabel">Action Type<select id="reportActionType">
+            <option value="">All Actions (Ledger)</option>
+            <option value="IN">Stock Received</option>
+            <option value="OUT">Issued to Program</option>
+            <option value="TRANSFER">Branch Transfer</option>
+            <option value="DELETED">Written Off / Resale</option>
+            <option value="PRICE_UPDATE">Price Updates</option>
           </select></label>
           <div style="display: flex; align-items: flex-end; height: 100%;">
-            <button type="button" class="primary-btn" onclick="generateReport('comprehensive')" style="width: 100%; height: 38px; justify-content: center; gap: 8px;">
-              <i data-lucide="download"></i> Download Report
+            <button type="button" class="primary-btn" id="downloadReportBtn" onclick="triggerReportDownload()" style="width: 100%; height: 38px; justify-content: center; gap: 8px;">
+              <i data-lucide="download"></i> <span>Download Report</span>
             </button>
           </div>
         </form>
@@ -2500,14 +2501,41 @@ function downloadCSV(filename, rows) {
   document.body.removeChild(link);
 }
 
-window.generateReport = async (type) => {
-  const token = localStorage.getItem('msc_token');
-  if (!token) return showToast('Error: You are not logged in.');
+let activeReportType = 'comprehensive';
 
-  if (type === 'backup') {
+window.selectReportCard = (type, element) => {
+  activeReportType = type;
+  document.querySelectorAll('.report-card').forEach(c => c.classList.remove('active'));
+  if (element) element.classList.add('active');
+  
+  // Context-aware Action Type Dropdown
+  const actionContainer = document.getElementById('reportActionLabel');
+  const actionSelect = document.getElementById('reportActionType');
+  if (actionContainer && actionSelect) {
+    if (type === 'inventory' || type === 'low_stock') {
+      actionContainer.style.opacity = '0.5';
+      actionSelect.disabled = true;
+      actionSelect.value = '';
+    } else {
+      actionContainer.style.opacity = '1';
+      actionSelect.disabled = false;
+      let optionsHtml = '<option value="">All Actions (Ledger)</option><option value="IN">Stock Received</option><option value="OUT">Issued to Program</option><option value="TRANSFER">Branch Transfer</option><option value="VOID">Voided/Corrected</option>';
+      if (type === 'comprehensive') {
+        optionsHtml += '<option value="DELETED">Written Off / Resale</option><option value="PRICE_UPDATE">Price Updates</option><option value="OPENING">Opening Stock</option>';
+      }
+      actionSelect.innerHTML = optionsHtml;
+    }
+  }
+};
+
+window.triggerReportDownload = async () => {
+  const token = localStorage.getItem('msc_token');
+  if (!token) return showToast('Error: You are not logged in.', 'error');
+
+  if (activeReportType === 'backup') {
     showToast("Generating backup...");
     window.open(`/api/reports/backup-zip?token=${token}`, '_blank');
-    showToast("✓ Backup initiated");
+    showToast("✓ Backup initiated", 'success');
     return;
   }
   
@@ -2515,10 +2543,19 @@ window.generateReport = async (type) => {
   const endDate = document.getElementById('reportEndDate')?.value;
   
   if (!startDate || !endDate) {
-    return showToast('Error: Please select a Start Date and End Date in the Report Filters.');
+    return showToast('Error: Please select a Start Date and End Date.', 'error');
+  }
+  if (new Date(startDate) > new Date(endDate)) {
+    return showToast('Error: End date must be after start date', 'error');
   }
 
-  showToast("Generating report...");
+  const btn = document.getElementById('downloadReportBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="spin"></i> <span>Generating...</span>';
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   const branch = document.getElementById('reportBranch')?.value || '';
   const block = document.getElementById('reportBlock')?.value || '';
   let category = document.getElementById('reportCategory')?.value || '';
@@ -2526,11 +2563,11 @@ window.generateReport = async (type) => {
   const actionType = document.getElementById('reportActionType')?.value || '';
 
   let endpoint = '';
-  if (type === 'inventory') endpoint = 'inventory-summary';
-  else if (type === 'low_stock') endpoint = 'low-stock';
-  else if (type === 'movements') endpoint = 'movements';
-  else if (type === 'comprehensive') endpoint = 'comprehensive';
-  else if (type === 'groceries') {
+  if (activeReportType === 'inventory') endpoint = 'inventory-summary';
+  else if (activeReportType === 'low_stock') endpoint = 'low-stock';
+  else if (activeReportType === 'movements') endpoint = 'movements';
+  else if (activeReportType === 'comprehensive') endpoint = 'comprehensive';
+  else if (activeReportType === 'groceries') {
     endpoint = 'comprehensive';
     category = 'Groceries';
   }
@@ -2542,8 +2579,136 @@ window.generateReport = async (type) => {
   if (program) url += `&program=${encodeURIComponent(program)}`;
   if (actionType) url += `&action_type=${encodeURIComponent(actionType)}`;
 
-  window.open(url, '_blank');
-  showToast("✓ Report generated");
+  try {
+    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Get filename from Content-Disposition header if possible
+    const disposition = response.headers.get('Content-Disposition');
+    let filename = `${activeReportType}_report.xlsx`;
+    if (disposition && disposition.indexOf('attachment') !== -1) {
+        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        var matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+    }
+    
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    
+    showToast("✓ Report generated successfully", 'success');
+  } catch (error) {
+    console.error("Download error:", error);
+    showToast("Failed to generate report. Please try again.", 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="download"></i> <span>Download Report</span>';
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+};
+
+window.initReportFilters = async () => {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  const sd = document.getElementById('reportStartDate');
+  const ed = document.getElementById('reportEndDate');
+  if (sd && !sd.value) sd.value = firstDay.toISOString().split('T')[0];
+  if (ed && !ed.value) ed.value = today.toISOString().split('T')[0];
+  
+  try {
+    // Select default report card to setup Action Type options correctly
+    const defaultCard = document.getElementById('defaultReportCard');
+    if (defaultCard) {
+        window.selectReportCard('comprehensive', defaultCard);
+    }
+
+    const [branches, categories, programs] = await Promise.all([
+      cachedFetch('/branches'),
+      cachedFetch('/inventory/categories'),
+      cachedFetch('/inventory/programs')
+    ]);
+    
+    // Populate Categories
+    const catSelect = document.getElementById('reportCategory');
+    if (catSelect && categories) {
+      catSelect.innerHTML = '<option value="">All Categories</option>' + categories.map(c => `<option value="${escapeHTML(c.name)}">${escapeHTML(c.name)}</option>`).join('');
+    }
+    
+    // Populate Programs
+    const progSelect = document.getElementById('reportProgram');
+    if (progSelect && programs) {
+      progSelect.innerHTML = '<option value="">All Programs</option>' + programs.map(p => `<option value="${escapeHTML(p.name)}">${escapeHTML(p.name)}</option>`).join('');
+    }
+    
+    // Populate Branches depending on role
+    const branchSelect = document.getElementById('reportBranch');
+    if (branchSelect && branches) {
+      const token = localStorage.getItem('msc_token');
+      let role = '', userBranchId = '';
+      if(token) {
+        try { 
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          role = payload.role;
+          userBranchId = payload.branch_id;
+        } catch(e) {}
+      }
+      
+      let optionsHTML = '';
+      if (role === 'Admin') {
+        optionsHTML = '<option value="">All Branches</option>' + branches.map(b => {
+            const shortName = getShortBranchName ? getShortBranchName(b.name) : b.name;
+            return `<option value="${b.id}">${shortName}</option>`;
+        }).join('');
+        branchSelect.disabled = false;
+      } else {
+        const myBranch = branches.find(b => b.id === userBranchId);
+        const shortName = myBranch ? (getShortBranchName ? getShortBranchName(myBranch.name) : myBranch.name) : 'Your Branch';
+        optionsHTML = myBranch ? `<option value="${myBranch.id}" selected>${shortName}</option>` : '<option value="">Your Branch</option>';
+        branchSelect.disabled = true;
+        // Trigger block loading for staff's branch
+        if (myBranch) setTimeout(() => { if(window.updateReportBlockDropdown) window.updateReportBlockDropdown(myBranch.id); }, 100);
+      }
+      branchSelect.innerHTML = optionsHTML;
+    }
+  } catch (err) {
+    console.error("Failed to init report filters", err);
+  }
+};
+
+window.updateReportBlockDropdown = async (branchId) => {
+  const sel = document.getElementById('reportBlock');
+  if (!sel) return;
+  if (!branchId) {
+    sel.innerHTML = '<option value="">All Locations</option>';
+    sel.disabled = true;
+    return;
+  }
+  
+  try {
+    const blocks = await cachedFetch('/branches/' + branchId + '/blocks');
+    if (!blocks || blocks.length === 0) {
+      sel.innerHTML = '<option value="">All Locations</option>';
+      sel.disabled = true;
+    } else {
+      sel.innerHTML = '<option value="">All Locations</option>' + blocks.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('');
+      sel.disabled = false;
+    }
+  } catch (err) {
+    sel.innerHTML = '<option value="">All Locations</option>';
+    sel.disabled = true;
+  }
 };
 
 // Initialize report dates whenever we switch to reports page
@@ -2551,15 +2716,19 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', (e) => {
     if (e.target.dataset.page === 'reports') {
       setTimeout(() => {
-        const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        const sd = document.getElementById('reportStartDate');
-        const ed = document.getElementById('reportEndDate');
-        if (sd && !sd.value) sd.value = firstDay.toISOString().split('T')[0];
-        if (ed && !ed.value) ed.value = today.toISOString().split('T')[0];
+        window.initReportFilters();
         
-        // Populate branches
-        if (typeof loadBranches === 'function') loadBranches();
+        // Attach listener for block loading
+        const reportBranch = document.getElementById('reportBranch');
+        if (reportBranch) {
+          // Remove existing listeners to avoid duplicates
+          const newReportBranch = reportBranch.cloneNode(true);
+          reportBranch.parentNode.replaceChild(newReportBranch, reportBranch);
+          
+          newReportBranch.addEventListener('change', (ev) => {
+            if (window.updateReportBlockDropdown) window.updateReportBlockDropdown(ev.target.value);
+          });
+        }
       }, 100);
     }
   });
