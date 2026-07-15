@@ -1146,6 +1146,21 @@ async function switchPage(page) {
     // placeholder removed
     const backupBtn = sectionView.querySelector("#backupBtnTrigger");
     if (backupBtn) backupBtn.addEventListener("click", () => document.getElementById("backupModalBackdrop").classList.add("active"));
+    
+    if (page === 'reports') {
+      setTimeout(() => {
+        if (window.initReportFilters) window.initReportFilters();
+        
+        // Attach listener for block loading
+        const reportBranch = document.getElementById('reportBranch');
+        if (reportBranch) {
+          reportBranch.addEventListener('change', (ev) => {
+            if (window.updateReportBlockDropdown) window.updateReportBlockDropdown(ev.target.value);
+          });
+        }
+      }, 100);
+    }
+
     renderIcons(sectionView);
   }
 
@@ -2711,28 +2726,7 @@ window.updateReportBlockDropdown = async (branchId) => {
   }
 };
 
-// Initialize report dates whenever we switch to reports page
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    if (e.target.dataset.page === 'reports') {
-      setTimeout(() => {
-        window.initReportFilters();
-        
-        // Attach listener for block loading
-        const reportBranch = document.getElementById('reportBranch');
-        if (reportBranch) {
-          // Remove existing listeners to avoid duplicates
-          const newReportBranch = reportBranch.cloneNode(true);
-          reportBranch.parentNode.replaceChild(newReportBranch, reportBranch);
-          
-          newReportBranch.addEventListener('change', (ev) => {
-            if (window.updateReportBlockDropdown) window.updateReportBlockDropdown(ev.target.value);
-          });
-        }
-      }, 100);
-    }
-  });
-});
+// (Reports filter initialization moved to switchPage)
 
 // Role select branch required logic
 const addUserRole = document.getElementById("addUserRole");
