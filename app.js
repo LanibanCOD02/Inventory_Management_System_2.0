@@ -2534,11 +2534,13 @@ window.selectReportCard = (type, element) => {
     } else {
       actionContainer.style.opacity = '1';
       actionSelect.disabled = false;
+      const oldVal = actionSelect.value;
       let optionsHtml = '<option value="">All Actions (Ledger)</option><option value="IN">Stock Received</option><option value="OUT">Issued to Program</option><option value="TRANSFER">Branch Transfer</option><option value="VOID">Voided/Corrected</option>';
       if (type === 'comprehensive') {
         optionsHtml += '<option value="DELETED">Written Off / Resale</option><option value="PRICE_UPDATE">Price Updates</option><option value="OPENING">Opening Stock</option>';
       }
       actionSelect.innerHTML = optionsHtml;
+      if (oldVal) actionSelect.value = oldVal;
     }
   }
 };
