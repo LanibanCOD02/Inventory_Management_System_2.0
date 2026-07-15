@@ -350,8 +350,19 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (branch_id !== undefined) { updates.push('branch_id = ?'); params.push(branch_id); }
 
     if (updates.length > 0) {
+      // Fetch old item to check if unit_price changed
+      const oldItem = db.prepare('SELECT unit_price FROM inventory_items WHERE id = ?').get(id);
+
       params.push(id);
       db.prepare(`UPDATE inventory_items SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+      // Log to price history if unit_price changed
+      if (unit_price !== undefined && oldItem && Number(oldItem.unit_price) !== Number(unit_price)) {
+        db.prepare(`
+          INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(generateUUID(), id, branch_id !== undefined ? branch_id : null, oldItem.unit_price, Number(unit_price), 0, 0, req.user.id, new Date().toISOString());
+      }
     }
 
     const updatedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(id);

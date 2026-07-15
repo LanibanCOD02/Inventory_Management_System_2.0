@@ -54,7 +54,7 @@ function createCrudRoutes(router, resourceName, tableName) {
       const resolvedBranchId = getBranchId(req.user, branch_id);
       
       // Check for unique name constraint manually since we may not have UNIQUE constraints set up for name in sqlite schema
-      const existing = db.prepare(`SELECT id FROM ${tableName} WHERE name = ? AND deleted_at IS NULL`).get(name);
+      const existing = db.prepare(`SELECT id FROM ${tableName} WHERE LOWER(name) = LOWER(?) AND deleted_at IS NULL`).get(name);
       if (existing) {
         return res.status(409).json({ error: 'Name must be unique' });
       }

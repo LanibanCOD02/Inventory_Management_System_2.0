@@ -24,6 +24,12 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const { name, location, address, pincode } = req.body;
     if (!name) return res.status(400).json({ error: 'Branch name is required' });
 
+    // Check for duplicate branch name case-insensitively
+    const existing = db.prepare('SELECT id FROM branches WHERE LOWER(name) = LOWER(?) AND deleted_at IS NULL').get(name);
+    if (existing) {
+      return res.status(400).json({ error: 'A branch with this name already exists' });
+    }
+
     const id = generateUUID();
     db.prepare(`
       INSERT INTO branches (id, name, location, address, pincode, created_at)
@@ -80,16 +86,45 @@ router.post('/transfer', authenticateToken, (req, res) => {
       db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ? AND branch_id = ?')
         .run(quantity, item_id, from_branch_id);
 
-      // Add to destination branch — find matching item by name
-      const destItem = db.prepare('SELECT * FROM inventory_items WHERE name = ? AND branch_id = ? AND deleted_at IS NULL').get(item.name, to_branch_id);
+      // Deduct from source block if specified
+      if (from_block_id) {
+        db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?')
+          .run(quantity, item_id, from_block_id);
+      }
+
+      // Add to destination branch — find matching item by name (ignoring deleted_at to restore if needed)
+      const destItem = db.prepare('SELECT * FROM inventory_items WHERE name = ? AND branch_id = ?').get(item.name, to_branch_id);
       if (destItem) {
-        db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ? AND branch_id = ?')
-          .run(quantity, destItem.id, to_branch_id);
+        if (destItem.deleted_at !== null) {
+          // Restore the item if it was soft-deleted
+          db.prepare('UPDATE inventory_items SET stock = stock + ?, deleted_at = NULL WHERE id = ? AND branch_id = ?')
+            .run(quantity, destItem.id, to_branch_id);
+        } else {
+          db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ? AND branch_id = ?')
+            .run(quantity, destItem.id, to_branch_id);
+        }
+        
+        // Add to destination block if specified
+        if (to_block_id) {
+          db.prepare(`
+            INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+          `).run(crypto.randomUUID(), destItem.id, to_block_id, quantity);
+        }
       } else {
         // Create the item in destination branch if it doesn't exist
         const newId = crypto.randomUUID();
         db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
           .run(newId, item.name, item.category, quantity, item.unit, item.threshold, to_branch_id, now, item.unit_price || 0, item.item_code || null, item.serial_number || null);
+
+        // Add to destination block if specified
+        if (to_block_id) {
+          db.prepare(`
+            INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+            VALUES (?, ?, ?, ?)
+          `).run(crypto.randomUUID(), newId, to_block_id, quantity);
+        }
       }
 
       // Log outward movement at source
