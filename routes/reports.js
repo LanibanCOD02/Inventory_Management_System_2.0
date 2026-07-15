@@ -542,14 +542,14 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     const branchSheet = workbook.addWorksheet('Branches & Blocks');
     branchSheet.columns = [{ header: 'Branch', key: 'branch', width: 25 }, { header: 'Block Name', key: 'block', width: 30 }, { header: 'Description', key: 'desc', width: 40 }];
     branchSheet.getRow(1).font = { bold: true };
-    const adminCond = req.user.role === 'Admin' ? '1=1' : condition.replace(/branch_id/g, 'b.id');
+    const adminCond = condition.replace(/branch_id/g, 'b.id');
     db.prepare(`SELECT bb.*, b.name as branch_name FROM branch_blocks bb JOIN branches b ON bb.branch_id = b.id WHERE bb.deleted_at IS NULL AND b.deleted_at IS NULL AND ${adminCond}`).all(...params).forEach(bb => branchSheet.addRow({ branch: bb.branch_name, block: bb.name, desc: bb.description || '-' }));
 
     // Sheet 8: Users
     const userSheet = workbook.addWorksheet('Users');
     userSheet.columns = [{ header: 'Username', key: 'name', width: 25 }, { header: 'Role', key: 'role', width: 20 }, { header: 'Branch', key: 'branch', width: 25 }];
     userSheet.getRow(1).font = { bold: true };
-    const userCond = req.user.role === 'Admin' ? '1=1' : condition.replace(/branch_id/g, 'u.branch_id');
+    const userCond = condition.replace(/branch_id/g, 'u.branch_id');
     db.prepare(`SELECT u.*, b.name as branch_name FROM users u LEFT JOIN branches b ON u.branch_id = b.id WHERE ${userCond}`).all(...params).forEach(u => userSheet.addRow({ name: u.username, role: u.role, branch: u.branch_name || 'All' }));
 
     // Sheet 9: System Activity
