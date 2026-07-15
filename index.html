@@ -913,23 +913,25 @@
         
         <div class="form-row">
           <label>Quantity<input required name="quantity" type="number" min="1" value="1"></label>
-          <div id="movementPartyLabel">
-            <!-- For INWARD — supplier dropdown -->
-            <div id="supplierField" style="display:none">
-              <label>Supplier
-                <select name="party_name" id="movementSupplierSelect">
-                  <option value="">Select supplier...</option>
-                </select>
-              </label>
-            </div>
-            <!-- For OUTWARD — program dropdown -->
-            <div id="programField" style="display:none">
-              <label>Issued To (Program - Optional)
-                <select name="party_name" id="movementProgramSelect">
-                  <option value="">Select program...</option>
-                </select>
-              </label>
-            </div>
+          <label>Unit<input type="text" id="movementUnitDisplay" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;" placeholder="-"></label>
+        </div>
+        
+        <div id="movementPartyLabel" style="margin-bottom: 16px;">
+          <!-- For INWARD — supplier dropdown -->
+          <div id="supplierField" style="display:none">
+            <label>Supplier
+              <select name="party_name" id="movementSupplierSelect">
+                <option value="">Select supplier...</option>
+              </select>
+            </label>
+          </div>
+          <!-- For OUTWARD — program dropdown -->
+          <div id="programField" style="display:none">
+            <label>Issued To (Program - Optional)
+              <select name="party_name" id="movementProgramSelect">
+                <option value="">Select program...</option>
+              </select>
+            </label>
           </div>
         </div>
         

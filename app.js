@@ -2136,6 +2136,13 @@ if (movementModal) {
         if (document.getElementById("movementSerialNumber")) {
           document.getElementById("movementSerialNumber").value = selectedItem.serial_number || "";
         }
+        if (document.getElementById("movementUnitDisplay")) {
+          document.getElementById("movementUnitDisplay").value = selectedItem.unit || "";
+        }
+      } else {
+        if (document.getElementById("movementItemCode")) document.getElementById("movementItemCode").value = "";
+        if (document.getElementById("movementSerialNumber")) document.getElementById("movementSerialNumber").value = "";
+        if (document.getElementById("movementUnitDisplay")) document.getElementById("movementUnitDisplay").value = "";
       }
     });
   }
