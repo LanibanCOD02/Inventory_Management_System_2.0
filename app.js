@@ -2268,6 +2268,15 @@ if (movementModal) {
     const totalPriceField = document.getElementById('totalPriceField');
     if (totalPriceField) totalPriceField.style.display = isIn ? 'block' : 'none';
 
+    // Hide the Create New item toggle for OUTWARD movements
+    const toggleContainer = document.getElementById('movementModeExisting')?.parentElement;
+    if (toggleContainer) {
+      toggleContainer.style.display = isIn ? 'flex' : 'none';
+      if (!isIn) {
+        document.getElementById('movementModeExisting').click(); // Reset to Select Existing
+      }
+    }
+
     // Set the correct select as required
     document.getElementById('movementSupplierSelect').required = isIn;
     document.getElementById('movementProgramSelect').required = false; // Program is always optional
