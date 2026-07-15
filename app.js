@@ -1948,7 +1948,7 @@ async function loadCategories() {
     const optionsHTML = '<option value="" disabled selected>Select Category</option>' + 
       data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
       
-    ['addItemCategory', 'editCategory'].forEach(id => {
+    ['addItemCategory', 'editCategory', 'movementCategorySelect'].forEach(id => {
       const select = document.getElementById(id);
       if (select) {
         const currentVal = select.value;
@@ -2139,11 +2139,90 @@ if (movementModal) {
         if (document.getElementById("movementUnitDisplay")) {
           document.getElementById("movementUnitDisplay").value = selectedItem.unit || "";
         }
+        if (document.getElementById("movementCategorySelect")) {
+          let catSel = document.getElementById("movementCategorySelect");
+          // If the category is not in the dropdown options, we might need to add it temporarily or just set its value.
+          // Since it's disabled, we can just force the value or add an option.
+          if (!Array.from(catSel.options).find(o => o.value === selectedItem.category)) {
+            catSel.add(new Option(selectedItem.category, selectedItem.category));
+          }
+          catSel.value = selectedItem.category || "";
+        }
       } else {
         if (document.getElementById("movementItemCode")) document.getElementById("movementItemCode").value = "";
         if (document.getElementById("movementSerialNumber")) document.getElementById("movementSerialNumber").value = "";
         if (document.getElementById("movementUnitDisplay")) document.getElementById("movementUnitDisplay").value = "";
+        if (document.getElementById("movementCategorySelect")) document.getElementById("movementCategorySelect").value = "";
       }
+    });
+  }
+
+  // Toggle Existing/New Item logic in Movement Modal
+  const btnMovementExisting = document.getElementById('movementModeExisting');
+  const btnMovementNew = document.getElementById('movementModeNew');
+  const movementItemSelectToggle = document.getElementById('movementItemSelect');
+  const movementItemNameInput = document.getElementById('movementItemNameInput');
+  const movementUnitDisplay = document.getElementById('movementUnitDisplay');
+  const movementCategorySelect = document.getElementById('movementCategorySelect');
+
+  if (btnMovementExisting && btnMovementNew) {
+    btnMovementExisting.addEventListener('click', () => {
+      btnMovementExisting.classList.add('active');
+      btnMovementExisting.style.background = 'var(--white)';
+      btnMovementExisting.style.color = 'var(--text)';
+      btnMovementExisting.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+      
+      btnMovementNew.classList.remove('active');
+      btnMovementNew.style.background = 'transparent';
+      btnMovementNew.style.color = 'var(--muted)';
+      btnMovementNew.style.boxShadow = 'none';
+
+      movementItemSelectToggle.style.display = 'block';
+      movementItemSelectToggle.required = true;
+      movementItemNameInput.style.display = 'none';
+      movementItemNameInput.required = false;
+      movementItemNameInput.value = '';
+
+      movementUnitDisplay.disabled = true;
+      movementUnitDisplay.style.cursor = 'not-allowed';
+      movementUnitDisplay.style.backgroundColor = 'var(--bg-alt)';
+      
+      movementCategorySelect.disabled = true;
+      movementCategorySelect.style.cursor = 'not-allowed';
+      movementCategorySelect.style.backgroundColor = 'var(--bg-alt)';
+      
+      movementItemSelectToggle.dispatchEvent(new Event('change'));
+    });
+
+    btnMovementNew.addEventListener('click', () => {
+      btnMovementNew.classList.add('active');
+      btnMovementNew.style.background = 'var(--white)';
+      btnMovementNew.style.color = 'var(--text)';
+      btnMovementNew.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+      
+      btnMovementExisting.classList.remove('active');
+      btnMovementExisting.style.background = 'transparent';
+      btnMovementExisting.style.color = 'var(--muted)';
+      btnMovementExisting.style.boxShadow = 'none';
+
+      movementItemSelectToggle.style.display = 'none';
+      movementItemSelectToggle.required = false;
+      movementItemSelectToggle.value = '';
+      movementItemNameInput.style.display = 'block';
+      movementItemNameInput.required = true;
+
+      movementUnitDisplay.disabled = false;
+      movementUnitDisplay.style.cursor = 'text';
+      movementUnitDisplay.style.backgroundColor = 'var(--white)';
+      movementUnitDisplay.value = '';
+      
+      movementCategorySelect.disabled = false;
+      movementCategorySelect.style.cursor = 'pointer';
+      movementCategorySelect.style.backgroundColor = 'var(--white)';
+      movementCategorySelect.value = '';
+      
+      document.getElementById("movementItemCode").value = "";
+      document.getElementById("movementSerialNumber").value = "";
     });
   }
 
@@ -2252,8 +2331,11 @@ if (movementModal) {
           method: 'POST',
           body: JSON.stringify({
             inventory_id: d.get('inventory_id'),
-          item_code: d.get('item_code') || null,
-          serial_number: d.get('serial_number') || null,
+            new_item_name: d.get('new_item_name') || null,
+            new_item_unit: d.get('new_item_unit') || null,
+            new_item_category: d.get('new_item_category') || null,
+            item_code: d.get('item_code') || null,
+            serial_number: d.get('serial_number') || null,
             type: d.get('type'),
             quantity: Number(d.get('quantity')),
             party_name: (() => {

@@ -902,9 +902,19 @@
           </select>
         </div>
         
-        <label>Item<select required name="inventory_id" id="movementItemSelect">
-          <option value="">Select an item...</option>
-        </select></label>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 4px;">
+          <label style="margin-bottom:0;">Item</label>
+          <div style="display:flex; gap: 4px; background: var(--bg-alt); padding: 2px; border-radius: 4px;">
+            <button type="button" id="movementModeExisting" class="toggle-btn active" style="font-size:11px; padding: 4px 8px; border:none; border-radius:3px; background:var(--white); cursor:pointer;">Select Existing</button>
+            <button type="button" id="movementModeNew" class="toggle-btn" style="font-size:11px; padding: 4px 8px; border:none; border-radius:3px; background:transparent; color:var(--muted); cursor:pointer;">+ Create New</button>
+          </div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <select required name="inventory_id" id="movementItemSelect">
+            <option value="">Select an item...</option>
+          </select>
+          <input type="text" name="new_item_name" id="movementItemNameInput" placeholder="Enter new item name..." style="display:none; width:100%; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius);">
+        </div>
 
         <div class="form-row">
           <label>Item Code <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="item_code" id="movementItemCode" placeholder="e.g. SKU-123"></label>
@@ -913,7 +923,10 @@
         
         <div class="form-row">
           <label>Quantity<input required name="quantity" type="number" min="1" value="1"></label>
-          <label>Unit<input type="text" id="movementUnitDisplay" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;" placeholder="-"></label>
+          <label>Unit<input type="text" id="movementUnitDisplay" name="new_item_unit" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;" placeholder="-"></label>
+          <label>Category<select name="new_item_category" id="movementCategorySelect" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;">
+            <option value="">-</option>
+          </select></label>
         </div>
         
         <div id="movementPartyLabel" style="margin-bottom: 16px;">

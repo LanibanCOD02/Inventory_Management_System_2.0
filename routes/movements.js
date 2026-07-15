@@ -63,7 +63,8 @@ router.get('/', authenticateToken, async (req, res) => {
 // POST /api/movements
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id, recipient_name, product_photo_url, invoice_pdf_url, total_price, item_code, serial_number, block_id } = req.body;
+    const { inventory_id, type, quantity, party_name, reference_code, notes, branch_id, recipient_name, product_photo_url, invoice_pdf_url, total_price, item_code, serial_number, block_id, new_item_name, new_item_unit, new_item_category } = req.body;
+
     
     const qty = Number(quantity);
     if (!qty || qty <= 0) return res.status(400).json({ error: 'Quantity must be positive' });
@@ -82,8 +83,22 @@ router.post('/', authenticateToken, async (req, res) => {
     const movement_type = (type || '').toUpperCase() === 'INWARD' || (type || '').toUpperCase() === 'IN' ? 'IN' : 'OUT';
 
     const insertMovementAndAdjustStock = db.transaction(() => {
+      let actual_inventory_id = inventory_id;
+      
+      if (!actual_inventory_id && new_item_name) {
+        if (movement_type !== 'IN') {
+           throw new Error('Cannot create a new item during an OUTWARD movement');
+        }
+        actual_inventory_id = generateUUID();
+        db.prepare('INSERT INTO inventory_items (id, name, unit, category, branch_id, stock, created_at, item_code, serial_number, status) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)').run(
+          actual_inventory_id, new_item_name, new_item_unit || 'Units', new_item_category || 'Uncategorized', resolvedBranchId, new Date().toISOString(), item_code || null, serial_number || null, 'Active'
+        );
+      } else if (!actual_inventory_id) {
+        throw new Error('Item selection is required');
+      }
+
       // Verify item exists
-      const item = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(inventory_id);
+      const item = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(actual_inventory_id);
       if (!item) throw new Error('Item not found');
 
       if (movement_type === 'OUT' && item.stock < qty) {
@@ -92,20 +107,20 @@ router.post('/', authenticateToken, async (req, res) => {
       
       // Block stock check and update
       if (block_id) {
-        const blockStockRow = db.prepare('SELECT stock FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?').get(inventory_id, block_id);
+        const blockStockRow = db.prepare('SELECT stock FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?').get(actual_inventory_id, block_id);
         const blockStock = blockStockRow ? blockStockRow.stock : 0;
         
         if (movement_type === 'OUT') {
           if (blockStock < qty) {
             throw new Error('Insufficient stock in the selected block');
           }
-          db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?').run(qty, inventory_id, block_id);
+          db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?').run(qty, actual_inventory_id, block_id);
         } else {
           db.prepare(`
             INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
             VALUES (?, ?, ?, ?)
             ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
-          `).run(generateUUID(), inventory_id, block_id, qty);
+          `).run(generateUUID(), actual_inventory_id, block_id, qty);
         }
       }
 
@@ -115,7 +130,7 @@ router.post('/', authenticateToken, async (req, res) => {
       
       let insertCols = 'id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, recipient_name, total_price, item_code, serial_number';
       let insertVals = '?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?';
-      let insertParams = [moveId, refCode, inventory_id, movement_type, qty, party_name || null, req.user.id, resolvedBranchId || null, new Date().toISOString(), recipient_name || null, total_price || null, item_code || null, serial_number || null];
+      let insertParams = [moveId, refCode, actual_inventory_id, movement_type, qty, party_name || null, req.user.id, resolvedBranchId || null, new Date().toISOString(), recipient_name || null, total_price || null, item_code || null, serial_number || null];
       
       if (block_id) {
         if (movement_type === 'IN') {
@@ -166,24 +181,14 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       }
       updateSql += ' WHERE id = ?';
-      updateParams.push(inventory_id);
+      updateParams.push(actual_inventory_id);
       db.prepare(updateSql).run(...updateParams);
       
       if (priceHistoryRow) {
         db.prepare(`
           INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          generateUUID(), 
-          inventory_id, 
-          resolvedBranchId || null, 
-          priceHistoryRow.old_unit_price, 
-          priceHistoryRow.new_unit_price, 
-          priceHistoryRow.quantity_added, 
-          priceHistoryRow.total_price_paid, 
-          req.user.id, 
-          new Date().toISOString()
-        );
+        `).run(generateUUID(), actual_inventory_id, resolvedBranchId, priceHistoryRow.old_unit_price, priceHistoryRow.new_unit_price, priceHistoryRow.quantity_added, priceHistoryRow.total_price_paid, req.user.id, new Date().toISOString());
       }
       
       return db.prepare('SELECT * FROM inventory_movements WHERE id = ?').get(moveId);
