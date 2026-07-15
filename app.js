@@ -2597,31 +2597,8 @@ window.triggerReportDownload = async () => {
   if (actionType) url += `&action_type=${encodeURIComponent(actionType)}`;
 
   try {
-    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    // Get filename from Content-Disposition header if possible
-    const disposition = response.headers.get('Content-Disposition');
-    let filename = `${activeReportType}_report.xlsx`;
-    if (disposition && disposition.indexOf('attachment') !== -1) {
-        var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-        var matches = filenameRegex.exec(disposition);
-        if (matches != null && matches[1]) { 
-          filename = matches[1].replace(/['"]/g, '');
-        }
-    }
-    
-    const blob = await response.blob();
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(downloadUrl);
+    // Navigate directly to download to prevent silent blocking by popup blockers or Safari
+    window.location.href = url;
     
     showToast("✓ Report generated successfully", 'success');
   } catch (error) {
