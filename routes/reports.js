@@ -50,18 +50,18 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    titleCell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 14 };
+    titleCell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 13 };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getRow(1).height = 36;
+    sheet.getRow(1).height = 30;
 
     // Row 2
     sheet.mergeCells('A2:N2');
     const subTitleCell = sheet.getCell('A2');
     subTitleCell.value = `INVENTORY SUMMARY REPORT | Branch: ${headerBranchName} | As of: ${qEndDate} | Generated: ${generatedDate}`;
     subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    subTitleCell.font = { color: { argb: 'FF1E293B' }, size: 10 }; // dark text
+    subTitleCell.font = { name: 'Calibri', color: { argb: 'FF0F766E' }, size: 9, italic: true };
     subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getRow(2).height = 24;
+    sheet.getRow(2).height = 20;
 
     // Row 3 (Spacer)
     sheet.getRow(3).height = 8;
@@ -75,8 +75,14 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     
     sheet.getRow(4).eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        left: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
+      };
     });
     
     sheet.autoFilter = 'A4:N4';
@@ -149,14 +155,21 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
         // Alignment
         row.eachCell((cell, colNumber) => {
           if (colNumber === 7 || colNumber === 9 || colNumber === 10 || colNumber === 12 || colNumber === 13) {
-            cell.alignment = { horizontal: 'right' };
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
           } else {
-            cell.alignment = { horizontal: 'left' };
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
           }
+          cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF334155' } };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
         });
         
         // Formatting
-        row.getCell('stock').font = { bold: true };
+        row.getCell('stock').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF334155' } };
         row.getCell('price').numFmt = '#,##0.00';
         row.getCell('value').numFmt = '#,##0.00';
         
@@ -164,16 +177,16 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
         if (status === 'Out of Stock') {
           row.eachCell((cell) => {
              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
-             if (cell.col === 11) cell.font = { color: { argb: 'FFEF4444' } }; // column K (11) is status
+             if (cell.col === 11) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } }; // column K (11) is status
           });
         } else if (status === 'Low Stock') {
           row.eachCell((cell) => {
              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
-             if (cell.col === 11) cell.font = { color: { argb: 'FFF59E0B' } };
+             if (cell.col === 11) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFF59E0B' } };
           });
         } else {
           // In stock - alternating
-          row.getCell('status').font = { color: { argb: 'FF10B981' } };
+          row.getCell('status').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF10B981' } };
           if ((index + 1) % 2 === 0) {
             row.eachCell((cell) => {
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
@@ -248,19 +261,19 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     sheet.mergeCells('A1:L1');
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
-    titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    sheet.getRow(1).height = 36;
+    sheet.getRow(1).height = 30;
 
     // Row 2
     sheet.mergeCells('A2:L2');
     const subtitleCell = sheet.getCell('A2');
     subtitleCell.value = `LOW STOCK ALERT REPORT | Branch: ${branchName} | Generated: ${generatedStr}`;
-    subtitleCell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF000000' } };
+    subtitleCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0F766E' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    sheet.getRow(2).height = 24;
+    sheet.getRow(2).height = 20;
 
     // Row 3 (Spacer)
     sheet.addRow([]);
@@ -270,7 +283,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       const noDataCell = sheet.getCell('A4');
       noDataCell.value = "All items are sufficiently stocked. No items below threshold.";
       noDataCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      noDataCell.font = { italic: true };
+      noDataCell.font = { name: 'Calibri', italic: true };
       
       const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
       const dateStr = now.toISOString().split('T')[0];
@@ -289,8 +302,14 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     const headerRow = sheet.addRow(headers);
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        left: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
+      };
     });
     sheet.autoFilter = 'A4:L4';
 
@@ -359,34 +378,41 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       const shortageCell = row.getCell(8); // Shortage
       const urgencyCell = row.getCell(12); // Urgency
 
-      stockCell.font = { bold: true };
-      shortageCell.font = { bold: true };
-      urgencyCell.font = { bold: true };
+      row.eachCell((cell) => {
+        cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF334155' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+      });
 
       if (i.isCritical) {
         // entire row red background #FEF2F2
         row.eachCell({ includeEmpty: true }, (c) => {
           c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
         });
-        stockCell.font = { bold: true, color: { argb: 'FFEF4444' } }; // red text
-        shortageCell.font = { bold: true, color: { argb: 'FFEF4444' } };
-        urgencyCell.font = { bold: true, color: { argb: 'FFEF4444' } };
+        stockCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } }; // red text
+        shortageCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } };
+        urgencyCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } };
       } else {
         // entire row amber background #FFFBEB
         row.eachCell({ includeEmpty: true }, (c) => {
           c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
         });
-        stockCell.font = { bold: true, color: { argb: 'FFD97706' } }; // amber text
-        shortageCell.font = { bold: true, color: { argb: 'FFD97706' } };
-        urgencyCell.font = { bold: true, color: { argb: 'FFD97706' } };
+        stockCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFD97706' } }; // amber text
+        shortageCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFD97706' } };
+        urgencyCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFD97706' } };
       }
       
       // alignment
-      row.getCell(1).alignment = { horizontal: 'center' };
-      stockCell.alignment = { horizontal: 'center' };
-      row.getCell(7).alignment = { horizontal: 'center' };
-      shortageCell.alignment = { horizontal: 'center' };
-      row.getCell(11).alignment = { horizontal: 'center' };
+      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      stockCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+      shortageCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      row.getCell(11).alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
     // Summary rows
