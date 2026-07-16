@@ -463,7 +463,7 @@ window.updateProgramDropdowns = function(branchId = null) {
   const data = branchId ? globalPrograms.filter(p => !p.branch_id || String(p.branch_id) === 'null' || String(p.branch_id) === String(branchId)) : globalPrograms;
   populateDatalist('programDatalist', data);
   const select = document.getElementById('movementProgramSelect');
-  if (select) {
+  if (select && select.tagName === 'SELECT') {
     select.innerHTML = `<option value="">Select program...</option>` +
       data.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
   }
