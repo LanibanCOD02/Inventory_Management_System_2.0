@@ -277,7 +277,7 @@ router.get('/:id/blocks', authenticateToken, (req, res) => {
 // Get specific inventory item by ID (Full data including document URLs)
 router.get('/:id', authenticateToken, async (req, res, next) => {
   // Fallback just in case
-  const reserved = ['movements', 'deletion-requests', 'bulk-import-template', 'bulk-import'];
+  const reserved = ['movements', 'deletion-requests', 'bulk-import-template', 'bulk-import', 'groceries-import-template', 'groceries-import'];
   if (reserved.includes(req.params.id)) return next();
   
   try {
