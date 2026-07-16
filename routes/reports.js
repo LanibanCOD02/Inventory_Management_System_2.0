@@ -236,52 +236,191 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'MSC Trust Inventory System';
+    
+    // Create single sheet
+    const sheet = workbook.addWorksheet('Low Stock Alert', { views: [{ state: 'frozen', ySplit: 4 }] }); // freeze from row 5
+    
+    const branchName = req.query.branch_id ? (branchMap[req.query.branch_id] || req.query.branch_id) : 'All Branches';
+    const now = new Date();
+    const generatedStr = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-US');
+
+    // Row 1
+    sheet.mergeCells('A1:L1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
+    titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+    sheet.getRow(1).height = 36;
+
+    // Row 2
+    sheet.mergeCells('A2:L2');
+    const subtitleCell = sheet.getCell('A2');
+    subtitleCell.value = `LOW STOCK ALERT REPORT | Branch: ${branchName} | Generated: ${generatedStr}`;
+    subtitleCell.font = { name: 'Arial', size: 10, bold: false, color: { argb: 'FF000000' } };
+    subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    sheet.getRow(2).height = 24;
+
+    // Row 3 (Spacer)
+    sheet.addRow([]);
 
     if (items.length === 0) {
-      const sheet = workbook.addWorksheet('Low Stock Report');
-      sheet.addRow(['No items currently below threshold']);
+      sheet.mergeCells('A4:L4');
+      const noDataCell = sheet.getCell('A4');
+      noDataCell.value = "All items are sufficiently stocked. No items below threshold.";
+      noDataCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      noDataCell.font = { italic: true };
+      
+      const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
+      const dateStr = now.toISOString().split('T')[0];
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="Low_Stock_Report_${new Date().toISOString().split('T')[0]}.xlsx"`);
+      res.setHeader('Content-Disposition', `attachment; filename="MSC_Low_Stock_Alert_${safeBranch}_${dateStr}.xlsx"`);
       await workbook.xlsx.write(res);
       return res.end();
     }
 
-    const branchGroups = {};
-    items.forEach(item => {
-      const bId = item.branch_id || 'trust_wide';
-      if (!branchGroups[bId]) branchGroups[bId] = [];
-      branchGroups[bId].push(item);
+    // Row 4 Headers
+    const headers = [
+      'S.No', 'Item Name', 'Category', 'Branch', 'Location/Block', 
+      'Current Stock', 'Minimum Required', 'Shortage', 'Unit', 
+      'Default Supplier', 'Last Received Date', 'Urgency'
+    ];
+    const headerRow = sheet.addRow(headers);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+    sheet.autoFilter = 'A4:L4';
+
+    // Process items
+    let sortedItems = items.map(item => {
+      const shortage = item.threshold - item.stock;
+      
+      // Fetch location/block
+      const blocks = db.prepare('SELECT b.name FROM inventory_item_blocks ib JOIN branch_blocks b ON ib.block_id = b.id WHERE ib.item_id = ? AND ib.stock > 0').all(item.id);
+      const location = blocks.length > 0 ? blocks.map(b => b.name).join(', ') : '-';
+      
+      // Fetch last received
+      const lastRec = db.prepare('SELECT created_at FROM inventory_movements WHERE item_id = ? AND movement_type = "IN" ORDER BY created_at DESC LIMIT 1').get(item.id);
+      let lastRecDate = '-';
+      if (lastRec) {
+         const d = new Date(lastRec.created_at);
+         lastRecDate = d.toLocaleDateString('en-GB'); // DD/MM/YYYY
+      }
+
+      return {
+        ...item,
+        shortage,
+        location,
+        lastRecDate,
+        isCritical: item.stock === 0
+      };
     });
 
-    for (const bId of Object.keys(branchGroups)) {
-      const branchName = bId === 'trust_wide' ? 'Global Unassigned' : (branchMap[bId] || 'Unknown Branch');
-      const safeSheetName = branchName.replace(/[\[\]\/*\?:\\\\]/g, '').substring(0, 31);
-      
-      const sheet = workbook.addWorksheet(safeSheetName, { views: [{ state: 'frozen', ySplit: 1 }] });
-      sheet.columns = [
-        { header: 'Item Name', key: 'name', width: 30 },
-        { header: 'Category', key: 'category', width: 20 },
-        { header: 'Current Stock', key: 'stock', width: 15 },
-        { header: 'Threshold', key: 'threshold', width: 15 },
-        { header: 'Shortage', key: 'shortage', width: 15 }
-      ];
-      sheet.getRow(1).font = { bold: true };
-      
-      branchGroups[bId]
-        .sort((a, b) => (b.threshold - b.stock) - (a.threshold - a.stock))
-        .forEach(i => {
-          sheet.addRow({
-            name: i.name,
-            category: i.category || '-',
-            stock: i.stock,
-            threshold: i.threshold,
-            shortage: i.threshold - i.stock
-          });
+    // Sort order (most critical first):
+    // Out of Stock items first (stock = 0)
+    // Then Low Stock items sorted by Shortage descending (biggest shortage at top)
+    sortedItems.sort((a, b) => {
+      if (a.isCritical && !b.isCritical) return -1;
+      if (!a.isCritical && b.isCritical) return 1;
+      return b.shortage - a.shortage;
+    });
+
+    let totalShortage = 0;
+    let criticalCount = 0;
+
+    sortedItems.forEach((i, idx) => {
+      totalShortage += i.shortage;
+      if (i.isCritical) criticalCount++;
+
+      let urgency = "LOW — Needs Restock";
+      if (i.isCritical) urgency = "CRITICAL — Out of Stock";
+
+      const bName = i.branch_id === 'trust_wide' ? 'Global Unassigned' : (branchMap[i.branch_id] || '-');
+
+      const row = sheet.addRow([
+        idx + 1,
+        i.name,
+        i.category || '-',
+        bName,
+        i.location,
+        i.stock,
+        i.threshold,
+        i.shortage,
+        i.unit || '-',
+        i.default_supplier || '-',
+        i.lastRecDate,
+        urgency
+      ]);
+
+      const stockCell = row.getCell(6); // Current Stock
+      const shortageCell = row.getCell(8); // Shortage
+      const urgencyCell = row.getCell(12); // Urgency
+
+      stockCell.font = { bold: true };
+      shortageCell.font = { bold: true };
+      urgencyCell.font = { bold: true };
+
+      if (i.isCritical) {
+        // entire row red background #FEF2F2
+        row.eachCell({ includeEmpty: true }, (c) => {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
         });
-    }
+        stockCell.font = { bold: true, color: { argb: 'FFEF4444' } }; // red text
+        shortageCell.font = { bold: true, color: { argb: 'FFEF4444' } };
+        urgencyCell.font = { bold: true, color: { argb: 'FFEF4444' } };
+      } else {
+        // entire row amber background #FFFBEB
+        row.eachCell({ includeEmpty: true }, (c) => {
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+        });
+        stockCell.font = { bold: true, color: { argb: 'FFD97706' } }; // amber text
+        shortageCell.font = { bold: true, color: { argb: 'FFD97706' } };
+        urgencyCell.font = { bold: true, color: { argb: 'FFD97706' } };
+      }
+      
+      // alignment
+      row.getCell(1).alignment = { horizontal: 'center' };
+      stockCell.alignment = { horizontal: 'center' };
+      row.getCell(7).alignment = { horizontal: 'center' };
+      shortageCell.alignment = { horizontal: 'center' };
+      row.getCell(11).alignment = { horizontal: 'center' };
+    });
+
+    // Summary rows
+    sheet.addRow([]); // Blank spacer
+    
+    const countRow = sheet.addRow([`Total Items Needing Attention: ${sortedItems.length}`]);
+    countRow.getCell(1).font = { bold: true, color: { argb: 'FF0D9488' } };
+    
+    const critRow = sheet.addRow([`Items Completely Out of Stock: ${criticalCount}`]);
+    critRow.getCell(1).font = { bold: true, color: { argb: 'FFEF4444' } };
+    
+    const sumRow = sheet.addRow([`Total Stock Deficit (units): ${totalShortage}`]);
+    sumRow.getCell(1).font = { bold: true };
+
+    // Auto-size columns (min 12, max 45)
+    sheet.columns.forEach((column) => {
+      let maxLength = 12;
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.row > 3 && cell.value !== undefined && cell.value !== null) {
+          const length = cell.value.toString().length;
+          if (length > maxLength) {
+            maxLength = length;
+          }
+        }
+      });
+      column.width = Math.min(45, maxLength + 2);
+    });
+
+    const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
+    const dateStr = now.toISOString().split('T')[0];
+    const finalFilename = `MSC_Low_Stock_Alert_${safeBranch}_${dateStr}.xlsx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Low_Stock_Report_${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${finalFilename}"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch(err) {
