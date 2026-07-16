@@ -216,14 +216,16 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     sheet.columns.forEach((column) => {
       let maxLength = 12;
       column.eachCell({ includeEmpty: false }, cell => {
-        if (cell.row > 3 && cell.value !== undefined && cell.value !== null) {
+        // Measure from row 3 downwards (so we include the header row in width calculation)
+        if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
           const length = cell.value.toString().length;
           if (length > maxLength) {
             maxLength = length;
           }
         }
       });
-      column.width = Math.min(45, maxLength + 2);
+      // Add generous padding (+6) to ensure the Excel filter dropdown icon doesn't cover text
+      column.width = Math.min(45, maxLength + 6);
     });
 
     let fileNameBranch = headerBranchName.replace(/\s+/g, '_');
@@ -429,14 +431,16 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     sheet.columns.forEach((column) => {
       let maxLength = 12;
       column.eachCell({ includeEmpty: false }, cell => {
-        if (cell.row > 3 && cell.value !== undefined && cell.value !== null) {
+        // Measure from row 3 downwards (so we include the header row in width calculation)
+        if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
           const length = cell.value.toString().length;
           if (length > maxLength) {
             maxLength = length;
           }
         }
       });
-      column.width = Math.min(45, maxLength + 2);
+      // Add generous padding (+6) to ensure the Excel filter dropdown icon doesn't cover text
+      column.width = Math.min(45, maxLength + 6);
     });
 
     const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
