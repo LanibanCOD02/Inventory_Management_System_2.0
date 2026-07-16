@@ -3611,7 +3611,7 @@ const bulkImportBranchSelect = document.getElementById('bulkImportBranchSelect')
 if (downloadBulkTemplateBtn) {
   downloadBulkTemplateBtn.addEventListener('click', async () => {
     try {
-      const res = await fetch('/api/inventory/bulk-import-template', {
+      const res = await fetch('/api/inventory/bulk-import-template?t=' + Date.now(), {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
       });
       if (!res.ok) throw new Error('Failed to download template');
@@ -3920,7 +3920,7 @@ const groceriesBulkErrorsList = document.getElementById('groceriesBulkErrorsList
 if (downloadGroceriesTemplateBtn) {
   downloadGroceriesTemplateBtn.addEventListener('click', async () => {
     try {
-      const res = await fetch('/api/inventory/groceries-import-template', {
+      const res = await fetch('/api/inventory/groceries-import-template?t=' + Date.now(), {
         headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
       });
       if (!res.ok) throw new Error('Failed to download template');
