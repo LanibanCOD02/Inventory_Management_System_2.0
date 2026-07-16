@@ -175,12 +175,12 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
         // Coloring logic
         if (status === 'Out of Stock') {
           row.eachCell((cell) => {
-             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
              if (cell.col === 11) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } }; // column K (11) is status
           });
         } else if (status === 'Low Stock') {
           row.eachCell((cell) => {
-             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
              if (cell.col === 11) cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFF59E0B' } };
           });
         } else {
@@ -392,7 +392,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       if (i.isCritical) {
         // entire row red background #FEF2F2
         row.eachCell({ includeEmpty: true }, (c) => {
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
         });
         stockCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } }; // red text
         shortageCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFEF4444' } };
@@ -400,7 +400,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       } else {
         // entire row amber background #FFFBEB
         row.eachCell({ includeEmpty: true }, (c) => {
-          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFBEB' } };
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
         });
         stockCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFD97706' } }; // amber text
         shortageCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFD97706' } };
