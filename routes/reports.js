@@ -132,7 +132,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
         const row = sheet.addRow({
           sno: index + 1,
           name: i.name || '-',
-          code: i.item_code || '-',
+          code: i.item_code || ('#' + (i.id ? i.id.substring(0, 8) : '')),
           category: i.category || '-',
           branch: branchName,
           block: blockName,
@@ -143,7 +143,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
           status: status,
           min: threshold,
           shortage: shortage,
-          updated: i.updated_at ? i.updated_at.replace('T', ' ').substring(0, 19) : (i.created_at ? i.created_at.replace('T', ' ').substring(0, 19) : '-')
+          updated: (i.updated_at || i.created_at) ? new Date(i.updated_at || i.created_at).toLocaleDateString('en-GB') : '-'
         });
         
         // Alignment
