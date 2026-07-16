@@ -918,7 +918,7 @@ const sectionData = {
   programs: { title: "Programs", subtitle: "Monitor supply allocation across care and rehabilitation services.", action: `<button class="primary-btn section-add-entity" data-type="programs"><i data-lucide="plus"></i>Add program</button>`, content: null },
   suppliers: { title: "Suppliers", subtitle: "Keep vendor contacts and supply categories organized.", action: `<button class="primary-btn section-add-entity" data-type="suppliers"><i data-lucide="plus"></i>Add supplier</button>`, content: null },
   donations: { title: "Donations", subtitle: "Track in-kind donations to the trust.", action: `<button class="primary-btn section-add-donation"><i data-lucide="plus"></i>Add Donation</button>`, content: null },
-  groceries: { title: "Groceries", subtitle: "Manage food and provisions inventory separately.", action: `<button class="primary-btn section-add-grocery"><i data-lucide="plus"></i>Add Grocery</button>`, content: null },
+  groceries: { title: "Groceries", subtitle: "Manage food and provisions inventory separately.", action: `<div style="display:flex;gap:12px;"><button class="secondary-btn section-import-groceries"><i data-lucide="upload"></i>Import Groceries</button><button class="primary-btn section-add-grocery"><i data-lucide="plus"></i>Add Grocery</button></div>`, content: null },
   reports: {
       title: "Reports", subtitle: "Generate clear summaries for review and planning.", action: ``,
       content: async () => `<div class="report-grid">
@@ -1104,7 +1104,7 @@ async function switchPage(page) {
           const res = await apiFetch('/inventory');
           invData = res || [];
         } catch(e) {}
-        const data = invData.filter(i => (i.category || '').toLowerCase() === 'groceries' || (i.category || '').toLowerCase() === 'grocery');
+        const data = invData.filter(i => (i.category || '').toLowerCase().includes('grocer') || (i.category || '').toLowerCase().includes('food'));
         dynamicContent = `<div class="card section-panel"><div class="card-header"><div><h3>Groceries Balance</h3><p>Manage remaining stock for food and provisions</p></div></div><div class="table-wrap"><table><thead><tr><th>Item Name</th><th>Category</th><th>Current Balance</th><th>Unit Price</th><th>Branch</th></tr></thead><tbody>
           ${data.map(i => {
             let stockStyle = i.stock <= (i.threshold || 10) ? 'color:var(--danger);font-weight:600;' : 'color:var(--teal-600);font-weight:600;';
@@ -3897,3 +3897,132 @@ window.deleteBlock = async (id, branchId) => {
     showToast(err.message, 'error');
   }
 };
+
+// ─── Groceries Bulk Import Logic ────────────────────────────
+const groceriesBulkImportModalBackdrop = document.getElementById('groceriesBulkImportModalBackdrop');
+const closeGroceriesBulkImportModal = document.getElementById('closeGroceriesBulkImportModal');
+const cancelGroceriesBulkImportModal = document.getElementById('cancelGroceriesBulkImportModal');
+const downloadGroceriesTemplateBtn = document.getElementById('downloadGroceriesTemplateBtn');
+
+const groceriesBulkImportForm = document.getElementById('groceriesBulkImportForm');
+const groceriesBulkImportFileInput = groceriesBulkImportForm?.querySelector('input[type="file"]');
+const groceriesBulkImportFileName = document.getElementById('groceriesBulkImportFileName');
+const groceriesBulkImportSubmitBtn = document.getElementById('groceriesBulkImportSubmitBtn');
+const groceriesBulkImportResults = document.getElementById('groceriesBulkImportResults');
+const groceriesBulkAddedCount = document.getElementById('groceriesBulkAddedCount');
+const groceriesBulkUpdatedCount = document.getElementById('groceriesBulkUpdatedCount');
+const groceriesBulkErrorsContainer = document.getElementById('groceriesBulkErrorsContainer');
+const groceriesBulkErrorsList = document.getElementById('groceriesBulkErrorsList');
+
+if (downloadGroceriesTemplateBtn) {
+  downloadGroceriesTemplateBtn.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/inventory/groceries-import-template', {
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+      });
+      if (!res.ok) throw new Error('Failed to download template');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'MSC_Trust_Groceries_Bulk_Import_Template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+if (closeGroceriesBulkImportModal) closeGroceriesBulkImportModal.addEventListener('click', () => groceriesBulkImportModalBackdrop.classList.remove('active'));
+if (cancelGroceriesBulkImportModal) cancelGroceriesBulkImportModal.addEventListener('click', () => groceriesBulkImportModalBackdrop.classList.remove('active'));
+
+if (groceriesBulkImportFileInput) {
+  groceriesBulkImportFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      groceriesBulkImportFileName.textContent = e.target.files[0].name;
+    } else {
+      groceriesBulkImportFileName.textContent = '';
+    }
+  });
+}
+
+if (groceriesBulkImportForm) {
+  groceriesBulkImportForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!groceriesBulkImportFileInput.files.length) return;
+    
+    const ogText = groceriesBulkImportSubmitBtn.textContent;
+    groceriesBulkImportSubmitBtn.textContent = 'Processing...';
+    groceriesBulkImportSubmitBtn.disabled = true;
+    
+    try {
+      let formData = new FormData();
+      formData.append('file', groceriesBulkImportFileInput.files[0]);
+      
+      const branchId = document.getElementById('groceriesImportBranchSelect')?.value;
+      if (branchId) {
+        formData.append('branch_id', branchId);
+      }
+      
+      let res = await fetch('/api/inventory/groceries-import', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+        body: formData
+      });
+      
+      let data = await res.json();
+      if (!res.ok) {
+        if (data.error && data.error.includes("Branch '") && data.error.includes("' not found")) {
+            const confirmed = confirm(data.error + "\n\nDo you want to proceed and auto-create the missing branches?");
+            if (confirmed) {
+                formData.append('autoCreate', 'true');
+                res = await fetch('/api/inventory/groceries-import', {
+                  method: 'POST',
+                  headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+                  body: formData
+                });
+                data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+            } else {
+                throw new Error("Import cancelled. Please update your Excel file to match existing branches.");
+            }
+        } else {
+            throw new Error(data.error);
+        }
+      }
+      
+      groceriesBulkAddedCount.textContent = data.added || 0;
+      groceriesBulkUpdatedCount.textContent = data.updated || 0;
+      
+      if (data.errors && data.errors.length > 0) {
+        groceriesBulkErrorsList.innerHTML = data.errors.map(err => `<li>${err}</li>`).join('');
+        groceriesBulkErrorsContainer.style.display = 'block';
+      } else {
+        groceriesBulkErrorsContainer.style.display = 'none';
+      }
+      
+      groceriesBulkImportResults.style.display = 'block';
+      showToast('Groceries import completed', 'success');
+      
+      if (data.added > 0 || data.updated > 0) {
+        invalidateCache('/inventory');
+        invalidateCache('/movements');
+        
+        await loadBranches(); 
+        
+        if (document.querySelector(".nav-item.active")?.dataset.page === 'groceries') {
+          loadContent('groceries');
+        }
+      }
+    } catch(err) {
+      showToast(err.message, 'error');
+    } finally {
+      groceriesBulkImportSubmitBtn.textContent = ogText;
+      groceriesBulkImportSubmitBtn.disabled = false;
+      groceriesBulkImportFileInput.value = '';
+    }
+  });
+}

@@ -821,4 +821,180 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
   }
 });
 
+// GET /api/inventory/groceries-import-template
+router.get('/groceries-import-template', authenticateToken, async (req, res) => {
+  try {
+    const templatePath = path.join(__dirname, '../MSC_Trust_Groceries_Bulk_Import_Template.xlsx');
+    res.download(templatePath, 'MSC_Trust_Groceries_Bulk_Import_Template.xlsx');
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download template' });
+  }
+});
+
+// POST /api/inventory/groceries-import
+router.post('/groceries-import', authenticateToken, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const filename = req.file.originalname.toLowerCase();
+    
+    if (filename.endsWith('.csv')) {
+      const { Readable } = require('stream');
+      await workbook.csv.read(Readable.from(req.file.buffer));
+    } else {
+      await workbook.xlsx.load(req.file.buffer);
+    }
+    
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) return res.status(400).json({ error: 'Empty spreadsheet' });
+    
+    const getVal = (cell) => {
+      if (!cell || cell.value == null) return '';
+      if (typeof cell.value === 'object') {
+        if (cell.value.richText) return cell.value.richText.map(rt => rt.text).join('');
+        if (cell.value.result !== undefined) return cell.value.result;
+        return cell.text || '';
+      }
+      if (cell.value instanceof Date) {
+        return cell.value.toLocaleDateString('en-GB'); // DD/MM/YYYY
+      }
+      return cell.value.toString();
+    };
+
+    const headerRow = worksheet.getRow(1);
+    const colMap = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const header = getVal(cell).trim().toLowerCase();
+      if (header.includes('branch name')) colMap['branch'] = colNumber;
+      if (header.includes('item name')) colMap['name'] = colNumber;
+      if (header === 'unit') colMap['unit'] = colNumber;
+      if (header.includes('initial stock')) colMap['stock'] = colNumber;
+      if (header.includes('minimum stock')) colMap['threshold'] = colNumber;
+      if (header.includes('unit price')) colMap['price'] = colNumber;
+      if (header.includes('default supplier')) colMap['supplier'] = colNumber;
+      if (header.includes('expiry date')) colMap['expiry'] = colNumber;
+      if (header.includes('storage location')) colMap['location'] = colNumber;
+      if (header === 'notes') colMap['notes'] = colNumber;
+    });
+    
+    const isAdmin = req.user.role === 'Admin' || req.user.role === 'admin';
+    if (!colMap['name'] || (isAdmin && !req.body.branch_id && colMap['branch'] === undefined)) {
+      return res.status(400).json({ error: 'Template missing required columns (Item Name, and Branch Name for Admins)' });
+    }
+    
+    let added = 0;
+    let updated = 0;
+    const errors = [];
+    
+    const branches = db.prepare('SELECT id, name FROM branches WHERE deleted_at IS NULL').all();
+    const branchMap = {};
+    for (const b of branches) {
+      branchMap[b.name.toLowerCase()] = b.id;
+    }
+    
+    const targetBranchId = req.body.branch_id;
+    
+    const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
+    const updateItemAddStock = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = stock + ?, deleted_at = NULL, unit_price = ?, default_supplier_id = ? WHERE id = ?');
+    const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, default_supplier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, total_price, notes) VALUES (?, ?, \'IN\', ?, \'Opening Stock\', \'GROCERIES-IMPORT\', ?, ?, ?, ?)');
+    const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
+    
+    const findSupplier = db.prepare('SELECT id FROM suppliers WHERE name = ?');
+    
+    const autoCreate = req.body.autoCreate === 'true';
+    
+    db.transaction(() => {
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        
+        const bName = colMap['branch'] ? getVal(row.getCell(colMap['branch'])).trim() : '';
+        let branchId = targetBranchId;
+        
+        if (req.user.role !== 'Admin' && req.user.role !== 'admin') {
+          branchId = req.user.branch_id;
+        } else if (!branchId) {
+          if (!bName) {
+            errors.push(`Row ${rowNumber}: Missing Branch Name`);
+            return;
+          }
+          branchId = branchMap[bName.toLowerCase()];
+          if (!branchId) {
+            if (autoCreate) {
+              branchId = generateUUID();
+              const nowStr = new Date().toISOString();
+              db.prepare('INSERT INTO branches (id, name, location, address, pincode, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(branchId, bName, 'Auto-created via Import', '-', '000000', nowStr);
+              branchMap[bName.toLowerCase()] = branchId;
+            } else {
+              errors.push(`Row ${rowNumber}: Branch '${bName}' not found`);
+              return;
+            }
+          }
+        }
+        
+        const iName = colMap['name'] ? getVal(row.getCell(colMap['name'])).trim() : '';
+        const unit = colMap['unit'] ? getVal(row.getCell(colMap['unit'])).trim() || 'Units' : 'Units';
+        const rawStock = colMap['stock'] ? getVal(row.getCell(colMap['stock'])).trim() : '0';
+        const rawThreshold = colMap['threshold'] ? getVal(row.getCell(colMap['threshold'])).trim() : '0';
+        const rawPrice = colMap['price'] ? getVal(row.getCell(colMap['price'])).trim() : '0';
+        
+        const stock = parseFloat(rawStock.replace(/[^0-9.-]+/g,"")) || 0;
+        const threshold = parseFloat(rawThreshold.replace(/[^0-9.-]+/g,"")) || 0;
+        const unitPrice = parseFloat(rawPrice.replace(/[^0-9.-]+/g,"")) || 0;
+        
+        const supplierName = colMap['supplier'] ? getVal(row.getCell(colMap['supplier'])).trim() : '';
+        const expiryDate = colMap['expiry'] ? getVal(row.getCell(colMap['expiry'])).trim() : '';
+        const storageLocation = colMap['location'] ? getVal(row.getCell(colMap['location'])).trim() : '';
+        const extraNotes = colMap['notes'] ? getVal(row.getCell(colMap['notes'])).trim() : '';
+        
+        if (!iName) {
+          errors.push(`Row ${rowNumber}: Missing Item Name`);
+          return;
+        }
+        
+        let supplierId = null;
+        if (supplierName) {
+          const supp = findSupplier.get(supplierName);
+          if (supp) supplierId = supp.id;
+          else if (autoCreate) {
+            supplierId = generateUUID();
+            db.prepare('INSERT INTO suppliers (id, name, created_at) VALUES (?, ?, ?)').run(supplierId, supplierName, new Date().toISOString());
+          }
+        }
+        
+        const cat = 'Food & nutrition';
+        let movementNotesParts = [];
+        if (expiryDate) movementNotesParts.push(`Expiry Date: ${expiryDate}`);
+        if (storageLocation) movementNotesParts.push(`Storage Location: ${storageLocation}`);
+        if (extraNotes) movementNotesParts.push(`Notes: ${extraNotes}`);
+        const movementNotes = movementNotesParts.join(' | ');
+        
+        const existing = checkItem.get(iName, branchId);
+        const nowStr = new Date().toISOString();
+        
+        if (existing) {
+          updateItemAddStock.run(cat, unit, threshold, stock, unitPrice, supplierId, existing.id);
+          if (stock > 0) {
+            insertMovement.run(generateUUID(), existing.id, stock, branchId, nowStr, stock * unitPrice, movementNotes);
+          }
+          updated++;
+        } else {
+          const newId = generateUUID();
+          insertItem.run(newId, iName, cat, stock, unit, threshold, branchId, nowStr, unitPrice, supplierId);
+          insertPriceHistory.run(generateUUID(), newId, branchId, unitPrice, stock, stock * unitPrice, req.user.id, nowStr);
+          if (stock > 0) {
+            insertMovement.run(generateUUID(), newId, stock, branchId, nowStr, stock * unitPrice, movementNotes);
+          }
+          added++;
+        }
+      });
+    })();
+    
+    res.json({ added, updated, errors });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to process file: ' + error.message });
+  }
+});
+
 module.exports = router;

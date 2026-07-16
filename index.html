@@ -1100,6 +1100,68 @@
     </section>
   </div>
 
+  <!-- ─── Groceries Bulk Import Modal ────────────────────────────── -->
+  <div class="modal-backdrop" id="groceriesBulkImportModalBackdrop">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="groceriesBulkImportModalTitle">
+      <div class="modal-heading">
+        <div><p class="eyebrow">Groceries Ledger</p><h2 id="groceriesBulkImportModalTitle">Import Groceries</h2></div>
+        <button class="icon-btn" id="closeGroceriesBulkImportModal" aria-label="Close modal"><i data-lucide="x"></i></button>
+      </div>
+      
+      <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">
+        Upload a spreadsheet (.xlsx or .csv) to add or update multiple groceries at once. Items are matched by <strong>Item Name</strong> and <strong>Branch Name</strong>.
+      </p>
+      
+      <div style="margin-bottom: 24px;">
+        <button type="button" id="downloadGroceriesTemplateBtn" class="secondary-btn" style="display: inline-flex; text-decoration: none;">
+          <i data-lucide="download"></i> Download Template
+        </button>
+      </div>
+
+      <form id="groceriesBulkImportForm" style="display:flex; flex-direction:column; gap:16px;">
+        <div class="admin-only">
+          <label style="display:block; margin-bottom:8px; font-size:13px; font-weight:600; color:var(--text);">Target Branch (Optional)</label>
+          <select id="groceriesImportBranchSelect" name="branch_id" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--white); color:var(--text);">
+            <option value="">Read from spreadsheet ("Branch Name" column)</option>
+          </select>
+          <p style="font-size:11px; color:var(--text-light); margin-top:4px;">If selected, all items will be imported into this branch and the spreadsheet column will be ignored.</p>
+        </div>
+        <div class="file-upload-wrapper">
+          <label class="file-upload-box">
+            <i data-lucide="upload-cloud" style="width:32px; height:32px; color:var(--primary); margin-bottom:12px;"></i>
+            <span style="font-weight:600; color:var(--text); margin-bottom:4px;">Upload Spreadsheet</span>
+            <span style="font-size:12px; color:var(--text-light); text-align:center;">Select .xlsx or .csv file</span>
+            <input required type="file" name="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" style="opacity: 0; position: absolute; width: 100%; height: 100%; cursor: pointer;">
+          </label>
+          <p id="groceriesBulkImportFileName" style="text-align: center; margin-top: 8px; font-size: 13px; color: var(--primary);"></p>
+        </div>
+        
+        <div id="groceriesBulkImportResults" style="display:none; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);">
+          <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--text);">Import Summary</h4>
+          <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+            <div style="flex: 1; padding: 12px; background: #ecfdf5; color: #065f46; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 700;" id="groceriesBulkAddedCount">0</div>
+              <div style="font-size: 12px;">Added</div>
+            </div>
+            <div style="flex: 1; padding: 12px; background: #eff6ff; color: #1e40af; border-radius: 6px; text-align: center;">
+              <div style="font-size: 24px; font-weight: 700;" id="groceriesBulkUpdatedCount">0</div>
+              <div style="font-size: 12px;">Updated</div>
+            </div>
+          </div>
+          <div id="groceriesBulkErrorsContainer" style="display: none;">
+            <p style="font-size: 13px; font-weight: 600; color: var(--danger); margin-bottom: 8px;">Skipped Rows:</p>
+            <ul id="groceriesBulkErrorsList" style="font-size: 12px; color: var(--danger); margin: 0; padding-left: 16px; max-height: 120px; overflow-y: auto;"></ul>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 8px;">
+          <button type="button" class="secondary-btn" id="cancelGroceriesBulkImportModal">Close</button>
+          <button class="primary-btn" type="submit" id="groceriesBulkImportSubmitBtn">Upload & Process</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <!-- Deletion Request Modal -->
   <div class="modal-backdrop" id="deletionRequestModalBackdrop">
     <section class="modal" role="dialog" aria-modal="true" aria-labelledby="delReqModalTitle">
