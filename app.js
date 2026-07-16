@@ -1137,6 +1137,9 @@ async function switchPage(page) {
       openModal("Groceries");
       document.getElementById("modalBackdrop").classList.add("active");
     });
+    sectionView.querySelector(".section-import-groceries")?.addEventListener("click", () => {
+      document.getElementById("groceriesBulkImportModalBackdrop").classList.add("active");
+    });
     sectionView.querySelector(".section-add-donation")?.addEventListener("click", () => {
       document.getElementById("addDonationForm").reset();
       document.getElementById("addDonationForm").reset();
