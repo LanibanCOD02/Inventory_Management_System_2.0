@@ -73,7 +73,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     
     sheet.getRow(3).height = 35; // Increased height for neatness
     sheet.getRow(3).eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
@@ -188,7 +188,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
           row.getCell('status').font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF10B981' } };
           if ((index + 1) % 2 === 0) {
             row.eachCell((cell) => {
-              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
             });
           }
         }
@@ -301,7 +301,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     const headerRow = sheet.addRow(headers);
     headerRow.height = 35; // Increased height for neatness
     headerRow.eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
@@ -565,7 +565,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
 
       let dt = m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-';
       
-      movSheet.addRow({
+      const row = movSheet.addRow({
         sno: sno++,
         date: dt,
         ref: m.reference_code || '-',
@@ -586,6 +586,12 @@ router.get('/movements', authenticateToken, async (req, res) => {
         user: m.username || '-',
         notes: m.notes || '-'
       });
+      
+      if (sno % 2 !== 0) { // Since sno started at 1 and just incremented, check odd to alternate
+        row.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+        });
+      }
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
