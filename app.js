@@ -2407,6 +2407,7 @@ if (movementModal) {
             reference_code: d.get('reference_code'),
             notes: d.get('notes'),
             branch_id: document.getElementById('addMovementBranch')?.value || undefined,
+            total_price: d.get('total_price') ? Number(d.get('total_price')) : undefined,
             product_photo_url: uploadedUrls.productPhotoUrl,
             invoice_pdf_url: uploadedUrls.invoicePdfUrl
         };
