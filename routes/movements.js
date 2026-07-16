@@ -102,7 +102,7 @@ router.post('/', authenticateToken, async (req, res) => {
       if (!item) throw new Error('Item not found');
 
       if (movement_type === 'OUT' && item.stock < qty) {
-         throw new Error('Insufficient total branch stock');
+         throw new Error(`Insufficient stock. Only ${item.stock} units available for ${item.name}.`);
       }
       
       // Block stock check and update
@@ -198,7 +198,7 @@ router.post('/', authenticateToken, async (req, res) => {
     res.json(movement);
   } catch (error) {
     if (error.message === 'Item not found') return res.status(404).json({ error: error.message });
-    if (error.message === 'Insufficient stock') return res.status(400).json({ error: error.message });
+    if (error.message && error.message.startsWith('Insufficient stock')) return res.status(400).json({ error: error.message });
     res.status(500).json({ error: error.message });
   }
 });
