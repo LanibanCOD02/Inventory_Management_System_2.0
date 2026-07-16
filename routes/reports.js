@@ -485,33 +485,6 @@ router.get('/movements', authenticateToken, async (req, res) => {
     }
     if (block_id) { extraMov += ' AND (m.from_block_id = ? OR m.to_block_id = ?)'; params.push(block_id, block_id); }
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'MSC Trust Inventory System';
-
-    const movSheet = workbook.addWorksheet('Master Ledger');
-    movSheet.columns = [
-      { header: 'S.No', key: 'sno', width: 6 },
-      { header: 'Date & Time', key: 'date', width: 22 },
-      { header: 'Ref/Bill No', key: 'ref', width: 15 },
-      { header: 'Action Type', key: 'type', width: 15 },
-      { header: 'Category', key: 'category', width: 20 },
-      { header: 'Item Name', key: 'item', width: 30 },
-      { header: 'Item Code', key: 'code', width: 15 },
-      { header: 'Serial No', key: 'serial', width: 15 },
-      { header: 'Qty Changed', key: 'quantity', width: 15 },
-      { header: 'Unit', key: 'unit', width: 10 },
-      { header: 'Running Bal.', key: 'balance', width: 15 },
-      { header: 'Unit Price (₹)', key: 'price', width: 15 },
-      { header: 'Total Amt (₹)', key: 'amount', width: 15 },
-      { header: 'From Location', key: 'from_loc', width: 30 },
-      { header: 'To Location', key: 'to_loc', width: 30 },
-      { header: 'Party / Recipient', key: 'party', width: 25 },
-      { header: 'Program', key: 'program', width: 20 },
-      { header: 'Handled By', key: 'user', width: 20 },
-      { header: 'Notes', key: 'notes', width: 40 }
-    ];
-    movSheet.getRow(1).font = { bold: true };
-    
     const blockMap = {};
     db.prepare('SELECT id, name FROM branch_blocks').all().forEach(b => blockMap[b.id] = b.name);
     
@@ -519,6 +492,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     const stockMap = {};
     allItems.forEach(i => stockMap[i.id] = i.stock);
     
+    // Reverse calculate stock back to startDate for inventory_movements
     const movsAfterStart = db.prepare(`
       SELECT item_id, movement_type, quantity, branch_id, to_branch_id
       FROM inventory_movements 
@@ -532,6 +506,19 @@ router.get('/movements', authenticateToken, async (req, res) => {
       }
     });
 
+    // Reverse calculate stock back to startDate for deletion_requests
+    const delsAfterStart = db.prepare(`
+      SELECT item_id, quantity 
+      FROM deletion_requests 
+      WHERE status = 'approved' AND requested_at >= ?
+    `).all(startDate);
+    
+    delsAfterStart.forEach(d => {
+      if(stockMap[d.item_id] !== undefined) {
+         stockMap[d.item_id] += d.quantity;
+      }
+    });
+
     const movements = db.prepare(`
       SELECT m.*, i.name as item_name, i.category, i.unit, i.item_code as i_code, i.serial_number as i_serial, i.program, b.name as branch_name, u.username 
       FROM inventory_movements m
@@ -542,60 +529,235 @@ router.get('/movements', authenticateToken, async (req, res) => {
       AND ${condition.replace(/branch_id/g, 'm.branch_id')}
       ${extraCatProg}
       ${extraMov}
-      ORDER BY m.created_at ASC
     `).all(startDate, endDate, ...params);
-    
-    let sno = 1;
-    movements.forEach(m => {
-      if(m.movement_type === 'IN') stockMap[m.item_id] += m.quantity;
-      else if(m.movement_type === 'OUT') stockMap[m.item_id] -= m.quantity;
-      
-      let fromLoc = m.branch_name || 'Global';
-      if(m.from_block_id) fromLoc += ' - ' + (blockMap[m.from_block_id] || 'Block');
-      else if(m.movement_type === 'IN') fromLoc = 'External Supplier/Donor';
-      
-      let toLoc = m.branch_name || 'Global';
-      if(m.to_block_id) toLoc += ' - ' + (blockMap[m.to_block_id] || 'Block');
-      if(m.movement_type === 'TRANSFER' && m.to_branch_id) {
-         const tb = branchMap[m.to_branch_id] || 'Branch';
-         toLoc = tb + (m.to_block_id ? ' - ' + (blockMap[m.to_block_id] || 'Block') : '');
-      } else if (m.movement_type === 'OUT') {
-         toLoc = 'External / Consumed';
-      }
 
-      let dt = m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-';
-      
-      const row = movSheet.addRow({
-        sno: sno++,
-        date: dt,
-        ref: m.reference_code || '-',
-        type: m.movement_type,
-        category: m.category || '-',
-        item: m.item_name,
-        code: m.item_code || m.i_code || '-',
-        serial: m.serial_number || m.i_serial || '-',
-        quantity: m.quantity,
-        unit: m.unit || '-',
-        balance: stockMap[m.item_id],
-        price: m.total_price ? (m.total_price / m.quantity).toFixed(2) : '-',
-        amount: m.total_price || '-',
-        from_loc: fromLoc,
-        to_loc: toLoc,
-        party: m.party_name || m.recipient_name || '-',
-        program: m.program || '-',
-        user: m.username || '-',
-        notes: m.notes || '-'
-      });
-      
-      if (sno % 2 !== 0) { // Since sno started at 1 and just incremented, check odd to alternate
-        row.eachCell((cell) => {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    const deletions = db.prepare(`
+       SELECT dr.id, dr.item_id, dr.requested_at as created_at, dr.quantity, dr.branch_id, dr.reason, dr.reason_details as notes, dr.resale_price,
+              i.name as item_name, i.category, i.unit, i.item_code as i_code, i.serial_number as i_serial, i.program,
+              b.name as branch_name, u.username 
+       FROM deletion_requests dr
+       JOIN inventory_items i ON dr.item_id = i.id
+       LEFT JOIN branches b ON dr.branch_id = b.id
+       LEFT JOIN users u ON dr.requested_by = u.id
+       WHERE dr.status = 'approved' AND dr.requested_at >= ? AND dr.requested_at <= ?
+       AND ${condition.replace(/branch_id/g, 'dr.branch_id')}
+       ${extraCatProg}
+    `).all(startDate, endDate, ...params);
+
+    let combined = [...movements, ...deletions.map(d => ({
+        ...d,
+        is_deletion: true,
+        movement_type: 'OUT',
+        total_price: d.resale_price || 0,
+        reference_code: '-',
+        party_name: '-',
+        recipient_name: '-'
+    }))];
+
+    combined.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'MSC Trust Inventory System';
+
+    const sheet = workbook.addWorksheet('Transaction Ledger', { views: [{ state: 'frozen', ySplit: 4 }] });
+
+    const safeBranchName = req.query.branch_id ? (branchMap[req.query.branch_id] || req.query.branch_id) : 'All Branches';
+    const generatedStr = new Date().toLocaleString('en-GB');
+    const startStr = new Date(startDate).toLocaleDateString('en-GB');
+    const endStr = new Date(endDate).toLocaleDateString('en-GB');
+
+    sheet.mergeCells('A1:U1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+    sheet.getRow(1).height = 36;
+
+    sheet.mergeCells('A2:U2');
+    const subtitleCell = sheet.getCell('A2');
+    subtitleCell.value = `MASTER TRANSACTION LEDGER | Branch: ${safeBranchName} | Period: ${startStr} to ${endStr} | Generated: ${generatedStr}`;
+    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
+    subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    sheet.getRow(2).height = 24;
+
+    sheet.addRow([]);
+
+    const headers = [
+      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
+      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 'Running Balance', 
+      'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
+      'Program / Scheme', 'Authorized By', 'Invoice/Bill No.', 'Remarks'
+    ];
+
+    const headerRow = sheet.addRow(headers);
+    headerRow.height = 25;
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        left: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
+      };
+    });
+    sheet.autoFilter = 'A4:U4';
+
+    if (combined.length === 0) {
+      sheet.mergeCells('A5:U5');
+      const noData = sheet.getCell('A5');
+      noData.value = "No transactions found for the selected period and filters.";
+      noData.alignment = { horizontal: 'center', vertical: 'middle' };
+      noData.font = { italic: true };
+    } else {
+      let sno = 1;
+      let totalQtyIn = 0;
+      let totalQtyOut = 0;
+      let totalValue = 0;
+
+      combined.forEach(m => {
+        let eventType = '';
+        let rowColor = null;
+        let leftBorderColor = null;
+        let isStrikethrough = false;
+        
+        const isTransfer = m.reference_code && m.reference_code.startsWith('TRF-');
+        
+        if (m.is_deletion) {
+            stockMap[m.item_id] -= m.quantity;
+            if (m.reason === 'scrap') { eventType = 'Written Off'; rowColor = 'FFFFF7ED'; leftBorderColor = 'FFF97316'; }
+            else if (m.reason === 'resale') { eventType = 'Resold'; rowColor = 'FFF5F3FF'; leftBorderColor = 'FF8B5CF6'; }
+            else if (m.reason === 'mistake') { eventType = 'Correction Removed'; rowColor = 'FFF1F5F9'; isStrikethrough = true; }
+            else { eventType = 'Removed — Other'; rowColor = 'FFF1F5F9'; }
+        } else {
+            if (m.movement_type === 'IN') stockMap[m.item_id] += m.quantity;
+            else if (m.movement_type === 'OUT') stockMap[m.item_id] -= m.quantity;
+            
+            if (m.voided) {
+                eventType = 'Voided / Corrected';
+                rowColor = 'FFF1F5F9';
+                isStrikethrough = true;
+            } else if (m.movement_type === 'IN' && !isTransfer) {
+                eventType = 'Stock Received';
+                rowColor = 'FFE6FAF5';
+                leftBorderColor = 'FF10B981';
+            } else if (m.movement_type === 'OUT' && !isTransfer) {
+                eventType = 'Issued to Program';
+                rowColor = 'FFFEF2F2';
+                leftBorderColor = 'FFEF4444';
+            } else if (m.movement_type === 'OUT' && isTransfer) {
+                eventType = 'Sent to Branch';
+                rowColor = 'FFFEF2F2';
+                leftBorderColor = 'FFEF4444';
+            } else if (m.movement_type === 'IN' && isTransfer) {
+                eventType = 'Received from Branch';
+                rowColor = 'FFE6FAF5';
+                leftBorderColor = 'FF10B981';
+            }
+        }
+
+        let fromLoc = '';
+        let toLoc = '';
+        if (eventType === 'Stock Received') { fromLoc = m.party_name || '-'; }
+        else if (eventType === 'Sent to Branch') { toLoc = m.to_branch_id ? (branchMap[m.to_branch_id] || '-') : '-'; }
+        else if (eventType === 'Received from Branch') { fromLoc = m.party_name || '-'; }
+        else if (eventType === 'Issued to Program') { toLoc = m.recipient_name || m.party_name || '-'; }
+        
+        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '-';
+        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '-';
+        
+        if (qtyIn !== '-') totalQtyIn += m.quantity;
+        if (qtyOut !== '-') totalQtyOut += m.quantity;
+        
+        const val = m.total_price || 0;
+        if (!m.voided) totalValue += val;
+
+        const row = sheet.addRow([
+          sno++,
+          m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-',
+          m.reference_code || '-',
+          eventType,
+          m.item_name,
+          m.i_code || '-',
+          m.category || '-',
+          m.branch_name || 'Global',
+          m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
+          qtyIn,
+          qtyOut,
+          stockMap[m.item_id],
+          m.unit || '-',
+          m.quantity ? (val / m.quantity).toFixed(2) : '-',
+          val,
+          fromLoc || '-',
+          toLoc || '-',
+          m.program || '-',
+          m.username || '-',
+          m.reference_code || '-', // Assuming Invoice/Bill No is same as ref for now
+          m.notes || '-'
+        ]);
+
+        const balCell = row.getCell(12);
+        balCell.font = { bold: true };
+        if (stockMap[m.item_id] < 0) {
+            balCell.font = { bold: true, color: { argb: 'FFEF4444' } };
+        }
+        
+        row.getCell(14).numFmt = '#,##0.00'; // Unit Price
+        row.getCell(15).numFmt = '#,##0.00'; // Total Value
+
+        if (!rowColor) {
+            rowColor = (sno % 2 !== 0) ? 'FFF8FAFC' : 'FFFFFFFF'; // Alternating (sno is already incremented)
+        }
+
+        row.eachCell((cell, colNum) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowColor } };
+            cell.alignment = { vertical: 'middle', horizontal: 'left' };
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            };
+            if (colNum === 1) {
+                cell.border.left = leftBorderColor ? { style: 'thick', color: { argb: leftBorderColor } } : { style: 'thin', color: { argb: 'FFE2E8F0' } };
+            }
+            if (isStrikethrough) {
+                cell.font = { strike: true, color: { argb: 'FF94A3B8' } };
+            }
         });
-      }
+      });
+
+      sheet.addRow([]);
+      
+      const sumRow = sheet.addRow([
+          'PERIOD TOTALS', '', '', '', '', '', '', '', '',
+          totalQtyIn, totalQtyOut, '', '', '', totalValue, '', '', '', '', '', ''
+      ]);
+      sumRow.font = { bold: true };
+      sumRow.getCell(10).alignment = { horizontal: 'left' };
+      sumRow.getCell(11).alignment = { horizontal: 'left' };
+      sumRow.getCell(15).numFmt = '#,##0.00';
+    }
+
+    sheet.columns.forEach(column => {
+        let maxLen = 10;
+        column.eachCell({ includeEmpty: false }, cell => {
+            if (cell.row > 3) {
+               const val = cell.value ? cell.value.toString() : '';
+               if (val.length > maxLen) maxLen = val.length;
+            }
+        });
+        column.width = Math.min(40, maxLen + 2);
     });
 
+    const safeBranchNameFile = safeBranchName.replace(/[^a-zA-Z0-9-]/g, '_');
+    const safeStart = startStr.replace(/\//g, '-');
+    const safeEnd = endStr.replace(/\//g, '-');
+    
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="Inventory_Movement_History.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="MSC_Transaction_Ledger_${safeBranchNameFile}_${safeStart}to${safeEnd}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch(err) {
