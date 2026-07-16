@@ -50,7 +50,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    titleCell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 13 };
+    titleCell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 14 };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
     sheet.getRow(1).height = 40; // Increased height for neatness
 
@@ -74,7 +74,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     sheet.getRow(3).height = 35; // Increased height for neatness
     sheet.getRow(3).eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
@@ -260,7 +260,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     sheet.mergeCells('A1:L1');
     const titleCell = sheet.getCell('A1');
     titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
-    titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
     sheet.getRow(1).height = 40; // Increased height for neatness
@@ -300,7 +300,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     headerRow.height = 35; // Increased height for neatness
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
