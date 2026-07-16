@@ -64,18 +64,15 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
     sheet.getRow(2).height = 20;
 
-    // Row 3 (Spacer)
-    sheet.getRow(3).height = 8;
-
-    // Row 4 (Headers)
-    sheet.getRow(4).values = [
+    // Row 3 (Headers - no spacer)
+    sheet.getRow(3).values = [
       'S.No', 'Item Name', 'Item Code', 'Category', 'Branch', 'Location/Block', 
       'Current Stock', 'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 
       'Status', 'Minimum Required', 'Shortage', 'Last Updated'
     ];
     
-    sheet.getRow(4).height = 35; // Increased height for neatness
-    sheet.getRow(4).eachCell((cell) => {
+    sheet.getRow(3).height = 35; // Increased height for neatness
+    sheet.getRow(3).eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -87,7 +84,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
       };
     });
     
-    sheet.autoFilter = 'A4:N4';
+    sheet.autoFilter = 'A3:N3';
 
     sheet.columns = [
       { key: 'sno' },
@@ -107,8 +104,8 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     ];
 
     if (items.length === 0) {
-      sheet.mergeCells('A5:N5');
-      const emptyCell = sheet.getCell('A5');
+      sheet.mergeCells('A4:N4');
+      const emptyCell = sheet.getCell('A4');
       emptyCell.value = 'No inventory items found for the selected filters.';
       emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
     } else {
@@ -278,12 +275,9 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
     sheet.getRow(2).height = 20;
 
-    // Row 3 (Spacer)
-    sheet.addRow([]);
-
     if (items.length === 0) {
-      sheet.mergeCells('A4:L4');
-      const noDataCell = sheet.getCell('A4');
+      sheet.mergeCells('A3:L3');
+      const noDataCell = sheet.getCell('A3');
       noDataCell.value = "All items are sufficiently stocked. No items below threshold.";
       noDataCell.alignment = { horizontal: 'center', vertical: 'middle' };
       noDataCell.font = { name: 'Calibri', italic: true };
@@ -296,14 +290,14 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       return res.end();
     }
 
-    // Row 4 Headers
+    // Row 3 Headers
     const headers = [
       'S.No', 'Item Name', 'Category', 'Branch', 'Location/Block', 
       'Current Stock', 'Minimum Required', 'Shortage', 'Unit', 
       'Default Supplier', 'Last Received Date', 'Urgency'
     ];
     const headerRow = sheet.addRow(headers);
-    sheet.getRow(4).height = 35; // Increased height for neatness
+    headerRow.height = 35; // Increased height for neatness
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
@@ -315,7 +309,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
         right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
       };
     });
-    sheet.autoFilter = 'A4:L4';
+    sheet.autoFilter = 'A3:L3';
 
     // Process items
     let sortedItems = items.map(item => {
