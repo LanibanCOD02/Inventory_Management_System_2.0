@@ -450,7 +450,7 @@ let globalSuppliers = [];
 let globalPrograms = [];
 
 window.updateSupplierDropdowns = function(branchId = null) {
-  const data = branchId ? globalSuppliers.filter(s => String(s.branch_id) === String(branchId)) : globalSuppliers;
+  const data = branchId ? globalSuppliers.filter(s => !s.branch_id || String(s.branch_id) === 'null' || String(s.branch_id) === String(branchId)) : globalSuppliers;
   populateDatalist('supplierDatalist', data);
   const select = document.getElementById('movementSupplierSelect');
   if (select) {
@@ -460,7 +460,7 @@ window.updateSupplierDropdowns = function(branchId = null) {
 };
 
 window.updateProgramDropdowns = function(branchId = null) {
-  const data = branchId ? globalPrograms.filter(p => String(p.branch_id) === String(branchId)) : globalPrograms;
+  const data = branchId ? globalPrograms.filter(p => !p.branch_id || String(p.branch_id) === 'null' || String(p.branch_id) === String(branchId)) : globalPrograms;
   populateDatalist('programDatalist', data);
   const select = document.getElementById('movementProgramSelect');
   if (select) {
