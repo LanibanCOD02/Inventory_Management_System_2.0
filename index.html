@@ -922,12 +922,14 @@
         </div>
         
         <div class="form-row">
-          <label>Quantity<input required name="quantity" type="number" min="1" value="1"></label>
+          <label>Quantity <span id="movementStockRemainingText" style="font-size:11px; color:var(--muted); font-weight:normal; margin-left: 4px;"></span><input required name="quantity" id="movementQuantityInput" type="number" min="1" value="1"></label>
           <label>Unit<input type="text" id="movementUnitDisplay" name="new_item_unit" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;" placeholder="-"></label>
           <label>Category<select name="new_item_category" id="movementCategorySelect" disabled style="background-color: var(--bg-alt); color: var(--muted); cursor: not-allowed; border: 1px solid var(--border); padding: 8px 12px; border-radius: var(--radius); width: 100%; box-sizing: border-box;">
             <option value="">-</option>
           </select></label>
         </div>
+        
+        <div id="movementErrorMsg" style="display:none; background: #FEF2F2; color: #EF4444; padding: 12px; border-radius: var(--radius); margin-bottom: 16px; border: 1px solid #FCA5A5; font-size: 13px; font-weight: 500;"></div>
         
         <div id="movementPartyLabel" style="margin-bottom: 16px;">
           <!-- For INWARD — supplier dropdown -->

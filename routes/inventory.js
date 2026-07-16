@@ -306,7 +306,7 @@ router.post('/:id/movement', authenticateToken, async (req, res) => {
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
     if (movement_type === 'OUT' && item.stock < qty) {
-      return res.status(400).json({ error: 'Insufficient stock' });
+      return res.status(400).json({ error: `Insufficient stock. Only ${item.stock} units available for ${item.name}.` });
     }
 
     // Insert movement

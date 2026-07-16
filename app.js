@@ -2129,7 +2129,38 @@ if (movementModal) {
   if (movementItemSelect) {
     movementItemSelect.addEventListener("change", (e) => {
       const selectedItem = inventory.find(i => i.id === e.target.value);
+      const typeInput = document.getElementById("movementType");
+      const isOutward = typeInput && typeInput.value === 'OUT';
+      
+      const qtyInput = document.getElementById("movementQuantityInput");
+      const stockText = document.getElementById("movementStockRemainingText");
+      const submitBtn = document.getElementById("movementSubmitBtn");
+
       if (selectedItem) {
+        if (isOutward) {
+          if (qtyInput) {
+            qtyInput.max = selectedItem.stock;
+            if (selectedItem.stock === 0) {
+              qtyInput.disabled = true;
+              qtyInput.value = '';
+            } else {
+              qtyInput.disabled = false;
+            }
+          }
+          if (stockText) {
+            if (selectedItem.stock === 0) {
+              stockText.textContent = ' — No stock available — cannot issue this item.';
+              stockText.style.color = '#EF4444';
+            } else {
+              stockText.textContent = `(Avail: ${selectedItem.stock})`;
+              stockText.style.color = 'var(--muted)';
+            }
+          }
+          if (submitBtn) {
+            submitBtn.disabled = selectedItem.stock === 0;
+          }
+        }
+
         if (document.getElementById("movementItemCode")) {
           document.getElementById("movementItemCode").value = selectedItem.item_code || "";
         }
@@ -2141,14 +2172,19 @@ if (movementModal) {
         }
         if (document.getElementById("movementCategorySelect")) {
           let catSel = document.getElementById("movementCategorySelect");
-          // If the category is not in the dropdown options, we might need to add it temporarily or just set its value.
-          // Since it's disabled, we can just force the value or add an option.
           if (!Array.from(catSel.options).find(o => o.value === selectedItem.category)) {
             catSel.add(new Option(selectedItem.category, selectedItem.category));
           }
           catSel.value = selectedItem.category || "";
         }
       } else {
+        if (qtyInput) {
+          qtyInput.removeAttribute('max');
+          qtyInput.disabled = false;
+        }
+        if (stockText) stockText.textContent = '';
+        if (submitBtn) submitBtn.disabled = false;
+        
         if (document.getElementById("movementItemCode")) document.getElementById("movementItemCode").value = "";
         if (document.getElementById("movementSerialNumber")) document.getElementById("movementSerialNumber").value = "";
         if (document.getElementById("movementUnitDisplay")) document.getElementById("movementUnitDisplay").value = "";
@@ -2281,6 +2317,18 @@ if (movementModal) {
     document.getElementById('movementSupplierSelect').required = isIn;
     document.getElementById('movementProgramSelect').required = false; // Program is always optional
     document.getElementById("movementSubmitBtn").textContent = isIn ? "Save Entry" : "Issue Stock";
+    
+    // Clear validation states
+    const qtyInput = document.getElementById("movementQuantityInput");
+    if (qtyInput) {
+      qtyInput.removeAttribute('max');
+      qtyInput.disabled = false;
+    }
+    const stockText = document.getElementById("movementStockRemainingText");
+    if (stockText) stockText.textContent = '';
+    const errorMsg = document.getElementById("movementErrorMsg");
+    if (errorMsg) errorMsg.style.display = 'none';
+    document.getElementById("movementSubmitBtn").disabled = false;
 
     if (globalSelectedBranch) {
       const bSel = document.getElementById('addMovementBranch');
@@ -2336,9 +2384,7 @@ if (movementModal) {
           if (uploadRes.ok) uploadedUrls = await uploadRes.json();
         }
 
-        await apiFetch('/movements', {
-          method: 'POST',
-          body: JSON.stringify({
+        const reqBody = {
             inventory_id: d.get('inventory_id'),
             new_item_name: d.get('new_item_name') || null,
             new_item_unit: d.get('new_item_unit') || null,
@@ -2360,8 +2406,30 @@ if (movementModal) {
             branch_id: document.getElementById('addMovementBranch')?.value || undefined,
             product_photo_url: uploadedUrls.productPhotoUrl,
             invoice_pdf_url: uploadedUrls.invoicePdfUrl
-          })
+        };
+
+        const res = await fetch('/api/inventory/movements', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + localStorage.getItem('msc_token')
+          },
+          body: JSON.stringify(reqBody)
         });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          const errorMsg = document.getElementById("movementErrorMsg");
+          if (errorMsg) {
+            errorMsg.textContent = errData.error || 'Failed to record movement.';
+            errorMsg.style.display = 'block';
+          } else {
+            showToast(errData.error || 'Failed to record movement.', true);
+          }
+          submitBtn.innerHTML = ogText;
+          submitBtn.disabled = false;
+          return;
+        }
         
         if (window.currentInKindDonationId && (d.get('type') === 'INWARD' || d.get('type') === 'IN')) {
           try {
