@@ -52,14 +52,15 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
     titleCell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 13 };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    sheet.getRow(1).height = 30;
+    sheet.getRow(1).height = 40; // Increased height for neatness
 
     // Row 2
     sheet.mergeCells('A2:N2');
     const subTitleCell = sheet.getCell('A2');
     subTitleCell.value = `INVENTORY SUMMARY REPORT | Branch: ${headerBranchName} | As of: ${qEndDate} | Generated: ${generatedDate}`;
     subTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    subTitleCell.font = { name: 'Calibri', color: { argb: 'FF0F766E' }, size: 9, italic: true };
+    // Increased size, removed italic, and used much darker text for better visibility
+    subTitleCell.font = { name: 'Calibri', color: { argb: 'FF042F2E' }, size: 10 };
     subTitleCell.alignment = { vertical: 'middle', horizontal: 'center' };
     sheet.getRow(2).height = 20;
 
@@ -73,6 +74,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
       'Status', 'Minimum Required', 'Shortage', 'Last Updated'
     ];
     
+    sheet.getRow(4).height = 35; // Increased height for neatness
     sheet.getRow(4).eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
@@ -264,13 +266,14 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    sheet.getRow(1).height = 30;
+    sheet.getRow(1).height = 40; // Increased height for neatness
 
     // Row 2
     sheet.mergeCells('A2:L2');
     const subtitleCell = sheet.getCell('A2');
     subtitleCell.value = `LOW STOCK ALERT REPORT | Branch: ${branchName} | Generated: ${generatedStr}`;
-    subtitleCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0F766E' } };
+    // Increased size, removed italic, and used much darker text for better visibility
+    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
     sheet.getRow(2).height = 20;
@@ -300,6 +303,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       'Default Supplier', 'Last Received Date', 'Urgency'
     ];
     const headerRow = sheet.addRow(headers);
+    sheet.getRow(4).height = 35; // Increased height for neatness
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
