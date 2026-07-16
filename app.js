@@ -2408,7 +2408,7 @@ if (movementModal) {
             invoice_pdf_url: uploadedUrls.invoicePdfUrl
         };
 
-        const res = await fetch('/api/inventory/movements', {
+        const res = await fetch('/api/movements', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
