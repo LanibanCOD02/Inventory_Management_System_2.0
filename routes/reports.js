@@ -322,7 +322,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       const location = blocks.length > 0 ? blocks.map(b => b.name).join(', ') : '-';
       
       // Fetch last received
-      const lastRec = db.prepare('SELECT created_at FROM inventory_movements WHERE item_id = ? AND movement_type = "IN" ORDER BY created_at DESC LIMIT 1').get(item.id);
+      const lastRec = db.prepare("SELECT created_at FROM inventory_movements WHERE item_id = ? AND movement_type = 'IN' ORDER BY created_at DESC LIMIT 1").get(item.id);
       let lastRecDate = '-';
       if (lastRec) {
          const d = new Date(lastRec.created_at);
