@@ -73,7 +73,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     
     sheet.getRow(3).height = 35; // Increased height for neatness
     sheet.getRow(3).eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
@@ -301,7 +301,7 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     const headerRow = sheet.addRow(headers);
     headerRow.height = 35; // Increased height for neatness
     headerRow.eachCell((cell) => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0891B2' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
