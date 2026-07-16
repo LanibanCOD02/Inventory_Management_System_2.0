@@ -212,9 +212,9 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
       totalsRow.getCell('value').numFmt = '#,##0.00';
     }
 
-    // Auto-size columns (min 12, max 45)
+    // Auto-size columns (min 5, max 45)
     sheet.columns.forEach((column) => {
-      let maxLength = 12;
+      let maxLength = 5;
       column.eachCell({ includeEmpty: false }, cell => {
         // Measure from row 3 downwards (so we include the header row in width calculation)
         if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
@@ -427,9 +427,9 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
     const sumRow = sheet.addRow([`Total Stock Deficit (units): ${totalShortage}`]);
     sumRow.getCell(1).font = { bold: true };
 
-    // Auto-size columns (min 12, max 45)
+    // Auto-size columns (min 5, max 45)
     sheet.columns.forEach((column) => {
-      let maxLength = 12;
+      let maxLength = 5;
       column.eachCell({ includeEmpty: false }, cell => {
         // Measure from row 3 downwards (so we include the header row in width calculation)
         if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
@@ -490,7 +490,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
 
     const movSheet = workbook.addWorksheet('Master Ledger');
     movSheet.columns = [
-      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'S.No', key: 'sno', width: 6 },
       { header: 'Date & Time', key: 'date', width: 22 },
       { header: 'Ref/Bill No', key: 'ref', width: 15 },
       { header: 'Action Type', key: 'type', width: 15 },
@@ -699,7 +699,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     // Sheet 2: Movements Log
     const movSheet = workbook.addWorksheet('Movements Log');
     movSheet.columns = [
-      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'S.No', key: 'sno', width: 6 },
       { header: 'Date & Time', key: 'date', width: 22 },
       { header: 'Ref/Bill No', key: 'ref', width: 15 },
       { header: 'Action Type', key: 'type', width: 15 },
