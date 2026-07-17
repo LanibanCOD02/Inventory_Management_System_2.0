@@ -15,22 +15,36 @@ function getBranchMap() {
   return map;
 }
 
-// Helper to format date to DD/MM/YYYY HH:MM
+// Helper to format date to DD/MM/YYYY HH:MM AM/PM
 function formatToDDMMYYYY(dateStr) {
   if (!dateStr || dateStr === '-') return '-';
-  let s = dateStr.replace('T', ' ').trim();
-  const parts = s.split(' ');
-  if (parts.length >= 2) {
-    const dParts = parts[0].split('-');
-    if (dParts.length === 3) {
-       const tParts = parts[1].split(':');
-       if (tParts.length >= 2) {
-         return `${dParts[2]}/${dParts[1]}/${dParts[0]} ${tParts[0]}:${tParts[1]}`;
-       }
-    }
+  
+  // Treat raw SQLite timestamps as UTC by appending 'Z'
+  let isoStr = dateStr.trim();
+  if (!isoStr.endsWith('Z')) {
+    isoStr = isoStr.replace(' ', 'T') + 'Z';
   }
+  
+  const d = new Date(isoStr);
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 hour should be 12
+    const strHours = String(hours).padStart(2, '0');
+
+    return `${day}/${month}/${year} ${strHours}:${minutes} ${ampm}`;
+  }
+
   return dateStr;
 }
+
 
 // 1. Inventory Summary Excel
 router.get('/inventory-summary', authenticateToken, async (req, res) => {
