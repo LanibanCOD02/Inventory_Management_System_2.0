@@ -1184,9 +1184,30 @@ function openModal(defaultCategory = '') {
     const sel = document.getElementById('addItemBranch');
     if (sel) sel.value = globalSelectedBranch;
   }
-  if (defaultCategory) {
     const catSel = document.getElementById('addItemCategory');
-    if (catSel) catSel.value = defaultCategory;
+  const catContainer = document.getElementById('addItemCategoryContainer');
+  
+  if (defaultCategory === 'Groceries') {
+    if (catSel) {
+      catSel.value = defaultCategory;
+      if (!catSel.value) {
+        const opt = document.createElement('option');
+        opt.value = 'Groceries';
+        opt.text = 'Groceries';
+        catSel.appendChild(opt);
+        catSel.value = 'Groceries';
+      }
+    }
+    if (catContainer) {
+      catContainer.style.display = 'none';
+    }
+  } else {
+    if (catSel) {
+      catSel.value = defaultCategory || '';
+    }
+    if (catContainer) {
+      catContainer.style.display = '';
+    }
   }
   
   const sel = document.getElementById('addItemBranch');
