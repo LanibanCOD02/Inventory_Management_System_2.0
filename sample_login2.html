@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Sample</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f766e;
+      --primary-hover: #115e59;
+      --teal: #0d9488;
+      --dark-green: #064e3b;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --text-secondary: #64748b;
+      --muted: #94a3b8;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 360px; /* Increased width slightly */
+      background: #fff;
+      padding: 24px 24px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      box-sizing: border-box;
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: 12px; /* reduced space */
+    }
+    .login-header img {
+      width: 50px;
+      height: auto;
+    }
+    .login-input-wrap {
+      position: relative;
+      width: 100%;
+      margin-bottom: 0;
+    }
+    .login-input-wrap svg {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+    .login-input-wrap input {
+      width: 100%;
+      height: 36px; /* Shrunk box height significantly */
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0 12px 0 34px;
+      font: 400 13px 'Inter', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      box-sizing: border-box;
+      outline: none;
+    }
+    .primary-btn {
+      width: 100%;
+      height: 38px; /* Shrunk button height */
+      background: var(--teal);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font: 600 14px 'Inter', sans-serif;
+      cursor: pointer;
+    }
+    .field-wrapper {
+      margin-bottom: 12px; /* Shrink spaces between fields */
+    }
+    label {
+      display: block;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 4px; 
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; justify-content: center;">
+        <img src="img/logo.jpg" alt="Logo">
+        <div style="font-weight: 900; font-size: 16px; background: linear-gradient(90deg, #0d9488, #0f766e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.3px; line-height: 1;">M.S. CHELLAMUTHU</div>
+      </div>
+      <h3 style="font: 800 16px 'Outfit', sans-serif; margin: 0 0 2px 0; color: #0f172a;">INTERNAL ACCESS</h3>
+      <p style="margin: 0; font-size: 12px; color: var(--text-secondary);">Log in to your secure account.</p>
+    </div>
+
+    <form>
+      <div class="field-wrapper">
+        <label>User ID</label>
+        <div class="login-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <input type="text" placeholder="Enter your ID">
+        </div>
+      </div>
+
+      <div class="field-wrapper" style="margin-bottom: 12px;"> <!-- Shrink spaces -->
+        <label>Password</label>
+        <div class="login-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <input type="password" placeholder="••••••••••••">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom: 16px;"> <!-- Shrink spaces -->
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; margin:0;">
+          <input type="checkbox" checked style="accent-color: var(--teal); width: 12px; height: 12px; margin:0;"> 
+          Remember me
+        </label>
+        <a href="#" style="color:var(--teal);text-decoration:none;font-weight:500;">Forgot Password?</a>
+      </div>
+
+      <button type="button" class="primary-btn">Log In</button>
+      
+      <div style="margin-top:16px; font-size:11px; color:var(--text-secondary); text-align:center;">
+        <p style="margin:0 0 8px 0;">New user? <a href="#" style="color:var(--teal);text-decoration:none;font-weight:500;">Contact Administrator</a></p>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
