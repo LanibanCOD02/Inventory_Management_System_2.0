@@ -2755,8 +2755,8 @@ window.triggerReportDownload = async () => {
   else if (activeReportType === 'movements') endpoint = 'movements';
   else if (activeReportType === 'comprehensive') endpoint = 'comprehensive';
   else if (activeReportType === 'groceries') {
-    endpoint = 'comprehensive';
-    category = 'Groceries';
+    endpoint = 'groceries-ledger';
+    category = 'Food & nutrition';
   }
   
   let url = `/api/reports/${endpoint}?startDate=${startDate}&endDate=${endDate}&token=${token}`;

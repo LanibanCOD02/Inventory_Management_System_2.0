@@ -765,6 +765,337 @@ router.get('/movements', authenticateToken, async (req, res) => {
   }
 });
 
+
+// --- GROCERIES LEDGER ---
+router.get('/groceries-ledger', authenticateToken, async (req, res) => {
+  try {
+    const targetCategory = 'Food & nutrition';
+    
+    // Validate category exists
+    const catCheck = db.prepare('SELECT COUNT(*) as cnt FROM inventory_items WHERE category = ?').get(targetCategory);
+    if (!catCheck || catCheck.cnt === 0) {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Error');
+      sheet.addRow(["No 'Food & Nutrition' category found. Please create this category first."]);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="Error.xlsx"');
+      await workbook.xlsx.write(res);
+      return res.end();
+    }
+
+    const { startDate: qStart, endDate: qEnd, program, action_type } = req.query;
+    if (!qStart || !qEnd) return res.status(400).json({ error: "Start and end dates required" });
+
+    const startDate = new Date(qStart).toISOString();
+    const end = new Date(qEnd);
+    end.setHours(23, 59, 59, 999);
+    const endDate = end.toISOString();
+
+    const { condition, params } = getBranchFilterSql(req.user, req.query.branch_id);
+    const branchMap = getBranchMap();
+    
+    let extraCatProg = ' AND i.category = ?'; 
+    params.push(targetCategory);
+    
+    if (program) { extraCatProg += ' AND i.program = ?'; params.push(program); }
+    
+    let voidCondition = "AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'";
+    let extraMov = '';
+    if (action_type) {
+      if (action_type === 'VOID') {
+        voidCondition = "AND (m.voided = 1 OR m.reference_code LIKE 'VOID-%')";
+      } else {
+        extraMov += ' AND m.movement_type = ?'; params.push(action_type);
+      }
+    }
+    
+    const blockMap = {};
+    db.prepare('SELECT id, name FROM branch_blocks').all().forEach(b => blockMap[b.id] = b.name);
+    
+    const allItems = db.prepare('SELECT id, stock FROM inventory_items WHERE category = ?').all(targetCategory);
+    const stockMap = {};
+    allItems.forEach(i => stockMap[i.id] = i.stock);
+    
+    // Reverse calculate stock back to startDate for inventory_movements
+    const movsAfterStart = db.prepare(`
+      SELECT m.item_id, m.movement_type, m.quantity
+      FROM inventory_movements m
+      JOIN inventory_items i ON m.item_id = i.id
+      WHERE m.created_at >= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
+      AND i.category = ?
+    `).all(startDate, targetCategory);
+    
+    movsAfterStart.forEach(m => {
+      if(stockMap[m.item_id] !== undefined) {
+        if(m.movement_type === 'IN') stockMap[m.item_id] -= m.quantity;
+        else if(m.movement_type === 'OUT') stockMap[m.item_id] += m.quantity;
+      }
+    });
+
+    // Reverse calculate stock back to startDate for deletion_requests
+    const delsAfterStart = db.prepare(`
+      SELECT dr.item_id, dr.quantity 
+      FROM deletion_requests dr
+      JOIN inventory_items i ON dr.item_id = i.id
+      WHERE dr.status = 'approved' AND dr.requested_at >= ?
+      AND i.category = ?
+    `).all(startDate, targetCategory);
+    
+    delsAfterStart.forEach(d => {
+      if(stockMap[d.item_id] !== undefined) {
+         stockMap[d.item_id] += d.quantity;
+      }
+    });
+
+    const movements = db.prepare(`
+      SELECT m.*, i.name as item_name, i.category, i.unit, i.item_code as i_code, i.serial_number as i_serial, i.program, b.name as branch_name, u.username 
+      FROM inventory_movements m
+      JOIN inventory_items i ON m.item_id = i.id
+      LEFT JOIN branches b ON m.branch_id = b.id
+      LEFT JOIN users u ON m.created_by = u.id
+      WHERE m.created_at >= ? AND m.created_at <= ? ${voidCondition}
+      AND ${condition.replace(/branch_id/g, 'm.branch_id')}
+      ${extraCatProg}
+      ${extraMov}
+    `).all(startDate, endDate, ...params);
+
+    const deletions = db.prepare(`
+       SELECT dr.id, dr.item_id, dr.requested_at as created_at, dr.quantity, dr.branch_id, dr.reason, dr.reason_details as notes, dr.resale_price,
+              i.name as item_name, i.category, i.unit, i.item_code as i_code, i.serial_number as i_serial, i.program,
+              b.name as branch_name, u.username 
+       FROM deletion_requests dr
+       JOIN inventory_items i ON dr.item_id = i.id
+       LEFT JOIN branches b ON dr.branch_id = b.id
+       LEFT JOIN users u ON dr.requested_by = u.id
+       WHERE dr.status = 'approved' AND dr.requested_at >= ? AND dr.requested_at <= ?
+       AND ${condition.replace(/branch_id/g, 'dr.branch_id')}
+       ${extraCatProg}
+    `).all(startDate, endDate, ...params);
+
+    let combined = [...movements, ...deletions.map(d => ({
+        ...d,
+        is_deletion: true,
+        movement_type: 'OUT',
+        total_price: d.resale_price || 0,
+        reference_code: '-',
+        party_name: '-',
+        recipient_name: '-'
+    }))];
+
+    combined.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'MSC Trust Inventory System';
+
+    const sheet = workbook.addWorksheet('Groceries Ledger', { views: [{ state: 'frozen', ySplit: 4 }] });
+
+    const safeBranchName = req.query.branch_id ? (branchMap[req.query.branch_id] || req.query.branch_id) : 'All Branches';
+    const generatedStr = new Date().toLocaleString('en-GB');
+    const startStr = new Date(startDate).toLocaleDateString('en-GB');
+    const endStr = new Date(endDate).toLocaleDateString('en-GB');
+
+    sheet.mergeCells('A1:V1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'M.S. CHELLAMUTHU TRUST & RESEARCH FOUNDATION';
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+    sheet.getRow(1).height = 36;
+
+    sheet.mergeCells('A2:V2');
+    const subtitleCell = sheet.getCell('A2');
+    subtitleCell.value = `GROCERIES LEDGER | Branch: ${safeBranchName} | Period: ${startStr} to ${endStr} | Generated: ${generatedStr}`;
+    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
+    subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+    sheet.getRow(2).height = 24;
+
+    sheet.addRow([]);
+
+    const headers = [
+      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
+      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 'Running Balance', 
+      'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
+      'Program / Scheme', 'Meal / Purpose', 'Authorized By', 'Invoice/Bill No.', 'Remarks'
+    ];
+
+    const headerRow = sheet.addRow(headers);
+    headerRow.height = 25;
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
+      cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        left: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        bottom: { style: 'thin', color: { argb: 'FFB0BEC5' } },
+        right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
+      };
+    });
+    sheet.autoFilter = 'A4:V4';
+
+    if (combined.length === 0) {
+      sheet.mergeCells('A5:V5');
+      const noData = sheet.getCell('A5');
+      noData.value = "No transactions found for the selected period and filters.";
+      noData.alignment = { horizontal: 'center', vertical: 'middle' };
+      noData.font = { italic: true };
+    } else {
+      let sno = 1;
+      let totalQtyIn = 0;
+      let totalQtyOut = 0;
+      let totalValue = 0;
+
+      combined.forEach(m => {
+        let eventType = '';
+        let rowColor = null;
+        let leftBorderColor = null;
+        let isStrikethrough = false;
+        
+        const isTransfer = m.reference_code && m.reference_code.startsWith('TRF-');
+        
+        if (m.is_deletion) {
+            stockMap[m.item_id] -= m.quantity;
+            if (m.reason === 'scrap') { eventType = 'Written Off'; rowColor = 'FFFFF7ED'; leftBorderColor = 'FFF97316'; }
+            else if (m.reason === 'resale') { eventType = 'Resold'; rowColor = 'FFF5F3FF'; leftBorderColor = 'FF8B5CF6'; }
+            else if (m.reason === 'mistake') { eventType = 'Correction Removed'; rowColor = 'FFF1F5F9'; isStrikethrough = true; }
+            else { eventType = 'Removed — Other'; rowColor = 'FFF1F5F9'; }
+        } else {
+            if (m.movement_type === 'IN') stockMap[m.item_id] += m.quantity;
+            else if (m.movement_type === 'OUT') stockMap[m.item_id] -= m.quantity;
+            
+            if (m.voided) {
+                eventType = 'Voided / Corrected';
+                rowColor = 'FFF1F5F9';
+                isStrikethrough = true;
+            } else if (m.movement_type === 'IN' && !isTransfer) {
+                eventType = 'Stock Received';
+                rowColor = 'FFE6FAF5';
+                leftBorderColor = 'FF10B981';
+            } else if (m.movement_type === 'OUT' && !isTransfer) {
+                eventType = 'Issued to Program';
+                rowColor = 'FFFEF2F2';
+                leftBorderColor = 'FFEF4444';
+            } else if (m.movement_type === 'OUT' && isTransfer) {
+                eventType = 'Sent to Branch';
+                rowColor = 'FFFEF2F2';
+                leftBorderColor = 'FFEF4444';
+            } else if (m.movement_type === 'IN' && isTransfer) {
+                eventType = 'Received from Branch';
+                rowColor = 'FFE6FAF5';
+                leftBorderColor = 'FF10B981';
+            }
+        }
+
+        let fromLoc = '';
+        let toLoc = '';
+        if (eventType === 'Stock Received') { fromLoc = m.party_name || '-'; }
+        else if (eventType === 'Sent to Branch') { toLoc = m.to_branch_id ? (branchMap[m.to_branch_id] || '-') : '-'; }
+        else if (eventType === 'Received from Branch') { fromLoc = m.party_name || '-'; }
+        else if (eventType === 'Issued to Program') { toLoc = m.recipient_name || m.party_name || '-'; }
+        
+        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '-';
+        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '-';
+        
+        if (qtyIn !== '-') totalQtyIn += m.quantity;
+        if (qtyOut !== '-') totalQtyOut += m.quantity;
+        
+        const val = m.total_price || 0;
+        if (!m.voided) totalValue += val;
+
+        const mealPurpose = m.program || m.notes || '-';
+
+        const row = sheet.addRow([
+          sno++,
+          m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-',
+          m.reference_code || '-',
+          eventType,
+          m.item_name,
+          m.i_code || '-',
+          m.category || '-',
+          m.branch_name || 'Global',
+          m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
+          qtyIn,
+          qtyOut,
+          stockMap[m.item_id],
+          m.unit || '-',
+          m.quantity ? (val / m.quantity).toFixed(2) : '-',
+          val,
+          fromLoc || '-',
+          toLoc || '-',
+          m.program || '-',
+          mealPurpose,
+          m.username || '-',
+          m.reference_code || '-', 
+          m.notes || '-'
+        ]);
+
+        const balCell = row.getCell(12);
+        balCell.font = { bold: true };
+        if (stockMap[m.item_id] < 0) {
+            balCell.font = { bold: true, color: { argb: 'FFEF4444' } };
+        }
+        
+        row.getCell(14).numFmt = '#,##0.00'; 
+        row.getCell(15).numFmt = '#,##0.00'; 
+
+        if (!rowColor) {
+            rowColor = (sno % 2 !== 0) ? 'FFF8FAFC' : 'FFFFFFFF'; 
+        }
+
+        row.eachCell((cell, colNum) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowColor } };
+            cell.alignment = { vertical: 'middle', horizontal: 'left' };
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            };
+            if (colNum === 1) {
+                cell.border.left = leftBorderColor ? { style: 'thick', color: { argb: leftBorderColor } } : { style: 'thin', color: { argb: 'FFE2E8F0' } };
+            }
+            if (isStrikethrough) {
+                cell.font = { strike: true, color: { argb: 'FF94A3B8' } };
+            }
+        });
+      });
+
+      sheet.addRow([]);
+      
+      const sumRow = sheet.addRow([
+          'PERIOD TOTALS', '', '', '', '', '', '', '', '',
+          totalQtyIn, totalQtyOut, '', '', '', totalValue, '', '', '', '', '', '', ''
+      ]);
+      sumRow.font = { bold: true };
+      sumRow.getCell(10).alignment = { horizontal: 'left' };
+      sumRow.getCell(11).alignment = { horizontal: 'left' };
+      sumRow.getCell(15).numFmt = '#,##0.00';
+    }
+
+    sheet.columns.forEach(column => {
+        let maxLen = 10;
+        column.eachCell({ includeEmpty: false }, cell => {
+            if (cell.row > 3) {
+               const val = cell.value ? cell.value.toString() : '';
+               if (val.length > maxLen) maxLen = val.length;
+            }
+        });
+        column.width = Math.min(40, maxLen + 2);
+    });
+
+    const safeBranchNameFile = safeBranchName.replace(/[^a-zA-Z0-9-]/g, '_');
+    const safeStart = startStr.replace(/\//g, '-');
+    const safeEnd = endStr.replace(/\//g, '-');
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="MSC_Groceries_Ledger_${safeBranchNameFile}_${safeStart}to${safeEnd}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch(err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 4. Backup Data
 router.get('/backup-zip', authenticateToken, requireAdmin, async (req, res) => {
   try {
