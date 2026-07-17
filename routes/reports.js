@@ -773,15 +773,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
     
     // Validate category exists
     const catCheck = db.prepare('SELECT COUNT(*) as cnt FROM inventory_items WHERE category = ?').get(targetCategory);
-    if (!catCheck || catCheck.cnt === 0) {
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Error');
-      sheet.addRow(["No 'Food & Nutrition' category found. Please create this category first."]);
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="Error.xlsx"');
-      await workbook.xlsx.write(res);
-      return res.end();
-    }
+    const categoryExists = catCheck && catCheck.cnt > 0;
 
     const { startDate: qStart, endDate: qEnd, program, action_type } = req.query;
     if (!qStart || !qEnd) return res.status(400).json({ error: "Start and end dates required" });
@@ -937,7 +929,11 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
     if (combined.length === 0) {
       sheet.mergeCells('A5:V5');
       const noData = sheet.getCell('A5');
-      noData.value = "No transactions found for the selected period and filters.";
+      if (!categoryExists) {
+        noData.value = "No 'Food & nutrition' category found in the system. Please create this category first to track groceries.";
+      } else {
+        noData.value = "No transactions found for the selected period and filters.";
+      }
       noData.alignment = { horizontal: 'center', vertical: 'middle' };
       noData.font = { italic: true };
     } else {
