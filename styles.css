@@ -518,8 +518,25 @@ form input:focus,form select:focus{border-color:var(--teal-light);box-shadow:0 0
 .login-wrapper {
   min-height: 100vh;
   display: flex;
-  background: var(--bg);
+  background-color: var(--teal);
   animation: loginFadeIn 0.8s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-wrapper::before {
+  content: "";
+  position: absolute;
+  top: -100%; left: -100%; right: -100%; bottom: -100%;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><g fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M30 20v20M20 30h20" /><path d="M110 90v20M100 100h20" /><path d="M120 40a10 10 0 0 0-20 0v10a10 10 0 0 0 20 0z"/><path d="M110 50v20"/><path d="M100 60h20"/><path d="M20 110h10l5-15 10 30 5-15h10"/><circle cx="50" cy="110" r="2"/></g></svg>');
+  background-size: 160px 160px;
+  animation: bgPan 20s linear infinite;
+  z-index: 1;
+}
+
+@keyframes bgPan {
+  from { transform: translate(0, 0); }
+  to { transform: translate(160px, 160px); }
 }
 
 @keyframes loginFadeIn {
@@ -527,94 +544,27 @@ form input:focus,form select:focus{border-color:var(--teal-light);box-shadow:0 0
   100% { opacity: 1; }
 }
 
-.login-split {
+.login-centered-layout {
   display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   min-height: 100vh;
-}
-
-.login-left {
-  flex: 1.1;
-  background: linear-gradient(135deg, #0d9488, #0f766e, #134e4a, #0d9488);
-  background-size: 300% 300%;
-  animation: gradientShift 8s ease infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  position: relative;
-  overflow: hidden;
-}
-
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.login-left::before {
-  content: "";
-  position: absolute;
-  top: -50%; left: -50%;
-  width: 200%; height: 200%;
-  background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 60%);
-  animation: pulseGlow 10s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes pulseGlow {
-  0% { transform: scale(0.8); opacity: 0.5; }
-  100% { transform: scale(1.2); opacity: 1; }
-}
-
-.login-mission-content {
   position: relative;
   z-index: 2;
-  color: #fff;
-  max-width: 480px;
-  animation: slideUpFade 1s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both;
-}
-
-@keyframes slideUpFade {
-  0% { opacity: 0; transform: translateY(30px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.mission-title {
-  font: 700 48px 'Outfit', sans-serif;
-  line-height: 1.1;
-  margin: 0 0 16px;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.mission-subtitle {
-  font: 500 20px 'Inter', sans-serif;
-  color: rgba(255,255,255,0.9);
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
-.login-right {
-  flex: 0.9;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px 80px;
-  background: #fff;
-  animation: loginFadeUp 0.5s cubic-bezier(.4,0,.2,1) both;
-  max-width: 100%;
-  width: 100%;
-}
-
-@keyframes loginFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  padding: 24px;
 }
 
 .login-form-container {
   width: 100%;
   max-width: 400px;
-  animation: slideUpFade 1s cubic-bezier(0.23, 1, 0.32, 1) 0.4s both;
+  background: #fff;
+  padding: 48px 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  animation: slideUpFade 1s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both;
+  position: relative;
+  z-index: 10;
 }
 
 .login-header {
@@ -628,14 +578,14 @@ form input:focus,form select:focus{border-color:var(--teal-light);box-shadow:0 0
   display: inline-block;
 }
 
-.login-right h2 {
+.login-header h2 {
   font: 700 26px 'Outfit', sans-serif;
   color: var(--text);
   margin: 16px 0 4px;
   letter-spacing: -0.3px;
 }
 
-.login-right p {
+.login-header p {
   font-size: 13px;
   color: var(--text-secondary);
   margin: 0 0 32px;
