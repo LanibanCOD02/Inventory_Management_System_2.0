@@ -1225,7 +1225,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           eventType: 'Balance Brought Forward',
           item: i.name, code: i.item_code || i.serial_number || '-', category: i.category || '-',
           branch: branchMap[i.branch_id] || 'Global', loc: '-',
-          qtyIn: '', qtyOut: '', bal: i.reverse_stock, unit: i.unit || '-',
+          qtyIn: '', qtyOut: '', bal: itemMap[i.id].reverse_stock, unit: i.unit || '-',
           price: '', val: '', from: '', to: '', prog: i.program || '-',
           auth: '', ref: '', inv: '', resalePrice: '', resaleBuyer: '', reason: '', remarks: ''
         });
