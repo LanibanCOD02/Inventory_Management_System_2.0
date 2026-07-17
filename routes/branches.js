@@ -70,6 +70,38 @@ router.post('/transfer', authenticateToken, (req, res) => {
     const crypto = require('crypto');
     const now = new Date().toISOString();
 
+    // --- Name resolution for party_name ---
+    const fromBranch = db.prepare('SELECT name FROM branches WHERE id = ?').get(from_branch_id);
+    const toBranch = db.prepare('SELECT name FROM branches WHERE id = ?').get(to_branch_id);
+    const fromBlock = from_block_id ? db.prepare('SELECT name FROM branch_blocks WHERE id = ?').get(from_block_id) : null;
+    const toBlock = to_block_id ? db.prepare('SELECT name FROM branch_blocks WHERE id = ?').get(to_block_id) : null;
+
+    let outPartyName = '';
+    let inPartyName = '';
+
+    if (isInternal) {
+      if (to_block_id && from_block_id) {
+        outPartyName = `Transfer to Block ${toBlock ? toBlock.name : 'Unknown'}`;
+        inPartyName = `Transfer from Block ${fromBlock ? fromBlock.name : 'Unknown'}`;
+      } else if (to_block_id) {
+        outPartyName = `Transfer to Block ${toBlock ? toBlock.name : 'Unknown'}`;
+        inPartyName = `Transfer from Main Inventory`;
+      } else if (from_block_id) {
+        outPartyName = `Transfer to Main Inventory`;
+        inPartyName = `Transfer from Block ${fromBlock ? fromBlock.name : 'Unknown'}`;
+      } else {
+        outPartyName = `Transfer to Same Branch`;
+        inPartyName = `Transfer from Same Branch`;
+      }
+    } else {
+      let toStr = `${toBranch ? toBranch.name : 'Unknown'}`;
+      let fromStr = `${fromBranch ? fromBranch.name : 'Unknown'}`;
+      if (to_block_id) toStr += ` (Block ${toBlock ? toBlock.name : 'Unknown'})`;
+      if (from_block_id) fromStr += ` (Block ${fromBlock ? fromBlock.name : 'Unknown'})`;
+      outPartyName = `Transfer to Branch ${toStr}`;
+      inPartyName = `Transfer from Branch ${fromStr}`;
+    }
+
     if (!isInternal && !isAdmin) {
       const reqId = crypto.randomUUID();
       db.prepare(`INSERT INTO transfer_requests (id, item_id, from_branch_id, to_branch_id, from_block_id, to_block_id, quantity, notes, requested_by, status, created_at)
@@ -130,7 +162,7 @@ router.post('/transfer', authenticateToken, (req, res) => {
       // Log outward movement at source
       db.prepare(`INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, from_block_id, to_block_id, to_branch_id, notes, branch_id, created_at)
         VALUES (?, ?, 'OUT', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(crypto.randomUUID(), item_id, quantity, `Transfer to ${to_branch_id}`,
+        .run(crypto.randomUUID(), item_id, quantity, outPartyName,
           `TRF-${Date.now()}`, from_block_id || null, to_block_id || null,
           to_branch_id, notes || null, from_branch_id, now);
 
@@ -138,7 +170,7 @@ router.post('/transfer', authenticateToken, (req, res) => {
       const destItemFinal = db.prepare('SELECT * FROM inventory_items WHERE name = ? AND branch_id = ? AND deleted_at IS NULL').get(item.name, to_branch_id);
       db.prepare(`INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, from_block_id, to_block_id, to_branch_id, notes, branch_id, created_at)
         VALUES (?, ?, 'IN', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(crypto.randomUUID(), destItemFinal.id, quantity, `Transfer from ${from_branch_id}`,
+        .run(crypto.randomUUID(), destItemFinal.id, quantity, inPartyName,
           `TRF-${Date.now()}`, from_block_id || null, to_block_id || null,
           from_branch_id, notes || null, to_branch_id, now);
     });
