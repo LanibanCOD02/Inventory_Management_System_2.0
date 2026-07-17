@@ -38,7 +38,7 @@ function invalidateCache(pattern) {
 let globalSelectedBranch = '';
 
 async function apiFetch(endpoint, options = {}) {
-  const token = localStorage.getItem('msc_token');
+  const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
   
   if (globalSelectedBranch && (!options.method || options.method === 'GET')) {
     if (!endpoint.includes('branch_id=')) {
@@ -58,8 +58,8 @@ async function apiFetch(endpoint, options = {}) {
   if (!response.ok) {
     // FIX 2: Session expiry handling in apiFetch
     if (response.status === 401) {
-      localStorage.removeItem('msc_token');
-      localStorage.removeItem('msc_user');
+      localStorage.removeItem('msc_token'); sessionStorage.removeItem('msc_token');
+      localStorage.removeItem('msc_user'); sessionStorage.removeItem('msc_user');
       document.getElementById('appShell').style.display = 'none';
       document.getElementById('loginScreen').style.display = 'flex';
       const msg = document.getElementById('sessionExpiredMsg');
@@ -196,7 +196,7 @@ function showConfirm(message, onConfirm) {
 // ─── Role Enforcement ────────────────────────────
 function enforceRoles() {
   // FIX 4: Read role from JWT, not from localStorage msc_user
-  const token = localStorage.getItem('msc_token');
+  const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
   if (!token) return;
   let user;
   try {
@@ -568,7 +568,7 @@ function renderTable() {
   const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentUser = (() => {
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
@@ -775,7 +775,7 @@ async function renderMovementTable(type) {
     const totalPages = res.totalPages || 1;
     const isIn = type === "in";
     
-    const userStr = localStorage.getItem('msc_user');
+    const userStr = (localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user'));
     const user = userStr ? JSON.parse(userStr) : {};
     const canVoid = user.role === 'Admin';
 
@@ -1211,7 +1211,7 @@ function openModal(defaultCategory = '') {
   }
   
   const sel = document.getElementById('addItemBranch');
-  const userStr = localStorage.getItem('msc_user');
+  const userStr = (localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user'));
   const user = userStr ? JSON.parse(userStr) : null;
   const branchIdToUse = sel?.value || (user ? user.branch_id : null) || globalSelectedBranch;
   
@@ -1242,7 +1242,7 @@ async function openItemDetail(id) {
   document.getElementById("itemDetailCategory").textContent = item.category;
   const branchSpan = document.getElementById("itemDetailBranch");
   const currentUser = (() => {
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     try { return token ? JSON.parse(atob(token.split('.')[1])) : null; }
     catch(e) { return null; }
   })();
@@ -1590,8 +1590,8 @@ async function checkSetupRequired() {
     const res = await fetch(`${API_BASE}/auth/setup-required`);
     const result = await res.json();
     if (result.setupRequired) {
-      localStorage.removeItem('msc_token');
-      localStorage.removeItem('msc_user');
+      localStorage.removeItem('msc_token'); sessionStorage.removeItem('msc_token');
+      localStorage.removeItem('msc_user'); sessionStorage.removeItem('msc_user');
       
       document.getElementById('appShell').style.display = 'none';
       document.getElementById('loginScreen').style.display = 'none';
@@ -1666,8 +1666,10 @@ document.getElementById("loginForm").addEventListener("submit", async e => {
       body: JSON.stringify({ username, password })
     });
     
-    localStorage.setItem('msc_token', data.token);
-    localStorage.setItem('msc_user', JSON.stringify(data.user));
+    const rememberMe = document.getElementById('rememberMe') ? document.getElementById('rememberMe').checked : true;
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem('msc_token', data.token);
+    storage.setItem('msc_user', JSON.stringify(data.user));
     
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("sessionExpiredMsg").style.display = "none";
@@ -2359,7 +2361,7 @@ if (movementModal) {
       if (bSel) bSel.value = globalSelectedBranch;
     }
 
-    const userStr = localStorage.getItem('msc_user');
+    const userStr = (localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user'));
     const user = userStr ? JSON.parse(userStr) : null;
     const isStaff = user && user.role === 'Staff';
     
@@ -2402,7 +2404,7 @@ if (movementModal) {
         if (d.get('type') === 'INWARD' && (d.get('productPhoto')?.size > 0 || d.get('invoiceCopy')?.size > 0)) {
           const uploadRes = await fetch('/api/uploads', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) },
             body: d
           });
           if (uploadRes.ok) uploadedUrls = await uploadRes.json();
@@ -2437,7 +2439,7 @@ if (movementModal) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + localStorage.getItem('msc_token')
+            'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))
           },
           body: JSON.stringify(reqBody)
         });
@@ -2538,7 +2540,7 @@ if(document.getElementById("closeBackupModal")) document.getElementById("closeBa
 // if(backupModal) // backupModal.addEventListener("click", e => { if (e.target === backupModal) backupModal.classList.remove("active"); });
 document.getElementById('backupLocalBtn')?.addEventListener('click', async () => {
   try {
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     const response = await fetch(`${API_BASE}/reports/backup`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -2633,8 +2635,8 @@ if (document.getElementById("notificationTrigger")) {
 // FIX 1: Logout button wiring
 if (document.getElementById('logoutBtn')) {
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('msc_token');
-    localStorage.removeItem('msc_user');
+    localStorage.removeItem('msc_token'); sessionStorage.removeItem('msc_token');
+    localStorage.removeItem('msc_user'); sessionStorage.removeItem('msc_user');
     document.getElementById('appShell').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('loginForm').reset();
@@ -2737,7 +2739,7 @@ window.selectReportCard = (type, element) => {
 };
 
 window.triggerReportDownload = async () => {
-  const token = localStorage.getItem('msc_token');
+  const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
   if (!token) return showToast('Error: You are not logged in.', 'error');
 
   if (activeReportType === 'backup') {
@@ -2840,7 +2842,7 @@ window.initReportFilters = async () => {
     // Populate Branches depending on role
     const branchSelect = document.getElementById('reportBranch');
     if (branchSelect && branches) {
-      const token = localStorage.getItem('msc_token');
+      const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
       let role = '', userBranchId = '';
       if(token) {
         try { 
@@ -2925,7 +2927,7 @@ async function loadRequests() {
   try {
     const url = new URL(`${API_BASE}/inventory/deletion-requests/all`, window.location.origin);
     const filterBranch = document.getElementById("branchFilter")?.value;
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     
     // Parse user role
     let userRole = '';
@@ -3088,7 +3090,7 @@ if (deletionRequestForm) {
     };
     
     try {
-      const token = localStorage.getItem('msc_token');
+      const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
       const res = await fetch(`${API_BASE}/inventory/${itemId}/request-deletion`, {
         method: 'POST',
         headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
@@ -3110,7 +3112,7 @@ if (deletionRequestForm) {
 async function approveDeletion(reqId) {
   if (!confirm("Approve deletion?")) return;
   try {
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     const res = await fetch(`${API_BASE}/inventory/deletion-requests/${reqId}/approve`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
     if(!res.ok) throw new Error("Failed to approve");
     showToast("Request approved.", "success");
@@ -3122,7 +3124,7 @@ async function approveDeletion(reqId) {
 async function rejectDeletion(reqId) {
   if (!confirm("Reject this deletion request?")) return;
   try {
-    const token = localStorage.getItem('msc_token');
+    const token = (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'));
     const res = await fetch(`${API_BASE}/inventory/deletion-requests/${reqId}/reject`, { method: 'POST', headers: { "Authorization": `Bearer ${token}` } });
     if(!res.ok) throw new Error("Failed to reject");
     showToast("Request rejected.", "success");
@@ -3178,7 +3180,7 @@ async function renderBranchesTable() {
                 <h3 style="margin:0 0 2px; font-size:13px">${escapeHTML(block.name)}</h3>
                 ${block.description ? `<p style="margin:0; font-size:11px">${escapeHTML(block.description)}</p>` : ''}
               </div>
-              ${(JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'Admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').branch_id === block.branch_id) ? 
+              ${(JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').role === 'Admin' || JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').role === 'admin' || JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').branch_id === block.branch_id) ? 
                 `<div style="display:flex; gap:4px;">
                   <button class="icon-btn" onclick="window.openEditBlockModal('${block.id}', '${block.branch_id}', '${escapeHTML(block.name).replace(/'/g, "\\'")}', '${escapeHTML(block.description || '').replace(/'/g, "\\'")}')" title="Edit Block"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>
                   <button class="icon-btn" onclick="window.deleteBlock('${block.id}', '${block.branch_id}')" title="Delete Block"><i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger)"></i></button>
@@ -3197,7 +3199,7 @@ async function renderBranchesTable() {
             <p>${escapeHTML(b.location || '')}${b.address ? ` · ${escapeHTML(b.address)}` : ''}</p>
           </div>
           <div class="card-actions">
-            ${(JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'Admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').role === 'admin' || JSON.parse(localStorage.getItem('msc_user') || '{}').branch_id === b.id) ? 
+            ${(JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').role === 'Admin' || JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').role === 'admin' || JSON.parse((localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user')) || '{}').branch_id === b.id) ? 
               `<button class="secondary-btn" onclick="window.openAddBlockModal('${b.id}')"><i data-lucide="plus"></i>Add Block</button>` : ''}
             <button class="primary-btn" onclick="window.openTransferModal('${b.id}', '${escapeHTML(b.name).replace(/'/g, "\\'")}')"><i data-lucide="arrow-left-right"></i>Transfer Stock</button>
             <div style="display:flex; gap:4px; margin-left:8px; padding-left:12px; border-left:1px solid var(--border);" class="admin-only">
@@ -3236,7 +3238,7 @@ if(addBranchForm) {
     try {
       const res = await fetch('/api/branches', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))},
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
@@ -3275,7 +3277,7 @@ if(editBranchForm) {
     try {
       const res = await fetch('/api/branches/' + currentEditBranchId, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))},
         body: JSON.stringify(data)
       });
       if(!res.ok) throw new Error((await res.json()).error);
@@ -3294,7 +3296,7 @@ window.deactivateBranch = async function(id) {
   try {
     const res = await fetch('/api/branches/' + id + '/deactivate', {
       method: 'POST',
-      headers: {'Authorization': 'Bearer ' + localStorage.getItem('msc_token')}
+      headers: {'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))}
     });
     if(!res.ok) throw new Error((await res.json()).error);
     showToast('Branch deleted successfully', 'success');
@@ -3447,7 +3449,7 @@ window.openTransferModal = async (branchId, branchName) => {
       
     transferSourceBranch.innerHTML = '<option value="" disabled selected>Select Source...</option>' + branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
     
-    const userStr = localStorage.getItem('msc_user');
+    const userStr = (localStorage.getItem('msc_user') || sessionStorage.getItem('msc_user'));
     const user = userStr ? JSON.parse(userStr) : null;
     const isStaff = user && user.role === 'Staff';
     const userBranchId = user ? user.branch_id : null;
@@ -3498,7 +3500,7 @@ if(transferStockForm) {
     try {
       const res = await fetch('/api/branches/transfer', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('msc_token')},
+        headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))},
         body: JSON.stringify(Object.fromEntries(d))
       });
       const data = await res.json();
@@ -3531,7 +3533,7 @@ async function loadTransfers() {
   
   try {
     const res = await fetch('/api/transfers/requests', {
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
     });
     if (!res.ok) throw new Error('Failed to load transfers');
     const transfers = await res.json();
@@ -3582,7 +3584,7 @@ window.approveTransfer = async (id) => {
   try {
     const res = await fetch(`/api/transfers/requests/${id}/approve`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -3600,7 +3602,7 @@ window.rejectTransfer = async (id) => {
   try {
     const res = await fetch(`/api/transfers/requests/${id}/reject`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -3634,7 +3636,7 @@ if (downloadBulkTemplateBtn) {
   downloadBulkTemplateBtn.addEventListener('click', async () => {
     try {
       const res = await fetch('/api/inventory/bulk-import-template?t=' + Date.now(), {
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
       });
       if (!res.ok) throw new Error('Failed to download template');
       const blob = await res.blob();
@@ -3704,7 +3706,7 @@ if (bulkImportForm) {
       
       let res = await fetch('/api/inventory/bulk-import', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) },
         body: formData
       });
       
@@ -3753,7 +3755,7 @@ if (bulkImportForm) {
            formData.append('autoCreate', 'true');
            res = await fetch('/api/inventory/bulk-import', {
              method: 'POST',
-             headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+             headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) },
              body: formData
            });
            data = await res.json();
@@ -3837,7 +3839,7 @@ if (addBlockForm) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + localStorage.getItem('msc_token')
+          'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token'))
         },
         body: JSON.stringify({ name, description })
       });
@@ -3943,7 +3945,7 @@ if (downloadGroceriesTemplateBtn) {
   downloadGroceriesTemplateBtn.addEventListener('click', async () => {
     try {
       const res = await fetch('/api/inventory/groceries-import-template?t=' + Date.now(), {
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') }
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
       });
       if (!res.ok) throw new Error('Failed to download template');
       const blob = await res.blob();
@@ -3994,7 +3996,7 @@ if (groceriesBulkImportForm) {
       
       let res = await fetch('/api/inventory/groceries-import', {
         method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) },
         body: formData
       });
       
@@ -4006,7 +4008,7 @@ if (groceriesBulkImportForm) {
                 formData.append('autoCreate', 'true');
                 res = await fetch('/api/inventory/groceries-import', {
                   method: 'POST',
-                  headers: { 'Authorization': 'Bearer ' + localStorage.getItem('msc_token') },
+                  headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) },
                   body: formData
                 });
                 data = await res.json();
