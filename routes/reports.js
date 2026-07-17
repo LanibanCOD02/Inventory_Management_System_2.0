@@ -328,6 +328,18 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       column.width = Math.min(45, maxLength + 6);
     });
 
+    // Auto-size columns (min 5, max 45)
+    sheet.columns.forEach((column) => {
+      let maxLength = 5;
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
+          const length = cell.value.toString().length;
+          if (length > maxLength) maxLength = length;
+        }
+      });
+      column.width = Math.min(45, maxLength + 6);
+    });
+
     const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
       const dateStr = now.toISOString().split('T')[0];
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -487,6 +499,18 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       column.width = Math.min(45, maxLength + 6);
     });
 
+    // Auto-size columns (min 5, max 45)
+    sheet.columns.forEach((column) => {
+      let maxLength = 5;
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
+          const length = cell.value.toString().length;
+          if (length > maxLength) maxLength = length;
+        }
+      });
+      column.width = Math.min(45, maxLength + 6);
+    });
+
     const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
     const dateStr = now.toISOString().split('T')[0];
     const finalFilename = `MSC_Low_Stock_Alert_${safeBranch}_${dateStr}.xlsx`;
@@ -616,7 +640,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    sheet.getRow(1).height = 36;
+    sheet.getRow(1).height = 40;
 
     sheet.mergeCells('A2:U2');
     const subtitleCell = sheet.getCell('A2');
@@ -624,7 +648,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    sheet.getRow(2).height = 24;
+    sheet.getRow(2).height = 20;
 
     sheet.addRow([]);
 
@@ -636,7 +660,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     ];
 
     const headerRow = sheet.addRow(headers);
-    headerRow.height = 25;
+    headerRow.height = 35;
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
@@ -936,7 +960,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
     titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    sheet.getRow(1).height = 36;
+    sheet.getRow(1).height = 40;
 
     sheet.mergeCells('A2:V2');
     const subtitleCell = sheet.getCell('A2');
@@ -944,7 +968,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
     subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    sheet.getRow(2).height = 24;
+    sheet.getRow(2).height = 20;
 
     sheet.addRow([]);
 
@@ -956,7 +980,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
     ];
 
     const headerRow = sheet.addRow(headers);
-    headerRow.height = 25;
+    headerRow.height = 35;
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
@@ -1477,7 +1501,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
-    sheet.getRow(1).height = 36;
+    sheet.getRow(1).height = 40;
 
     sheet.mergeCells('A2:X2');
     const subtitleCell = sheet.getCell('A2');
@@ -1487,10 +1511,10 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     const fmtEnd = qEnd.split('-').reverse().join('-');
     
     subtitleCell.value = `Period: ${fmtStart} to ${fmtEnd} | Branch: ${safeBranchName} | Generated: ${genDate}`;
-    subtitleCell.font = { name: 'Calibri', size: 10, italic: true };
+    subtitleCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF042F2E' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-    sheet.getRow(2).height = 24;
+    sheet.getRow(2).height = 20;
 
     sheet.addRow([]);
 
@@ -1503,7 +1527,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     ];
 
     const headerRow = sheet.addRow(headers);
-    headerRow.height = 25;
+    headerRow.height = 35;
     headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D9488' } };
       cell.font = { name: 'Calibri', color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
