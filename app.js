@@ -3380,7 +3380,7 @@ if (transferSourceBranch) {
       const selBranch = transferSourceBranch.value;
       itemSel.innerHTML = '<option value="" disabled selected>Select an item...</option>' + 
         window.allTransferItems.filter(i => !selBranch || i.branch_id === selBranch)
-        .map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit || ''})</option>`).join('');
+        .map(i => `<option value="${i.id}" data-stock="${i.stock}">${i.name} (Stock: ${i.stock} ${i.unit || ''})</option>`).join('');
       if (currentItem && Array.from(itemSel.options).some(o => o.value === currentItem)) {
          itemSel.value = currentItem;
       }
@@ -3422,7 +3422,7 @@ window.openTransferModal = async (branchId, branchName) => {
     
     const itemSel = document.getElementById('transferItemSelect');
     itemSel.innerHTML = '<option value="" disabled selected>Select an item...</option>' + 
-      items.filter(i => !branchId || i.branch_id === branchId).map(i => `<option value="${i.id}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
+      items.filter(i => !branchId || i.branch_id === branchId).map(i => `<option value="${i.id}" data-stock="${i.stock}">${i.name} (Stock: ${i.stock} ${i.unit})</option>`).join('');
       
     transferSourceBranch.innerHTML = '<option value="" disabled selected>Select Source...</option>' + branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
     
@@ -4030,3 +4030,30 @@ if (groceriesBulkImportForm) {
     }
   });
 }
+
+
+// Transfer limit logic
+document.addEventListener('DOMContentLoaded', () => {
+  const transferItemSelect = document.getElementById('transferItemSelect');
+  const transferQuantityInput = document.getElementById('transferQuantityInput');
+
+  if (transferItemSelect && transferQuantityInput) {
+    transferItemSelect.addEventListener('change', (e) => {
+      const selectedOption = e.target.options[e.target.selectedIndex];
+      if (selectedOption && selectedOption.dataset.stock !== undefined) {
+        transferQuantityInput.max = selectedOption.dataset.stock;
+        if (Number(transferQuantityInput.value) > Number(selectedOption.dataset.stock)) {
+          transferQuantityInput.value = selectedOption.dataset.stock;
+        }
+      } else {
+        transferQuantityInput.removeAttribute('max');
+      }
+    });
+
+    transferQuantityInput.addEventListener('input', (e) => {
+      if (e.target.max !== '' && Number(e.target.value) > Number(e.target.max)) {
+        e.target.value = e.target.max;
+      }
+    });
+  }
+});
