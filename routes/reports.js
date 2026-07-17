@@ -15,6 +15,23 @@ function getBranchMap() {
   return map;
 }
 
+// Helper to format date to DD/MM/YYYY HH:MM
+function formatToDDMMYYYY(dateStr) {
+  if (!dateStr || dateStr === '-') return '-';
+  let s = dateStr.replace('T', ' ').trim();
+  const parts = s.split(' ');
+  if (parts.length >= 2) {
+    const dParts = parts[0].split('-');
+    if (dParts.length === 3) {
+       const tParts = parts[1].split(':');
+       if (tParts.length >= 2) {
+         return `${dParts[2]}/${dParts[1]}/${dParts[0]} ${tParts[0]}:${tParts[1]}`;
+       }
+    }
+  }
+  return dateStr;
+}
+
 // 1. Inventory Summary Excel
 router.get('/inventory-summary', authenticateToken, async (req, res) => {
   try {
@@ -666,18 +683,18 @@ router.get('/movements', authenticateToken, async (req, res) => {
         else if (eventType === 'Received from Branch') { fromLoc = m.party_name || '-'; }
         else if (eventType === 'Issued to Program') { toLoc = m.recipient_name || m.party_name || '-'; }
         
-        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '-';
-        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '-';
+        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '';
+        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '';
         
-        if (qtyIn !== '-') totalQtyIn += m.quantity;
-        if (qtyOut !== '-') totalQtyOut += m.quantity;
+        if (qtyIn !== '') totalQtyIn += m.quantity;
+        if (qtyOut !== '') totalQtyOut += m.quantity;
         
         const val = m.total_price || 0;
         if (!m.voided) totalValue += val;
 
         const row = sheet.addRow([
           sno++,
-          m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-',
+          m.created_at ? formatToDDMMYYYY(m.created_at) : '-',
           m.reference_code || '-',
           eventType,
           m.item_name,
@@ -990,11 +1007,11 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
         else if (eventType === 'Received from Branch') { fromLoc = m.party_name || '-'; }
         else if (eventType === 'Issued to Program') { toLoc = m.recipient_name || m.party_name || '-'; }
         
-        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '-';
-        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '-';
+        const qtyIn = (m.movement_type === 'IN' && !m.voided && !m.is_deletion) ? m.quantity : '';
+        const qtyOut = ((m.movement_type === 'OUT' || m.is_deletion) && !m.voided) ? m.quantity : '';
         
-        if (qtyIn !== '-') totalQtyIn += m.quantity;
-        if (qtyOut !== '-') totalQtyOut += m.quantity;
+        if (qtyIn !== '') totalQtyIn += m.quantity;
+        if (qtyOut !== '') totalQtyOut += m.quantity;
         
         const val = m.total_price || 0;
         if (!m.voided) totalValue += val;
@@ -1003,7 +1020,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
 
         const row = sheet.addRow([
           sno++,
-          m.created_at ? m.created_at.replace('T', ' ').substring(0, 19) : '-',
+          m.created_at ? formatToDDMMYYYY(m.created_at) : '-',
           m.reference_code || '-',
           eventType,
           m.item_name,
@@ -1204,7 +1221,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           _item_id: i.id,
           _date_obj: new Date(new Date(startDate).getTime() - 1), // 1ms before start date to sort first
           _type_code: 'BBF',
-          date: new Date(startDate).toISOString().replace('T', ' ').substring(0, 16), // formatting later
+          date: formatToDDMMYYYY(new Date(startDate).toISOString()), // formatting later
           eventType: 'Balance Brought Forward',
           item: i.name, code: i.item_code || i.serial_number || '-', category: i.category || '-',
           branch: branchMap[i.branch_id] || 'Global', loc: '-',
@@ -1417,7 +1434,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
         
         // Date formatting
         if (ev.date) {
-           ev.date = ev.date.replace('T', ' ').substring(0, 16);
+           ev.date = formatToDDMMYYYY(ev.date);
         }
         
         finalCombined.push(ev);
