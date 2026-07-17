@@ -301,7 +301,20 @@ router.get('/low-stock', authenticateToken, async (req, res) => {
       noDataCell.alignment = { horizontal: 'center', vertical: 'middle' };
       noDataCell.font = { name: 'Calibri', italic: true };
       
-      const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
+  
+    // Auto-size columns (min 5, max 45)
+    sheet.columns.forEach((column) => {
+      let maxLength = 5;
+      column.eachCell({ includeEmpty: false }, cell => {
+        if (cell.row >= 3 && cell.value !== undefined && cell.value !== null) {
+          const length = cell.value.toString().length;
+          if (length > maxLength) maxLength = length;
+        }
+      });
+      column.width = Math.min(45, maxLength + 6);
+    });
+
+    const safeBranch = branchName.replace(/[^a-zA-Z0-9-]/g, '_');
       const dateStr = now.toISOString().split('T')[0];
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="MSC_Low_Stock_Alert_${safeBranch}_${dateStr}.xlsx"`);
