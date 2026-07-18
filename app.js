@@ -2076,7 +2076,10 @@ if (editUserModal) {
     document.getElementById("editUserRole").value = role;
     document.getElementById("editUserPassword").value = '';
     const bSel = document.getElementById("editUserBranch");
-    if (bSel && branchId) bSel.value = branchId;
+    if (bSel) {
+      bSel.value = branchId || "";
+      bSel.required = role === "Staff";
+    }
     editUserModal.classList.add("active");
   };
   
