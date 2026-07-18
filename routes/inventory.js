@@ -430,7 +430,7 @@ router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
     }
     
     const reqId = generateUUID();
-    const { reason, reason_details, resale_price, quantity } = req.body;
+    const { reason, reason_details, resale_price, quantity, block_id } = req.body;
     
     // Calculate how much stock is already tied up in pending requests
     // If an old request doesn't have a quantity, it means the full stock was requested
@@ -447,11 +447,18 @@ router.post('/:id/request-deletion', authenticateToken, async (req, res) => {
     if (reqQty > availableStock) {
       return res.status(400).json({ error: `Cannot request deletion of ${reqQty} units. Only ${availableStock} unit(s) are currently available after accounting for other pending requests.` });
     }
+
+    if (block_id) {
+      const blockStock = db.prepare('SELECT stock FROM inventory_item_blocks WHERE item_id = ? AND block_id = ?').get(id, block_id);
+      if (!blockStock || blockStock.stock < reqQty) {
+        return res.status(400).json({ error: `Insufficient stock in the selected block. Available: ${blockStock ? blockStock.stock : 0}` });
+      }
+    }
     
     db.prepare(`
-      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at, reason, reason_details, resale_price, quantity)
-      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
-    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString(), reason || null, reason_details || null, resale_price || null, reqQty);
+      INSERT INTO deletion_requests (id, item_id, requested_by, branch_id, status, requested_at, reason, reason_details, resale_price, quantity, block_id)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+    `).run(reqId, id, req.user.id, item.branch_id, new Date().toISOString(), reason || null, reason_details || null, resale_price || null, reqQty, block_id || null);
     
     res.status(201).json({ message: 'Deletion request submitted.' });
   } catch (error) {
@@ -484,10 +491,20 @@ router.post('/deletion-requests/:reqId/approve', authenticateToken, requireAdmin
         // Full quantity requested -> soft delete
         db.prepare('UPDATE inventory_items SET deleted_at = ?, stock = 0 WHERE id = ?')
           .run(new Date().toISOString(), request.item_id);
+          
+        // Cascade soft delete to all blocks for this item
+        db.prepare('UPDATE inventory_item_blocks SET stock = 0 WHERE item_id = ?')
+          .run(request.item_id);
       } else {
         // Partial quantity requested -> reduce stock only
         db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ?')
           .run(reqQty, request.item_id);
+          
+        // Reduce from specific block if requested
+        if (request.block_id) {
+          db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?')
+            .run(reqQty, request.item_id, request.block_id);
+        }
       }
     });
     approveTx();

@@ -3053,6 +3053,29 @@ function requestDeletion(itemId, maxStock = 1, buyPrice = 0) {
     buyPriceDisplay.textContent = `₹${(buyPrice * qty).toFixed(2)}`;
   }
   
+  // Populate blocks
+  const blockSelect = document.getElementById('delReqBlock');
+  if (blockSelect) {
+    blockSelect.innerHTML = '<option value="" selected>Loading...</option>';
+    cachedFetch(`/inventory/${itemId}/blocks`)
+      .then(blocks => {
+        blockSelect.innerHTML = '<option value="" selected>None / General Stock</option>';
+        if (blocks && blocks.length > 0) {
+          blocks.forEach(b => {
+            if (b.stock > 0) {
+              const opt = document.createElement('option');
+              opt.value = b.block_id;
+              opt.textContent = `${b.block_name} (Stock: ${b.stock})`;
+              blockSelect.appendChild(opt);
+            }
+          });
+        }
+      })
+      .catch(() => {
+        blockSelect.innerHTML = '<option value="" selected>None / General Stock</option>';
+      });
+  }
+  
   deletionRequestModalBackdrop.classList.add('active');
 }
 
@@ -3086,7 +3109,8 @@ if (deletionRequestForm) {
       reason: delReqReason.value,
       reason_details: delReqDetails.value,
       resale_price: delReqPrice.value,
-      quantity: delReqQuantity.value
+      quantity: delReqQuantity.value,
+      block_id: document.getElementById('delReqBlock')?.value || null
     };
     
     try {
@@ -3337,8 +3361,10 @@ function setTransferMode(mode) {
     btnTransferBlock.style.boxShadow = 'none';
     btnTransferBlock.style.color = 'var(--muted)';
     
-    transferFromBlockContainer.style.display = 'none';
-    transferToBlockContainer.style.display = 'none';
+    transferFromBlockContainer.style.display = 'flex';
+    transferFromBlockContainer.style.flexDirection = 'column';
+    transferToBlockContainer.style.display = 'flex';
+    transferToBlockContainer.style.flexDirection = 'column';
     transferFromBlock.removeAttribute('required');
     transferToBlock.removeAttribute('required');
     
@@ -3550,8 +3576,7 @@ async function loadTransfers() {
       
       const actions = (isPending && (globalUserRole === 'Admin' || globalUserRole === 'admin'))
         ? `
-          <button class="icon-btn" style="color:var(--emerald)" onclick="approveTransfer('${t.id}')" title="Approve"><i data-lucide="check-circle"></i></button>
-          <button class="icon-btn" style="color:var(--rose)" onclick="rejectTransfer('${t.id}')" title="Reject"><i data-lucide="x-circle"></i></button>
+          <button class="secondary-btn" style="padding:4px 8px; font-size:12px;" onclick="openReviewTransfer('${t.id}')">Review</button>
         `
         : '-';
         
@@ -3574,44 +3599,91 @@ async function loadTransfers() {
       `;
     }).join('');
     lucide.createIcons();
+    
+    // Store globally for modal access
+    window.loadedTransfersData = transfers;
   } catch(err) {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--rose);">${err.message}</td></tr>`;
   }
 }
 
-window.approveTransfer = async (id) => {
-  if (!confirm('Are you sure you want to approve this transfer?')) return;
+window.openReviewTransfer = (id) => {
+  const req = (window.loadedTransfersData || []).find(t => t.id === id);
+  if (!req) return;
+  
+  document.getElementById('reviewTransferId').value = id;
+  document.getElementById('reviewTransferNote').value = '';
+  
+  const fromDetails = escapeHTML(req.from_branch_name) + (req.from_block_name ? ` (Block ${escapeHTML(req.from_block_name)})` : '');
+  const toDetails = escapeHTML(req.to_branch_name) + (req.to_block_name ? ` (Block ${escapeHTML(req.to_block_name)})` : '');
+  
+  document.getElementById('reviewTransferDetails').innerHTML = `
+    <div><strong>Item:</strong> ${escapeHTML(req.item_name)} (${req.quantity} ${escapeHTML(req.unit || '')})</div>
+    <div><strong>From:</strong> ${fromDetails}</div>
+    <div><strong>To:</strong> ${toDetails}</div>
+    <div><strong>Requested By:</strong> ${escapeHTML(req.requested_by_name || 'Unknown')}</div>
+    <div><strong>Date:</strong> ${new Date(req.created_at).toLocaleString()}</div>
+    ${req.notes ? `<div><strong>Staff Note:</strong> ${escapeHTML(req.notes)}</div>` : ''}
+  `;
+  
+  document.getElementById('reviewTransferModalBackdrop').classList.add('visible');
+};
+
+const closeReviewTransferModal = document.getElementById('closeReviewTransferModal');
+if (closeReviewTransferModal) {
+  closeReviewTransferModal.addEventListener('click', () => {
+    document.getElementById('reviewTransferModalBackdrop').classList.remove('visible');
+  });
+}
+
+document.getElementById('reviewTransferForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('reviewTransferId').value;
+  const admin_note = document.getElementById('reviewTransferNote').value;
+  
   try {
-    const res = await fetch(`/api/transfers/requests/${id}/approve`, {
+    const res = await fetch(\`/api/transfers/requests/\${id}/approve\`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
+      headers: { 
+        'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ admin_note })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showToast('Transfer approved', 'success');
+    document.getElementById('reviewTransferModalBackdrop').classList.remove('visible');
     loadTransfers();
     invalidateCache('/inventory');
     invalidateCache('/movements');
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+});
 
-window.rejectTransfer = async (id) => {
-  if (!confirm('Are you sure you want to reject this transfer?')) return;
+document.getElementById('rejectTransferBtn')?.addEventListener('click', async () => {
+  const id = document.getElementById('reviewTransferId').value;
+  const admin_note = document.getElementById('reviewTransferNote').value;
+  
   try {
-    const res = await fetch(`/api/transfers/requests/${id}/reject`, {
+    const res = await fetch(\`/api/transfers/requests/\${id}/reject\`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')) }
+      headers: { 
+        'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ admin_note })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
     showToast('Transfer rejected', 'success');
+    document.getElementById('reviewTransferModalBackdrop').classList.remove('visible');
     loadTransfers();
   } catch (err) {
     showToast(err.message, 'error');
   }
-};
+});
 
 // ==========================================
 // BULK IMPORT MODAL LOGIC

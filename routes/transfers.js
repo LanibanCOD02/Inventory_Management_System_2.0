@@ -50,6 +50,8 @@ router.post('/requests/:id/approve', authenticateToken, requireAdmin, (req, res)
     if (!request) return res.status(404).json({ error: 'Transfer request not found' });
     if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request is already ' + request.status });
     
+    const { admin_note } = req.body;
+    
     const item = db.prepare('SELECT * FROM inventory_items WHERE id = ? AND branch_id = ? AND deleted_at IS NULL').get(request.item_id, request.from_branch_id);
     if (!item || item.stock < request.quantity) {
       return res.status(400).json({ error: 'Insufficient stock in source branch to approve this transfer.' });
@@ -92,7 +94,11 @@ router.post('/requests/:id/approve', authenticateToken, requireAdmin, (req, res)
 
     const transfer = db.transaction(() => {
       // Update status
-      db.prepare("UPDATE transfer_requests SET status = 'APPROVED', updated_at = ? WHERE id = ?").run(now, id);
+      if (admin_note) {
+        db.prepare("UPDATE transfer_requests SET status = 'APPROVED', updated_at = ?, admin_note = ? WHERE id = ?").run(now, admin_note, id);
+      } else {
+        db.prepare("UPDATE transfer_requests SET status = 'APPROVED', updated_at = ? WHERE id = ?").run(now, id);
+      }
 
       // Deduct from source branch
       db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ? AND branch_id = ?')
@@ -158,7 +164,14 @@ router.post('/requests/:id/reject', authenticateToken, requireAdmin, (req, res) 
     if (!request) return res.status(404).json({ error: 'Transfer request not found' });
     if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request is already ' + request.status });
     
-    db.prepare("UPDATE transfer_requests SET status = 'REJECTED', updated_at = ? WHERE id = ?").run(new Date().toISOString(), id);
+    const { admin_note } = req.body;
+    
+    if (admin_note) {
+      db.prepare("UPDATE transfer_requests SET status = 'REJECTED', updated_at = ?, admin_note = ? WHERE id = ?").run(new Date().toISOString(), admin_note, id);
+    } else {
+      db.prepare("UPDATE transfer_requests SET status = 'REJECTED', updated_at = ? WHERE id = ?").run(new Date().toISOString(), id);
+    }
+    
     res.json({ success: true, message: 'Transfer request rejected successfully.' });
   } catch (err) {
     console.error('Reject transfer error:', err);
