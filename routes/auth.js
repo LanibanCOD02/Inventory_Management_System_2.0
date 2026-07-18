@@ -14,7 +14,7 @@ function generateUUID() {
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, rememberMe } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
@@ -39,11 +39,13 @@ router.post('/login', async (req, res) => {
       id: user.id,
       username: user.username,
       role: user.role,
-      branch_id: user.branch_id
+      branch_id: user.branch_id,
+      token_version: user.token_version
     };
 
-    // Sign the token with a 24-hour expiration
-    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: '24h' });
+    // Sign the token with a 30-day expiration if rememberMe is true, else 24-hour
+    const expiresIn = rememberMe ? '30d' : '24h';
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn });
 
     // 4. Send the token and user data back to the client
     res.json({
@@ -135,6 +137,8 @@ router.put('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
       const password_hash = await bcrypt.hash(password, saltRounds);
       updates.push('password_hash = ?');
       params.push(password_hash);
+      
+      updates.push('token_version = token_version + 1');
     }
 
     if (updates.length > 0) {

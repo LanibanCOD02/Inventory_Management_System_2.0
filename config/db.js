@@ -21,6 +21,7 @@ try { db.exec("ALTER TABLE inventory_items ADD COLUMN item_code TEXT"); } catch(
 try { db.exec("ALTER TABLE inventory_items ADD COLUMN serial_number TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN item_code TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE inventory_movements ADD COLUMN serial_number TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1"); } catch(e) {}
 
 try {
   db.exec(`

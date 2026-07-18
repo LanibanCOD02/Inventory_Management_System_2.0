@@ -564,7 +564,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     const movsAfterStart = db.prepare(`
       SELECT item_id, movement_type, quantity, branch_id, to_branch_id
       FROM inventory_movements 
-      WHERE created_at >= ? AND (voided IS NULL OR voided = 0) AND reference_code NOT LIKE 'VOID-%'
+      WHERE created_at >= ? AND (voided IS NULL OR voided = 0)
     `).all(startDate);
     
     movsAfterStart.forEach(m => {
@@ -651,10 +651,11 @@ router.get('/movements', authenticateToken, async (req, res) => {
     sheet.getRow(2).height = 20;
 
     sheet.addRow([]);
-
+    const isFiltered = !!(req.query.action_type || req.query.block_id);
     const headers = [
       'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
-      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 'Running Balance', 
+      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 
+      isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 
       'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
       'Program / Scheme', 'Authorized By', 'Invoice/Bill No.', 'Remarks'
     ];
@@ -755,7 +756,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
           m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
           qtyIn,
           qtyOut,
-          stockMap[m.item_id],
+          isFiltered ? '' : stockMap[m.item_id],
           m.unit || '-',
           m.quantity ? (val / m.quantity).toFixed(2) : '-',
           val,
@@ -881,7 +882,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
       SELECT m.item_id, m.movement_type, m.quantity
       FROM inventory_movements m
       JOIN inventory_items i ON m.item_id = i.id
-      WHERE m.created_at >= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
+      WHERE m.created_at >= ? AND (m.voided IS NULL OR m.voided = 0)
       AND i.category = ?
     `).all(startDate, targetCategory);
     
@@ -972,9 +973,11 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
 
     sheet.addRow([]);
 
+    const isFiltered = !!req.query.action_type; // Groceries doesn't have block filter explicitly in UI, but just in case
     const headers = [
       'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
-      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 'Running Balance', 
+      'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 
+      isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 
       'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
       'Program / Scheme', 'Meal / Purpose', 'Authorized By', 'Invoice/Bill No.', 'Remarks'
     ];
@@ -1081,7 +1084,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
           m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
           qtyIn,
           qtyOut,
-          stockMap[m.item_id],
+          isFiltered ? '' : stockMap[m.item_id],
           m.unit || '-',
           m.quantity ? (val / m.quantity).toFixed(2) : '-',
           val,
@@ -1237,7 +1240,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     const movsAfterStart = db.prepare(`
       SELECT m.item_id, m.movement_type, m.quantity
       FROM inventory_movements m
-      WHERE m.created_at >= ? AND (m.voided IS NULL OR m.voided = 0) AND m.reference_code NOT LIKE 'VOID-%'
+      WHERE m.created_at >= ? AND (m.voided IS NULL OR m.voided = 0)
     `).all(startDate);
     
     movsAfterStart.forEach(m => {
@@ -1446,13 +1449,19 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       });
     }
 
-    // Sort combined globally by date
-    combined.sort((a, b) => a._date_obj - b._date_obj);
+    // Sort combined by Item Name, Item ID, Branch, then Date
+    combined.sort((a, b) => {
+      if (a.item !== b.item) return (a.item || '').localeCompare(b.item || '');
+      if (a._item_id !== b._item_id) return (a._item_id || '').localeCompare(b._item_id || '');
+      if (a.branch !== b.branch) return (a.branch || '').localeCompare(b.branch || '');
+      return a._date_obj - b._date_obj;
+    });
+
+    const isFiltered = !!req.query.action_type;
 
     // Calculate running balance and strip orphaned BBF rows
     const finalCombined = [];
     const itemHasEvents = {};
-    const bbfRows = {};
 
     // First pass to identify which items have real events
     combined.forEach(ev => {
@@ -1462,26 +1471,38 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     });
 
     const currentBal = {};
+    let currentGroupKey = null;
     
     combined.forEach(ev => {
+      const groupKey = `${ev._item_id}-${ev.branch}`;
+
       if (ev._type_code === 'BBF') {
         if (itemHasEvents[ev._item_id]) {
-          currentBal[ev._item_id] = ev.bal;
+          currentBal[groupKey] = ev.bal;
+          if (groupKey !== currentGroupKey) {
+             finalCombined.push({ isSubheading: true, title: `Item: ${ev.item} | Branch: ${ev.branch}` });
+             currentGroupKey = groupKey;
+          }
           finalCombined.push(ev);
         }
       } else {
-        if (currentBal[ev._item_id] === undefined) {
+        if (groupKey !== currentGroupKey) {
+           finalCombined.push({ isSubheading: true, title: `Item: ${ev.item} | Branch: ${ev.branch}` });
+           currentGroupKey = groupKey;
+        }
+
+        if (currentBal[groupKey] === undefined) {
           // Fallback if no BBF
-          currentBal[ev._item_id] = 0;
+          currentBal[groupKey] = 0;
         }
         
         let inQ = parseFloat(ev.qtyIn) || 0;
         let outQ = parseFloat(ev.qtyOut) || 0;
         
         if (ev._type_code !== 'H' && ev._type_code !== 'F') { // Not voided and not price update
-           currentBal[ev._item_id] = currentBal[ev._item_id] + inQ - outQ;
+           currentBal[groupKey] = currentBal[groupKey] + inQ - outQ;
         }
-        ev.bal = currentBal[ev._item_id];
+        ev.bal = currentBal[groupKey];
         
         // Date formatting
         if (ev.date) {
@@ -1520,7 +1541,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
 
     const headers = [
       'S.No', 'Date & Time', 'Event Type', 'Item Name', 'Item Code', 'Category', 'Branch', 
-      'Location/Block', 'Qty In', 'Qty Out', 'Running Balance', 'Unit', 'Unit Price (Rs.)', 
+      'Location/Block', 'Qty In', 'Qty Out', isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 'Unit', 'Unit Price (Rs.)', 
       'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 'Program / Scheme', 
       'Authorized By', 'Reference No.', 'Invoice/Bill No.', 'Resale Price (Rs.)', 
       'Resale Buyer', 'Reason for Removal', 'Remarks'
@@ -1556,9 +1577,18 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       let sumResalePrice = 0;
 
       finalCombined.forEach(m => {
+        if (m.isSubheading) {
+          const row = sheet.addRow([m.title]);
+          sheet.mergeCells(`A${row.number}:X${row.number}`);
+          row.getCell(1).font = { bold: true, color: { argb: 'FF0F172A' } };
+          row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+          row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+          return;
+        }
+
         const row = sheet.addRow([
           (m._type_code === 'BBF' ? '-' : sno++), m.date, m.eventType, m.item, m.code, m.category, m.branch,
-          m.loc, m.qtyIn, m.qtyOut, m.bal, m.unit, m.price, m.val, m.from, m.to,
+          m.loc, m.qtyIn, m.qtyOut, isFiltered ? '' : m.bal, m.unit, m.price, m.val, m.from, m.to,
           m.prog, m.auth, m.ref, m.inv, m.resalePrice, m.resaleBuyer, m.reason, m.remarks
         ]);
 
@@ -1594,7 +1624,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           
           // Running Balance formatting
           if (colNum === 11) {
-            cell.font = { bold: true, color: { argb: (m.bal < 0 ? 'FFEF4444' : 'FF000000') }, strike: isStrike };
+            cell.font = { bold: true, color: { argb: ((!isFiltered && m.bal < 0) ? 'FFEF4444' : 'FF000000') }, strike: isStrike };
             cell.alignment = { horizontal: 'center' };
           }
           

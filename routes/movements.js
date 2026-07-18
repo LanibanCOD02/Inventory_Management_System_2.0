@@ -218,6 +218,13 @@ router.post('/:id/void', authenticateToken, requireAdmin, async (req, res) => {
       const reversal = movement.movement_type === 'IN' ? -movement.quantity : movement.quantity;
       db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ?').run(reversal, movement.item_id);
 
+      if (movement.to_block_id && movement.movement_type === 'IN') {
+        db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?').run(movement.quantity, movement.item_id, movement.to_block_id);
+      }
+      if (movement.from_block_id && movement.movement_type === 'OUT') {
+        db.prepare('UPDATE inventory_item_blocks SET stock = stock + ? WHERE item_id = ? AND block_id = ?').run(movement.quantity, movement.item_id, movement.from_block_id);
+      }
+
       // 3. Mark movement as voided
       db.prepare('UPDATE inventory_movements SET voided = 1, voided_at = ?, voided_by = ? WHERE id = ?')
         .run(new Date().toISOString(), req.user.id, id);
@@ -242,7 +249,7 @@ router.post('/:id/void', authenticateToken, requireAdmin, async (req, res) => {
 // POST /api/movements/transfer
 router.post('/transfer', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { inventory_id, source_branch_id, destination_branch_id, quantity } = req.body;
+    const { inventory_id, source_branch_id, destination_branch_id, quantity, source_block_id, destination_block_id } = req.body;
     const qty = Number(quantity);
     if (!qty || qty <= 0) return res.status(400).json({ error: 'Quantity must be positive' });
     if (!source_branch_id || !destination_branch_id) return res.status(400).json({ error: 'Both source and destination branches are required' });
@@ -270,6 +277,9 @@ router.post('/transfer', authenticateToken, requireAdmin, async (req, res) => {
 
       // 3. Deduct stock from source and create OUT movement
       db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ?').run(qty, sourceItem.id);
+      if (source_block_id) {
+        db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?').run(qty, sourceItem.id, source_block_id);
+      }
       db.prepare(`
         INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, transfer_id)
         VALUES (?, ?, ?, 'OUT', ?, 'Branch Transfer', ?, ?, ?, ?)
@@ -277,6 +287,13 @@ router.post('/transfer', authenticateToken, requireAdmin, async (req, res) => {
 
       // 4. Add stock to destination and create IN movement
       db.prepare('UPDATE inventory_items SET stock = stock + ? WHERE id = ?').run(qty, destItem.id);
+      if (destination_block_id) {
+        db.prepare(`
+          INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+        `).run(generateUUID(), destItem.id, destination_block_id, qty);
+      }
       db.prepare(`
         INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, transfer_id)
         VALUES (?, ?, ?, 'IN', ?, 'Branch Transfer', ?, ?, ?, ?)

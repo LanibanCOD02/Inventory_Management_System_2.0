@@ -97,6 +97,11 @@ router.post('/requests/:id/approve', authenticateToken, requireAdmin, (req, res)
       // Deduct from source branch
       db.prepare('UPDATE inventory_items SET stock = stock - ? WHERE id = ? AND branch_id = ?')
         .run(request.quantity, request.item_id, request.from_branch_id);
+        
+      if (request.from_block_id) {
+        db.prepare('UPDATE inventory_item_blocks SET stock = stock - ? WHERE item_id = ? AND block_id = ?')
+          .run(request.quantity, request.item_id, request.from_block_id);
+      }
 
       // Add to destination branch
       const destItem = db.prepare('SELECT * FROM inventory_items WHERE name = ? AND branch_id = ? AND deleted_at IS NULL').get(item.name, request.to_branch_id);
@@ -109,6 +114,14 @@ router.post('/requests/:id/approve', authenticateToken, requireAdmin, (req, res)
         destItemId = crypto.randomUUID();
         db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
           .run(destItemId, item.name, item.category, request.quantity, item.unit, item.threshold, request.to_branch_id, now, item.unit_price || 0, item.item_code || null, item.serial_number || null);
+      }
+
+      if (request.to_block_id) {
+        db.prepare(`
+          INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+        `).run(crypto.randomUUID(), destItemId, request.to_block_id, request.quantity);
       }
 
       const refCode = `TRF-REQ-${Date.now()}`;

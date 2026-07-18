@@ -27,10 +27,14 @@ function authenticateToken(req, res, next) {
       const db = require('../config/db');
       
       // Fetch fresh user data from database to get branch_id and latest role
-      const user = db.prepare('SELECT id, username, role, branch_id FROM users WHERE id = ?').get(decodedUser.id);
+      const user = db.prepare('SELECT id, username, role, branch_id, token_version FROM users WHERE id = ?').get(decodedUser.id);
         
       if (!user) {
         return res.status(401).json({ error: 'User no longer exists or could not be verified' });
+      }
+
+      if (user.token_version !== decodedUser.token_version) {
+        return res.status(401).json({ error: 'Session expired. Please log in again.' });
       }
 
       // Attach the user object (id, username, role, branch_id) to the request

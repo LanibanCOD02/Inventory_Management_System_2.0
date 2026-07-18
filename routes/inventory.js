@@ -82,84 +82,89 @@ router.post('/', authenticateToken, async (req, res) => {
       }
     }
 
-    // Manual uniqueness check per branch
-    let existQuerySql = `SELECT id, deleted_at FROM inventory_items WHERE name = ?`;
-    let existParams = [name];
-    if (resolvedBranchId) {
-      existQuerySql += ` AND branch_id = ?`;
-      existParams.push(resolvedBranchId);
-    } else {
-      existQuerySql += ` AND branch_id IS NULL`;
-    }
-    
-    const existing = db.prepare(existQuerySql).get(...existParams);
-    
-    let itemId;
-    let itemStock = Number(stock) || 0;
-    let itemUnitPrice = Number(unit_price) || 0;
-
-    if (existing) {
-      if (existing.deleted_at) {
-        // It was deleted. Restore and update it.
-        itemId = existing.id;
-        db.prepare(`
-          UPDATE inventory_items 
-          SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, item_code = ?, serial_number = ?, deleted_at = NULL 
-          WHERE id = ?
-        `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, item_code || null, serial_number || null, itemId);
+    const tx = db.transaction(() => {
+      // Manual uniqueness check per branch
+      let existQuerySql = `SELECT id, deleted_at FROM inventory_items WHERE name = ?`;
+      let existParams = [name];
+      if (resolvedBranchId) {
+        existQuerySql += ` AND branch_id = ?`;
+        existParams.push(resolvedBranchId);
       } else {
-        return res.status(400).json({ error: 'An item with this exact name already exists in active inventory.' });
-      }
-    } else {
-      // Insert new
-      itemId = generateUUID();
-      db.prepare(`
-        INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, created_at, default_supplier, program, branch_id, item_code, serial_number) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, new Date().toISOString(), default_supplier || null, program || null, resolvedBranchId || null, item_code || null, serial_number || null);
-    }
-
-    const insertedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(itemId);
-    
-    // Log initial price in history
-    db.prepare(`
-      INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(generateUUID(), itemId, resolvedBranchId || null, null, itemUnitPrice, itemStock, itemStock * itemUnitPrice, req.user.id, new Date().toISOString());
-
-    // If initial stock > 0, auto-create an INWARD movement and update block stock
-    if (insertedItem.stock > 0) {
-      if (block_id) {
-        db.prepare(`
-          INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
-          VALUES (?, ?, ?, ?)
-          ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
-        `).run(generateUUID(), insertedItem.id, block_id, insertedItem.stock);
+        existQuerySql += ` AND branch_id IS NULL`;
       }
       
-      const refCode = `IN-${Math.floor(Math.random() * 9000) + 1000}`;
-      let partyName = 'Initial Stock Entry';
+      const existing = db.prepare(existQuerySql).get(...existParams);
       
-      if (default_supplier) {
-        // Check if default_supplier is a valid UUID
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(default_supplier)) {
-          const supplier = db.prepare('SELECT name FROM suppliers WHERE id = ?').get(default_supplier);
-          if (supplier) partyName = supplier.name;
+      let itemId;
+      let itemStock = Number(stock) || 0;
+      let itemUnitPrice = Number(unit_price) || 0;
+
+      if (existing) {
+        if (existing.deleted_at) {
+          // It was deleted. Restore and update it.
+          itemId = existing.id;
+          db.prepare(`
+            UPDATE inventory_items 
+            SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, item_code = ?, serial_number = ?, deleted_at = NULL 
+            WHERE id = ?
+          `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, item_code || null, serial_number || null, itemId);
         } else {
-          partyName = default_supplier;
+          throw new Error("ITEM_EXISTS");
         }
+      } else {
+        // Insert new
+        itemId = generateUUID();
+        db.prepare(`
+          INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, created_at, default_supplier, program, branch_id, item_code, serial_number) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, new Date().toISOString(), default_supplier || null, program || null, resolvedBranchId || null, item_code || null, serial_number || null);
       }
 
+      const insertedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(itemId);
+      
+      // Log initial price in history
       db.prepare(`
-        INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, item_code, serial_number, to_block_id) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString(), item_code || null, serial_number || null, block_id || null);
-    }
+        INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(generateUUID(), itemId, resolvedBranchId || null, null, itemUnitPrice, itemStock, itemStock * itemUnitPrice, req.user.id, new Date().toISOString());
 
-    res.status(201).json(insertedItem);
+      // If initial stock > 0, auto-create an INWARD movement and update block stock
+      if (insertedItem.stock > 0) {
+        if (block_id) {
+          db.prepare(`
+            INSERT INTO inventory_item_blocks (id, item_id, block_id, stock)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(item_id, block_id) DO UPDATE SET stock = stock + excluded.stock
+          `).run(generateUUID(), insertedItem.id, block_id, insertedItem.stock);
+        }
+        
+        const refCode = `IN-${Math.floor(Math.random() * 9000) + 1000}`;
+        let partyName = 'Initial Stock Entry';
+        
+        if (default_supplier) {
+          // Check if default_supplier is a valid UUID
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (uuidRegex.test(default_supplier)) {
+            const supplier = db.prepare('SELECT name FROM suppliers WHERE id = ?').get(default_supplier);
+            if (supplier) partyName = supplier.name;
+          } else {
+            partyName = default_supplier;
+          }
+        }
+
+        db.prepare(`
+          INSERT INTO inventory_movements (id, reference_code, item_id, movement_type, quantity, party_name, created_by, branch_id, created_at, item_code, serial_number, to_block_id) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(generateUUID(), refCode, insertedItem.id, 'IN', insertedItem.stock, partyName, req.user.id, resolvedBranchId || null, new Date().toISOString(), item_code || null, serial_number || null, block_id || null);
+      }
+      
+      return insertedItem;
+    });
+
+    const finalItem = tx();
+    res.status(201).json(finalItem);
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('UNIQUE')) {
+    if (error.message === "ITEM_EXISTS" || error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('UNIQUE')) {
        return res.status(400).json({ error: 'An item with this exact name already exists in active inventory.' });
     }
     res.status(500).json({ error: error.message });
