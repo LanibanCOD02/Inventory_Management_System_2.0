@@ -3642,7 +3642,7 @@ document.getElementById('reviewTransferForm')?.addEventListener('submit', async 
   const admin_note = document.getElementById('reviewTransferNote').value;
   
   try {
-    const res = await fetch(\`/api/transfers/requests/\${id}/approve\`, {
+    const res = await fetch(`/api/transfers/requests/${id}/approve`, {
       method: 'POST',
       headers: { 
         'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')),
@@ -3667,7 +3667,7 @@ document.getElementById('rejectTransferBtn')?.addEventListener('click', async ()
   const admin_note = document.getElementById('reviewTransferNote').value;
   
   try {
-    const res = await fetch(\`/api/transfers/requests/\${id}/reject\`, {
+    const res = await fetch(`/api/transfers/requests/${id}/reject`, {
       method: 'POST',
       headers: { 
         'Authorization': 'Bearer ' + (localStorage.getItem('msc_token') || sessionStorage.getItem('msc_token')),
