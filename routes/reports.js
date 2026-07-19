@@ -1480,14 +1480,14 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
         if (itemHasEvents[ev._item_id]) {
           currentBal[groupKey] = ev.bal;
           if (groupKey !== currentGroupKey) {
-             finalCombined.push({ isSubheading: true, title: `Item: ${ev.item} | Branch: ${ev.branch}` });
+             ev.isFirstInGroup = true;
              currentGroupKey = groupKey;
           }
           finalCombined.push(ev);
         }
       } else {
         if (groupKey !== currentGroupKey) {
-           finalCombined.push({ isSubheading: true, title: `Item: ${ev.item} | Branch: ${ev.branch}` });
+           ev.isFirstInGroup = true;
            currentGroupKey = groupKey;
         }
 
@@ -1577,15 +1577,6 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       let sumResalePrice = 0;
 
       finalCombined.forEach(m => {
-        if (m.isSubheading) {
-          const row = sheet.addRow([m.title]);
-          sheet.mergeCells(`A${row.number}:X${row.number}`);
-          row.getCell(1).font = { bold: true, color: { argb: 'FF0F172A' } };
-          row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-          row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
-          return;
-        }
-
         const row = sheet.addRow([
           (m._type_code === 'BBF' ? '-' : sno++), m.date, m.eventType, m.item, m.code, m.category, m.branch,
           m.loc, m.qtyIn, m.qtyOut, isFiltered ? '' : m.bal, m.unit, m.price, m.val, m.from, m.to,
@@ -1613,7 +1604,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowColor } };
           cell.alignment = { vertical: 'middle', wrapText: true };
           cell.border = {
-            top: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+            top: { style: m.isFirstInGroup ? 'medium' : 'thin', color: { argb: m.isFirstInGroup ? 'FF0D9488' : 'FFEEEEEE' } },
             bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } },
             right: { style: 'thin', color: { argb: 'FFEEEEEE' } }
           };
