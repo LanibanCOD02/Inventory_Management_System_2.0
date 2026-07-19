@@ -650,9 +650,8 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
     // If a target branch was selected from the dropdown, use it for all rows
     const targetBranchId = req.body.branch_id;
     
-    const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE name = ? AND branch_id = ?');
-    const updateItem = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
-    const updateItemAddStock = db.prepare('UPDATE inventory_items SET category = ?, unit = ?, threshold = ?, stock = stock + ?, deleted_at = NULL, item_code = ?, serial_number = ? WHERE id = ?');
+    const checkItem = db.prepare('SELECT id, stock, deleted_at FROM inventory_items WHERE LOWER(name) = LOWER(?) AND branch_id = ?');
+    const updateItemAddStock = db.prepare('UPDATE inventory_items SET category = COALESCE(?, category), unit = COALESCE(?, unit), threshold = COALESCE(?, threshold), stock = stock + ?, deleted_at = NULL, item_code = COALESCE(?, item_code), serial_number = COALESCE(?, serial_number) WHERE id = ?');
     const insertItem = db.prepare('INSERT INTO inventory_items (id, name, category, stock, unit, threshold, branch_id, created_at, unit_price, item_code, serial_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const insertMovement = db.prepare('INSERT INTO inventory_movements (id, item_id, movement_type, quantity, party_name, reference_code, branch_id, created_at, item_code, serial_number, total_price, to_block_id) VALUES (?, ?, \'IN\', ?, \'Initial Stock\', \'BULK-IMPORT\', ?, ?, ?, ?, ?, ?)');
     const insertPriceHistory = db.prepare('INSERT INTO price_history (id, item_id, branch_id, old_unit_price, new_unit_price, quantity_added, total_price_paid, changed_by, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)');
@@ -736,16 +735,16 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         const iCode = colMap['item_code'] ? getVal(row.getCell(colMap['item_code'])).trim() : '';
         const sNum = colMap['serial_number'] ? getVal(row.getCell(colMap['serial_number'])).trim() : '';
         
-        let unit = colMap['unit'] ? getVal(row.getCell(colMap['unit'])).trim() : 'pcs';
-        if (!unit) unit = 'pcs';
+        let unitRaw = colMap['unit'] ? getVal(row.getCell(colMap['unit'])).trim() : '';
+        let unit = unitRaw === '' ? null : unitRaw;
         
         let stockRaw = colMap['stock'] ? getVal(row.getCell(colMap['stock'])) : '';
         let stock = Number(stockRaw);
         if (isNaN(stock)) stock = 0;
         
         let thresholdRaw = colMap['threshold'] ? getVal(row.getCell(colMap['threshold'])) : '';
-        let threshold = Number(thresholdRaw);
-        if (isNaN(threshold)) threshold = 0;
+        let threshold = thresholdRaw === '' ? null : Number(thresholdRaw);
+        if (threshold !== null && isNaN(threshold)) threshold = 0;
           
           let priceRaw = colMap['price'] ? getVal(row.getCell(colMap['price'])) : '';
           let unitPrice = Number(priceRaw);
@@ -798,32 +797,27 @@ router.post('/bulk-import', authenticateToken, upload.single('file'), async (req
         
         const existing = checkItem.get(iName, branchId);
         if (existing) {
-          if (processedItems.has(existing.id)) {
-            updateItemAddStock.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
-          } else {
-            updateItem.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
-            processedItems.add(existing.id);
-          }
+          updateItemAddStock.run(cat || null, unit, threshold, stock, iCode || null, sNum || null, existing.id);
           
           if (blockId) {
             const bCheck = checkBlock.get(existing.id, blockId);
             if (bCheck) {
-              if (processedBlocks.has(existing.id + '_' + blockId)) {
-                updateBlockAddStock.run(stock, existing.id, blockId);
-              } else {
-                updateBlock.run(stock, existing.id, blockId);
-                processedBlocks.add(existing.id + '_' + blockId);
-              }
+              updateBlockAddStock.run(stock, existing.id, blockId);
             } else {
               insertBlock.run(generateUUID(), existing.id, blockId, stock);
-              processedBlocks.add(existing.id + '_' + blockId);
             }
           }
+          
+          if (stock > 0) {
+            const nowStr = new Date().toISOString();
+            insertMovement.run(generateUUID(), existing.id, stock, branchId, nowStr, iCode || null, sNum || null, stock * unitPrice, blockId);
+          }
+          
           updated++;
         } else {
           const newId = generateUUID();
           const nowStr = new Date().toISOString();
-          insertItem.run(newId, iName, cat || null, stock, unit, threshold, branchId, nowStr, unitPrice, iCode || null, sNum || null);
+          insertItem.run(newId, iName, cat || null, stock, unit || 'pcs', threshold || 0, branchId, nowStr, unitPrice, iCode || null, sNum || null);
           processedItems.add(newId);
           if (blockId) {
             insertBlock.run(generateUUID(), newId, blockId, stock);
