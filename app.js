@@ -57,7 +57,7 @@ async function apiFetch(endpoint, options = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, { cache: 'no-store', ...options, headers });
   if (!response.ok) {
     // FIX 2: Session expiry handling in apiFetch
-    if (response.status === 401) {
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
       localStorage.removeItem('msc_token'); sessionStorage.removeItem('msc_token');
       localStorage.removeItem('msc_user'); sessionStorage.removeItem('msc_user');
       document.getElementById('appShell').style.display = 'none';
