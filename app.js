@@ -2043,7 +2043,8 @@ if (document.getElementById("addUserBtn")) {
   document.getElementById("addUserForm").addEventListener("submit", async e => {
     e.preventDefault();
     const d = new FormData(e.target);
-    const pwd = d.get('password');
+    const pwd = d.get('new_user_password');
+    if (pwd) d.set('password', pwd);
     
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const ogText = submitBtn.textContent;
@@ -2091,7 +2092,7 @@ if (editUserModal) {
     e.preventDefault();
     const d = new FormData(e.target);
     const id = d.get('userId');
-    const pwd = d.get('password');
+    const pwd = d.get('new_user_password');
     
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const ogText = submitBtn.textContent;
