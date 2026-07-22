@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: msc-trust-inventory
+    env: node
+    # Note: Persistent disks require a paid plan (Starter or higher).
+    # If you remove the 'disk' section, you can use the 'free' plan, 
+    # but your SQLite database will wipe on every restart.
+    plan: starter 
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    disk:
+      name: inventory-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /data
+      - key: JWT_SECRET
+        generateValue: true
