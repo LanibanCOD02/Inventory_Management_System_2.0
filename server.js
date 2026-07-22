@@ -1,13 +1,18 @@
 require('dotenv').config();
+const validateEnv = require('./config/env');
+validateEnv();
+
 const express = require('express');
 const cors = require('cors');
-
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
 const app = express();
 const fs = require('fs');
 const path = require('path');
 
 // Ensure upload directories exist
-const dataDir = process.env.DATA_DIR || __dirname;
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
 const uploadDirs = ['uploads/products', 'uploads/bills', 'uploads/invoices'].map(d => path.join(dataDir, d));
 
 uploadDirs.forEach(dir => {
@@ -17,23 +22,31 @@ uploadDirs.forEach(dir => {
 });
 
 // Raw request logger
-app.use((req, res, next) => {
-  console.log(`[RAW] ${req.method} ${req.url}`);
-  next();
-});
+// Removed custom raw logger in favor of Morgan
 
-// Middleware
-app.use(cors()); // Allow cross-origin requests from the frontend
-app.use(express.json({ limit: '50mb' })); // Parse incoming JSON payloads
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Serve Static Files (placed before Morgan to avoid logging asset requests)
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(dataDir, 'uploads')));
 
-// Request logger
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  next();
+// Health Check Endpoint (Northflank Liveness Probe)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
 });
+
+// Request logger (Morgan)
+const morganFormat = process.env.NODE_ENV === 'production' ? 'combined' : 'dev';
+app.use(morgan(morganFormat));
+
+// Middleware
+app.use(helmet({ contentSecurityPolicy: false })); // Basic security headers, CSP off for static inline script compatibility
+app.use(compression()); // Compress responses
+app.use(cors()); // Allow cross-origin requests from the frontend
+app.use(express.json({ limit: '10mb' })); // Parse incoming JSON payloads
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Import Routes
 const authRoutes = require('./routes/auth');
@@ -60,7 +73,7 @@ app.use('/api/transfers', transfersRoutes);
 app.use('/api/donations', donationsRoutes);
 
 // Serve Static Frontend Files
-app.use(express.static(__dirname));
+// Handled above before Morgan logging
 
 // 404 Catch-all
 app.use((req, res, next) => {
@@ -68,8 +81,34 @@ app.use((req, res, next) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(`[ERROR] ${new Date().toISOString()} - ${err.message}`);
+  console.error(err.stack);
+  res.status(500).json({ error: 'Internal Server Error' });
+});
+
 // Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+// Graceful Shutdown
+const shutdown = () => {
+  console.log('Shutting down gracefully...');
+  server.close(() => {
+    console.log('HTTP server closed.');
+    try {
+      const db = require('./config/db');
+      db.close();
+      console.log('Database connection closed.');
+    } catch (err) {
+      console.error('Error closing database:', err);
+    }
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

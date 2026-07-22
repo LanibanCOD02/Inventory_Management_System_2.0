@@ -1169,7 +1169,7 @@ router.get('/backup-zip', authenticateToken, requireAdmin, async (req, res) => {
     const AdmZip = require('adm-zip');
     const zip = new AdmZip();
 
-    const dataDir = process.env.DATA_DIR || path.join(__dirname, '..');
+    const dataDir = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
     
     // Append database file
     const dbPath = path.join(dataDir, 'database.db');

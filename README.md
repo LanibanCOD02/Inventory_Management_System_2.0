@@ -1,72 +1,63 @@
-# Inventory Management System
+# MSC Trust Inventory Management System
 
-This project is a web based inventory management system made for M.S. Chellamuthu Trust & Research Foundation, Madurai. The system is designed to manage stock across different centres and departments in a simple and organized way.
-
-The main purpose of this project is to track inventory items such as medicines, medical supplies, vocational unit materials, finished goods, residential provisions, and outreach camp kits.
-
-## Project Details
-
-Trust Name: M.S. Chellamuthu Trust & Research Foundation  
-Address: 643, KK Nagar, Madurai, Tamil Nadu 625020
+A monolithic, full-stack web application for managing stock, inventory movements, branches, and donations for M.S. Chellamuthu Trust & Research Foundation.
 
 ## Features
+- Real-time inventory tracking
+- Stock transfers between branches and blocks
+- Image uploads for products and bills
+- Detailed reporting and Excel exports
+- Secure authentication
 
-- Login screen for system access
-- Dashboard with stock summary
-- Multi-location inventory tracking
-- Item category management
-- Batch-wise stock details
-- Stock in and stock out entries
-- Internal stock transfer between centres
-- Low stock alerts
-- Expiry alerts for medicines and perishable items
-- Reports with CSV export
-- Audit log for important activities
+## Local Setup
 
-## Inventory Categories
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-- Pharmaceuticals and medical supplies
-- Vocational raw materials
-- Vocational finished goods
-- Residential provisions
-- Community outreach kits
+2. **Environment Configuration**
+   Copy `.env.example` to `.env` and adjust the variables.
+   ```bash
+   cp .env.example .env
+   ```
 
-## Locations Covered
+3. **Start the Server**
+   ```bash
+   npm start
+   ```
+   The application will run locally at `http://localhost:3000`. By default, the SQLite database and all uploads will be stored inside the `./data` directory, which is automatically created on startup.
 
-- Madurai Main Centre
-- Dindigul Rehabilitation Centre
-- Ramanathapuram Outreach Hub
-- Madurai Vocational Unit
-- Residential Home Store
+## Production Deployment (Northflank)
 
-## Technology Used
+This application is designed to be deployed as a **Single Service** on Northflank, serving both the frontend API and backend simultaneously.
 
-- React
-- Vite
-- JavaScript
-- CSS
-- Browser local storage for demo data
+### Northflank Configuration
 
-## How to Run
+- **Service Type**: Combined Service
+- **Runtime**: Node.js (v20)
+- **Install Command**: `npm ci --omit=dev`
+- **Build Command**: (Leave empty, no build required)
+- **Start Command**: `node server.js`
+- **Working Directory**: `/` (root)
 
-Install dependencies:
+### Persistent Volumes
+Because this application uses SQLite and local file uploads, you **must** configure a Persistent Volume in Northflank so data is not lost when the container restarts.
 
-```bash
-npm install
-```
+- **Mount Path**: `/data`
+- **Size**: 1GB (or as needed)
 
-Start the development server:
+### Environment Variables
+Configure the following Environment Variables in your Northflank Service:
+- `PORT`: `3000`
+- `NODE_ENV`: `production`
+- `DATA_DIR`: `/data`
+- `JWT_SECRET`: A secure random string (used for authentication tokens).
 
-```bash
-npm run dev
-```
+## Backup and Restore Strategy
 
-Build the project:
+**Backup:**
+The application includes a built-in zip backup endpoint (`/api/reports/backup-zip`). You can also manually download the `database.db` and `uploads` folders directly from your Northflank Volume using their UI or CLI.
 
-```bash
-npm run build
-```
-
-## Notes
-
-This version is prepared as a project prototype. The current data is stored in the browser for demonstration. In a full deployment, the same system can be connected to a backend server and database such as MySQL or PostgreSQL.
+**Restore:**
+To restore a backup, upload the `database.db` file and the `uploads` directory back into your mounted `/data` volume on Northflank and restart the service.
