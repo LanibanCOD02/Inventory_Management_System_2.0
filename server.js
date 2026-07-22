@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Ensure upload directories exist
-const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
+const dataDir = process.env.DATA_DIR;
 const uploadDirs = ['uploads/products', 'uploads/bills', 'uploads/invoices'].map(d => path.join(dataDir, d));
 
 uploadDirs.forEach(dir => {
