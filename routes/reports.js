@@ -1283,19 +1283,6 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           price: '', val: '', from: '', to: '', prog: i.program || '-',
           auth: '', ref: '', inv: '', resalePrice: '', resaleBuyer: '', reason: '', remarks: ''
         });
-      } else if (i.created_at >= startDate && i.created_at <= endDate) {
-        combined.push({
-          _item_id: i.id,
-          _date_obj: new Date(i.created_at),
-          _type_code: 'E',
-          date: i.created_at,
-          eventType: 'Opening Stock',
-          item: i.name, code: i.item_code || i.serial_number || '-', category: i.category || '-',
-          branch: branchMap[i.branch_id] || 'Global', loc: '-',
-          qtyIn: i.stock, qtyOut: '', bal: null, unit: i.unit || '-',
-          price: '', val: '', from: '', to: '', prog: i.program || '-',
-          auth: '', ref: '', inv: '', resalePrice: '', resaleBuyer: '', reason: '', remarks: ''
-        });
       }
     });
 
@@ -1432,6 +1419,9 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       `).all(...movParamsRange);
 
       phist.forEach(ph => {
+        // Skip price history row if it's the exact same timestamp as item creation (initial price)
+        if (itemMap[ph.item_id] && itemMap[ph.item_id].created_at === ph.created_at) return;
+
         combined.push({
           _item_id: ph.item_id,
           _date_obj: new Date(ph.created_at),
@@ -1603,20 +1593,24 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
         row.eachCell((cell, colNum) => {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowColor } };
           cell.alignment = { vertical: 'middle', wrapText: true };
-          cell.border = {
-            top: { style: m.isFirstInGroup ? 'medium' : 'thin', color: { argb: m.isFirstInGroup ? 'FF0D9488' : 'FFEEEEEE' } },
-            bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } },
-            right: { style: 'thin', color: { argb: 'FFEEEEEE' } }
-          };
-          if (colNum === 1) cell.border.left = { style: 'medium', color: { argb: leftBorder } };
+          cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF0F172A' } };
           
-          if (isStrike) cell.font = { strike: true };
-          if (isItalic && m._type_code === 'BBF') cell.font = { italic: true };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FF475569' } },
+            bottom: { style: 'thin', color: { argb: 'FF475569' } },
+            right: { style: 'thin', color: { argb: 'FF475569' } },
+            left: { style: 'thin', color: { argb: 'FF475569' } }
+          };
+          
+          if (colNum === 1) cell.border.left = { style: 'thick', color: { argb: leftBorder } };
+          
+          if (isStrike) cell.font = { name: 'Calibri', size: 10, strike: true, color: { argb: 'FF94A3B8' } };
+          if (isItalic && m._type_code === 'BBF') cell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF0F172A' } };
           
           // Running Balance formatting
           if (colNum === 11) {
-            cell.font = { bold: true, color: { argb: ((!isFiltered && m.bal < 0) ? 'FFEF4444' : 'FF000000') }, strike: isStrike };
-            cell.alignment = { horizontal: 'center' };
+            cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: ((!isFiltered && m.bal < 0) ? 'FFEF4444' : 'FF0F172A') }, strike: isStrike };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
           }
           
           if (colNum === 13 || colNum === 14 || colNum === 21) {
@@ -1651,7 +1645,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           if (len > maxLen) maxLen = len;
         }
       });
-      column.width = Math.min(maxLen + 2, 40);
+      column.width = Math.min(maxLen + 6, 40);
     });
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
