@@ -97,7 +97,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
 
     // Row 3 (Headers - no spacer)
     sheet.getRow(3).values = [
-      'S.No', 'Item Name', 'Item Code', 'Category', 'Branch', 'Location/Block', 
+      'S.No', 'Item Name', 'Item Code', 'Serial No.', 'Category', 'Branch', 'Location/Block', 
       'Current Stock', 'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 
       'Status', 'Minimum Required', 'Shortage', 'Last Updated'
     ];
@@ -115,12 +115,13 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
       };
     });
     
-    sheet.autoFilter = 'A3:N3';
+    sheet.autoFilter = 'A3:O3';
 
     sheet.columns = [
       { key: 'sno' },
       { key: 'name' },
       { key: 'code' },
+      { key: 'serial' },
       { key: 'category' },
       { key: 'branch' },
       { key: 'block' },
@@ -135,7 +136,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
     ];
 
     if (items.length === 0) {
-      sheet.mergeCells('A4:N4');
+      sheet.mergeCells('A4:O4');
       const emptyCell = sheet.getCell('A4');
       emptyCell.value = 'No inventory items found for the selected filters.';
       emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -169,6 +170,7 @@ router.get('/inventory-summary', authenticateToken, async (req, res) => {
           sno: index + 1,
           name: i.name || '-',
           code: i.item_code || ('#' + (i.id ? i.id.substring(0, 8) : '')),
+          serial: i.serial_number || '-',
           category: i.category || '-',
           branch: branchName,
           block: blockName,
@@ -653,7 +655,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
     sheet.addRow([]);
     const isFiltered = !!(req.query.action_type || req.query.block_id);
     const headers = [
-      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
+      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 'Serial No.', 
       'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 
       isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 
       'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
@@ -673,10 +675,10 @@ router.get('/movements', authenticateToken, async (req, res) => {
         right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
       };
     });
-    sheet.autoFilter = 'A4:U4';
+    sheet.autoFilter = 'A4:V4';
 
     if (combined.length === 0) {
-      sheet.mergeCells('A5:U5');
+      sheet.mergeCells('A5:V5');
       const noData = sheet.getCell('A5');
       noData.value = "No transactions found for the selected period and filters.";
       noData.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -751,6 +753,7 @@ router.get('/movements', authenticateToken, async (req, res) => {
           eventType,
           m.item_name,
           m.i_code || '-',
+          m.i_serial || '-',
           m.category || '-',
           m.branch_name || 'Global',
           m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
@@ -768,14 +771,14 @@ router.get('/movements', authenticateToken, async (req, res) => {
           m.notes || '-'
         ]);
 
-        const balCell = row.getCell(12);
+        const balCell = row.getCell(13);
         balCell.font = { bold: true };
         if (stockMap[m.item_id] < 0) {
             balCell.font = { bold: true, color: { argb: 'FFEF4444' } };
         }
         
-        row.getCell(14).numFmt = '#,##0.00'; // Unit Price
-        row.getCell(15).numFmt = '#,##0.00'; // Total Value
+        row.getCell(15).numFmt = '#,##0.00'; // Unit Price
+        row.getCell(16).numFmt = '#,##0.00'; // Total Value
 
         if (!rowColor) {
             rowColor = (sno % 2 !== 0) ? 'FFF8FAFC' : 'FFFFFFFF'; // Alternating (sno is already incremented)
@@ -975,7 +978,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
 
     const isFiltered = !!req.query.action_type; // Groceries doesn't have block filter explicitly in UI, but just in case
     const headers = [
-      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 
+      'S.No', 'Date & Time', 'Reference No.', 'Event Type', 'Item Name', 'Item Code', 'Serial No.', 
       'Category', 'Branch', 'Location/Block', 'Qty In', 'Qty Out', 
       isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 
       'Unit', 'Unit Price (Rs.)', 'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 
@@ -995,10 +998,10 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
         right: { style: 'thin', color: { argb: 'FFB0BEC5' } }
       };
     });
-    sheet.autoFilter = 'A4:V4';
+    sheet.autoFilter = 'A4:W4';
 
     if (combined.length === 0) {
-      sheet.mergeCells('A5:V5');
+      sheet.mergeCells('A5:W5');
       const noData = sheet.getCell('A5');
       if (!categoryExists) {
         noData.value = "No 'Food & nutrition' category found in the system. Please create this category first to track groceries.";
@@ -1079,6 +1082,7 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
           eventType,
           m.item_name,
           m.i_code || '-',
+          m.i_serial || '-',
           m.category || '-',
           m.branch_name || 'Global',
           m.is_deletion ? '-' : (blockMap[m.from_block_id] || blockMap[m.to_block_id] || '-'),
@@ -1097,14 +1101,14 @@ router.get('/groceries-ledger', authenticateToken, async (req, res) => {
           m.notes || '-'
         ]);
 
-        const balCell = row.getCell(12);
+        const balCell = row.getCell(13);
         balCell.font = { bold: true };
         if (stockMap[m.item_id] < 0) {
             balCell.font = { bold: true, color: { argb: 'FFEF4444' } };
         }
         
-        row.getCell(14).numFmt = '#,##0.00'; 
         row.getCell(15).numFmt = '#,##0.00'; 
+        row.getCell(16).numFmt = '#,##0.00'; 
 
         if (!rowColor) {
             rowColor = (sno % 2 !== 0) ? 'FFF8FAFC' : 'FFFFFFFF'; 
@@ -1277,7 +1281,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           _type_code: 'BBF',
           date: formatToDDMMYYYY(new Date(startDate).toISOString()), // formatting later
           eventType: 'Balance Brought Forward',
-          item: i.name, code: i.item_code || i.serial_number || '-', category: i.category || '-',
+          item: i.name, code: i.item_code || '-', serial: i.serial_number || '-', category: i.category || '-',
           branch: branchMap[i.branch_id] || 'Global', loc: '-',
           qtyIn: '', qtyOut: '', bal: itemMap[i.id].reverse_stock, unit: i.unit || '-',
           price: '', val: '', from: '', to: '', prog: i.program || '-',
@@ -1359,7 +1363,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
         _type_code: typeCode,
         date: m.created_at,
         eventType: evType,
-        item: m.item_name, code: m.item_code || m.i_code || m.serial_number || m.i_serial || '-', category: m.category || '-',
+        item: m.item_name, code: m.item_code || m.i_code || '-', serial: m.serial_number || m.i_serial || '-', category: m.category || '-',
         branch: m.branch_name || 'Global', loc: loc,
         qtyIn: qIn, qtyOut: qOut, bal: null, unit: m.unit || '-',
         price: m.total_price ? (m.total_price / m.quantity) : '',
@@ -1395,7 +1399,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
         _type_code: 'G',
         date: dt,
         eventType: evType,
-        item: dr.item_name, code: dr.i_code || dr.i_serial || '-', category: dr.category || '-',
+        item: dr.item_name, code: dr.i_code || '-', serial: dr.i_serial || '-', category: dr.category || '-',
         branch: dr.branch_name || 'Global', loc: '-',
         qtyIn: '', qtyOut: dr.quantity, bal: null, unit: dr.unit || '-',
         price: '', val: '', from: '', to: '', prog: dr.program || '-',
@@ -1428,7 +1432,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
           _type_code: 'F',
           date: ph.created_at,
           eventType: 'Price Updated',
-          item: ph.item_name, code: ph.i_code || ph.i_serial || '-', category: ph.category || '-',
+          item: ph.item_name, code: ph.i_code || '-', serial: ph.i_serial || '-', category: ph.category || '-',
           branch: ph.branch_name || 'Global', loc: '-',
           qtyIn: '', qtyOut: '', bal: null, unit: ph.unit || '-',
           price: ph.new_unit_price, val: '', from: '', to: '', prog: ph.program || '-',
@@ -1530,7 +1534,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
     sheet.addRow([]);
 
     const headers = [
-      'S.No', 'Date & Time', 'Event Type', 'Item Name', 'Item Code', 'Category', 'Branch', 
+      'S.No', 'Date & Time', 'Event Type', 'Item Name', 'Item Code', 'Serial No.', 'Category', 'Branch', 
       'Location/Block', 'Qty In', 'Qty Out', isFiltered ? 'Running Balance (n/a — filters active)' : 'Running Balance', 'Unit', 'Unit Price (Rs.)', 
       'Total Value (Rs.)', 'From / Supplier', 'To / Recipient', 'Program / Scheme', 
       'Authorized By', 'Reference No.', 'Invoice/Bill No.', 'Resale Price (Rs.)', 
@@ -1551,10 +1555,10 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
       };
     });
     sheet.views = [{ state: 'frozen', ySplit: 4 }];
-    sheet.autoFilter = 'A4:X4';
+    sheet.autoFilter = 'A4:Y4';
 
     if (finalCombined.length === 0) {
-      sheet.mergeCells('A5:X5');
+      sheet.mergeCells('A5:Y5');
       const noData = sheet.getCell('A5');
       noData.value = "No stock activity found for the selected period and filters.";
       noData.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1568,7 +1572,7 @@ router.get('/comprehensive', authenticateToken, async (req, res) => {
 
       finalCombined.forEach(m => {
         const row = sheet.addRow([
-          (m._type_code === 'BBF' ? '-' : sno++), m.date, m.eventType, m.item, m.code, m.category, m.branch,
+          (m._type_code === 'BBF' ? '-' : sno++), m.date, m.eventType, m.item, m.code, m.serial, m.category, m.branch,
           m.loc, m.qtyIn, m.qtyOut, isFiltered ? '' : m.bal, m.unit, m.price, m.val, m.from, m.to,
           m.prog, m.auth, m.ref, m.inv, m.resalePrice, m.resaleBuyer, m.reason, m.remarks
         ]);

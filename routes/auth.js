@@ -11,6 +11,12 @@ function generateUUID() {
   return crypto.randomUUID();
 }
 
+// GET /api/auth/setup-required
+router.get('/setup-required', (req, res) => {
+  // Database self-initializes on startup, so setup is never required
+  res.json({ setupRequired: false });
+});
+
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {

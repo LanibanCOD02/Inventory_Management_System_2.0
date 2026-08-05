@@ -656,6 +656,10 @@
               <option>Farming &amp; Dairy</option>
             </select></label>
             <div class="form-row">
+              <label>Item Code <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="item_code" id="editItemCode" placeholder="e.g. SKU-123"></label>
+              <label>Serial No. <span style="font-size:12px; color:var(--muted); font-weight:normal">(Optional)</span><input name="serial_number" id="editSerialNumber" placeholder="e.g. SN-987654321"></label>
+            </div>
+            <div class="form-row">
               <label>Unit<input type="text" required name="unit" id="editUnit"></label>
               <label>Minimum stock level<input required name="threshold" id="editThreshold" type="number" min="0"></label>
               <label>Unit price (₹)<input required name="unit_price" id="editUnitPrice" type="number" min="0" step="0.01"></label>
@@ -676,6 +680,7 @@
                 </span>
               </label>
             </div>
+            <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px; background: var(--bg-alt); padding: 8px; border-radius: 4px;"><strong>Note:</strong> Item Code and Serial Number shown here are the primary identifiers for this item — updating them changes the record for all historical reports.</p>
             <div style="padding:12px; background:var(--bg-alt); border-radius:6px; margin-bottom:16px;">
               <p style="font-size:12px; color:var(--text-secondary); margin:0 0 8px;">Upload new files below to replace existing ones. Leave empty to keep existing files.</p>
               <div class="form-row">

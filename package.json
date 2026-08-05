@@ -2,7 +2,7 @@
   "name": "msc-trust-inventory",
   "version": "1.0.0",
   "description": "This project is a web based inventory management system made for M.S. Chellamuthu Trust & Research Foundation, Madurai. The system is designed to manage stock across different centres and departments in a simple and organized way.",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

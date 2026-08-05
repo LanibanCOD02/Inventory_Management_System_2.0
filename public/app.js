@@ -1415,6 +1415,10 @@ if (document.getElementById("editItemBtn")) {
     document.getElementById("editCategory").value = item.category;
     document.getElementById("editUnit").value = item.unit;
     document.getElementById("editThreshold").value = item.threshold;
+    const icEl = document.getElementById("editItemCode");
+    if (icEl) icEl.value = item.item_code || '';
+    const snEl = document.getElementById("editSerialNumber");
+    if (snEl) snEl.value = item.serial_number || '';
     const upEl = document.getElementById("editUnitPrice");
     if (upEl) upEl.value = item.unit_price || 0;
     const supplierInput = document.getElementById('editItemSupplierInput');
@@ -1527,6 +1531,8 @@ if(document.getElementById("editItemForm")) {
         threshold: d.get("threshold"),
         unit_price: d.get("unit_price"),
         branch_id: d.get("branch_id"),
+        item_code: d.get("item_code") || null,
+        serial_number: d.get("serial_number") || null,
         default_supplier: document.getElementById('editItemSupplierInput')?.value || null,
         program: document.getElementById('editItemProgramInput')?.value || null,
         ...(uploadedUrls.productPhotoUrl && { product_photo_url: uploadedUrls.productPhotoUrl }),

@@ -98,6 +98,7 @@ router.post('/', authenticateToken, async (req, res) => {
       let itemId;
       let itemStock = Number(stock) || 0;
       let itemUnitPrice = Number(unit_price) || 0;
+      let parsedThreshold = (threshold !== undefined && threshold !== null && threshold !== '') ? Number(threshold) : 10;
 
       if (existing) {
         if (existing.deleted_at) {
@@ -107,7 +108,7 @@ router.post('/', authenticateToken, async (req, res) => {
             UPDATE inventory_items 
             SET category = ?, stock = ?, unit = ?, threshold = ?, unit_price = ?, product_photo_url = ?, invoice_pdf_url = ?, default_supplier = ?, program = ?, item_code = ?, serial_number = ?, deleted_at = NULL 
             WHERE id = ?
-          `).run(category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, item_code || null, serial_number || null, itemId);
+          `).run(category, itemStock, unit, parsedThreshold, itemUnitPrice, product_photo_url, invoice_pdf_url, default_supplier || null, program || null, item_code || null, serial_number || null, itemId);
         } else {
           throw new Error("ITEM_EXISTS");
         }
@@ -117,7 +118,7 @@ router.post('/', authenticateToken, async (req, res) => {
         db.prepare(`
           INSERT INTO inventory_items (id, name, category, stock, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, created_at, default_supplier, program, branch_id, item_code, serial_number) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(itemId, name, category, itemStock, unit, Number(threshold) || 10, itemUnitPrice, product_photo_url, invoice_pdf_url, new Date().toISOString(), default_supplier || null, program || null, resolvedBranchId || null, item_code || null, serial_number || null);
+        `).run(itemId, name, category, itemStock, unit, parsedThreshold, itemUnitPrice, product_photo_url, invoice_pdf_url, new Date().toISOString(), default_supplier || null, program || null, resolvedBranchId || null, item_code || null, serial_number || null);
       }
 
       const insertedItem = db.prepare('SELECT * FROM inventory_items WHERE id = ?').get(itemId);
@@ -339,7 +340,7 @@ router.post('/:id/movement', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, category, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, default_supplier, program, branch_id } = req.body;
+    const { name, category, unit, threshold, unit_price, product_photo_url, invoice_pdf_url, default_supplier, program, branch_id, item_code, serial_number } = req.body;
 
     const updates = [];
     const params = [];
@@ -354,6 +355,8 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     if (default_supplier !== undefined) { updates.push('default_supplier = ?'); params.push(default_supplier); }
     if (program !== undefined) { updates.push('program = ?'); params.push(program); }
     if (branch_id !== undefined) { updates.push('branch_id = ?'); params.push(branch_id); }
+    if (item_code !== undefined) { updates.push('item_code = ?'); params.push(item_code); }
+    if (serial_number !== undefined) { updates.push('serial_number = ?'); params.push(serial_number); }
 
     if (updates.length > 0) {
       // Fetch old item to check if unit_price changed
