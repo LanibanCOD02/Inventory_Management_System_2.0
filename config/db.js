@@ -224,7 +224,7 @@ function initializeDatabase() {
 
       // 4. Seed Default Administrator
       db.prepare("INSERT INTO users (id, username, password_hash, role, created_at, branch_id) VALUES (?, ?, ?, ?, ?, ?)").run(
-        adminId, 'admin@msctrust.org', adminPasswordHash, 'admin', now, branchId
+        adminId, 'admin@msctrust.org', adminPasswordHash, 'Admin', now, branchId
       );
     });
 
@@ -248,6 +248,8 @@ try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason TEXT"); } catch (
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN reason_details TEXT"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN resale_price REAL"); } catch (e) { /* Ignore if exists */ }
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN quantity INTEGER"); } catch (e) { /* Ignore if exists */ }
+try { db.exec("UPDATE users SET role = 'Admin' WHERE role = 'admin'"); } catch (e) { /* Ignore */ }
+try { db.exec("UPDATE users SET role = 'Staff' WHERE role = 'staff'"); } catch (e) { /* Ignore */ }
 try { db.exec("ALTER TABLE deletion_requests ADD COLUMN block_id TEXT"); } catch (e) { /* Ignore if exists */ }
 
 try { db.exec("ALTER TABLE transfer_requests ADD COLUMN admin_note TEXT"); } catch (e) { /* Ignore if exists */ }
