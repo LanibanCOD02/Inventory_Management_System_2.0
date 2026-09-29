@@ -83,9 +83,24 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     const tx = db.transaction(() => {
-      // Manual uniqueness check per branch
+      // Manual uniqueness check per branch, item_code, and serial_number
       let existQuerySql = `SELECT id, deleted_at FROM inventory_items WHERE name = ?`;
       let existParams = [name];
+      
+      if (item_code) {
+        existQuerySql += ` AND item_code = ?`;
+        existParams.push(item_code);
+      } else {
+        existQuerySql += ` AND (item_code IS NULL OR item_code = '')`;
+      }
+
+      if (serial_number) {
+        existQuerySql += ` AND serial_number = ?`;
+        existParams.push(serial_number);
+      } else {
+        existQuerySql += ` AND (serial_number IS NULL OR serial_number = '')`;
+      }
+
       if (resolvedBranchId) {
         existQuerySql += ` AND branch_id = ?`;
         existParams.push(resolvedBranchId);
